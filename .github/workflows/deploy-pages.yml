@@ -1,0 +1,70 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Build production application
+        run: npm run build
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+
+  smoke:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify deployed application shell
+        env:
+          PUBLIC_URL: https://seraflab.github.io/tracker/
+        run: |
+          set -euo pipefail
+          for attempt in {1..12}; do
+            response="$(curl --fail --silent --show-error --location "$PUBLIC_URL" || true)"
+            if [[ "$response" == *'data-app-shell="tracker"'* ]]; then
+              echo "Smoke check passed: $PUBLIC_URL"
+              exit 0
+            fi
+
+            echo "Smoke check attempt $attempt/12 did not find the tracker shell at $PUBLIC_URL" >&2
+            sleep 10
+          done
+
+          echo "Smoke check failed: $PUBLIC_URL did not return the expected tracker application shell." >&2
+          exit 1

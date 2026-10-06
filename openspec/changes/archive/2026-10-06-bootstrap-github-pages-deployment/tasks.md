@@ -12,9 +12,9 @@
 
 - [x] 2.1 Add a `main`-push GitHub Actions workflow that installs lockfile-resolved dependencies, builds once, uploads `dist` as the Pages artifact, and deploys it with least-privilege permissions; verify the workflow YAML is valid and uses full commit-SHA-pinned Actions.
 - [x] 2.2 Add a bounded post-deployment HTTP smoke step that checks the canonical Pages URL and its stable shell marker; verify its failure message includes the public URL and the workflow fails when the check cannot pass.
-- [ ] 2.3 Open a pull request from `feature/bootstrap-github-pages-deployment` to `main`, then merge it after Pages is configured for GitHub Actions; verify the deployment run succeeds and `https://seraflab.github.io/tracker/` loads the tracker shell with its required assets.
+- [x] 2.3 Open a pull request from `feature/bootstrap-github-pages-deployment` to `main`, then merge it after Pages is configured for GitHub Actions; verify the deployment run succeeds and `https://seraflab.github.io/tracker/` loads the tracker shell with its required assets.
 
 ## 3. Integration verification
 
 - [x] 3.1 Run `npm ci` and `npm run build` from a clean working tree; verify both complete successfully and the built entry page remains project-path-safe.
-- [ ] 3.2 Review the successful Pages workflow and browser-load the canonical URL; verify the automated smoke check passed and the served page visibly identifies the tracker.
+- [x] 3.2 Review the successful Pages workflow and browser-load the canonical URL; verify the automated smoke check passed and the served page visibly identifies the tracker.

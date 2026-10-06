@@ -16,5 +16,5 @@
 
 ## 3. Integration verification
 
-- [ ] 3.1 Run `npm ci` and `npm run build` from a clean working tree; verify both complete successfully and the built entry page remains project-path-safe.
+- [x] 3.1 Run `npm ci` and `npm run build` from a clean working tree; verify both complete successfully and the built entry page remains project-path-safe.
 - [ ] 3.2 Review the successful Pages workflow and browser-load the canonical URL; verify the automated smoke check passed and the served page visibly identifies the tracker.

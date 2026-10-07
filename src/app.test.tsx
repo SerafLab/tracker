@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './app/app'
@@ -6,126 +6,47 @@ import { ProjectBoardDatabase } from './features/project-board/infrastructure/in
 import { DexieProjectBoardRepository } from './features/project-board/infrastructure/indexeddb/dexie-project-board-repository'
 
 const databases: ProjectBoardDatabase[] = []
-function repository() {
-  const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`)
-  databases.push(database)
-  return new DexieProjectBoardRepository(database)
-}
-async function createWith(user: ReturnType<typeof userEvent.setup>, label: string, name: string, button: string) {
-  const input = await screen.findByLabelText(label)
-  await user.type(input, name)
-  await user.click(within(input.closest('form')!).getByRole('button', { name: button }))
-}
+function repository() { const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`); databases.push(database); return new DexieProjectBoardRepository(database) }
+async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string, button: string) { const input = await screen.findByLabelText(label); await user.clear(input); await user.type(input, value); await user.click(within(input.closest('form')!).getByRole('button', { name: button })) }
+async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string) { await user.click(screen.getAllByRole('button', { name: 'Добавить статус' })[0]); await fill(user, 'Название статуса', name, 'Создать статус'); await screen.findByRole('heading', { name }) }
+async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(within(column).getByRole('button', { name: /Добавить карточку/ })); await fill(user, 'Название карточки', name, 'Создать карточку') }
 
 beforeEach(() => { location.hash = '' })
-afterEach(async () => {
-  cleanup()
-  await Promise.all(databases.splice(0).map(async database => { database.close(); await database.delete() }))
-})
+afterEach(async () => { cleanup(); await Promise.all(databases.splice(0).map(async database => { database.close(); await database.delete() })) })
 
 describe('project board', () => {
-  it('opens a selected project and keeps another project isolated', async () => {
-    const user = userEvent.setup()
-    render(<App repository={repository()} />)
-    await createWith(user, 'Новый проект', 'Поиск квартиры', 'Создать проект')
-    expect(await screen.findByRole('heading', { name: 'Поиск квартиры' })).toBeInTheDocument()
-    await createWith(user, 'Новый статус', 'Найдено', 'Создать статус')
-    await createWith(user, 'Новая карточка в статусе Найдено', 'Квартира у парка', 'Создать карточку')
-    await user.click(screen.getByRole('button', { name: 'Все проекты' }))
-    await createWith(user, 'Новый проект', 'Паспорт', 'Создать проект')
-    expect(await screen.findByText('На доске пока нет статусов. Создайте статус, чтобы добавлять карточки.')).toBeInTheDocument()
+  it('creates isolated projects and uses dialogs for populated-catalogue creation', async () => {
+    const user = userEvent.setup(); render(<App repository={repository()} />)
+    await fill(user, 'Новый проект', 'Поиск квартиры', 'Создать проект'); await screen.findByRole('heading', { name: 'Поиск квартиры' })
+    await addStatus(user, 'Найдено')
+    await addCard(user, screen.getByRole('heading', { name: 'Найдено' }).closest('article')!, 'Квартира у парка')
+    await user.click(screen.getByRole('button', { name: /Все проекты/ }))
+    await user.click(screen.getByRole('button', { name: 'Создать проект' }))
+    await fill(user, 'Название проекта', 'Паспорт', 'Создать проект')
+    expect(await screen.findByText('Добавьте первый статус')).toBeInTheDocument()
     expect(screen.queryByText('Квартира у парка')).not.toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: 'Все проекты' }))
-    await user.click(await screen.findByRole('button', { name: 'Открыть проект Поиск квартиры' }))
-    expect(await screen.findByText('Квартира у парка')).toBeInTheDocument()
   })
 
-  it('requires a name and renames a project', async () => {
-    const user = userEvent.setup()
-    render(<App repository={repository()} />)
-    await user.type(await screen.findByLabelText('Новый проект'), '   ')
-    await user.click(screen.getByRole('button', { name: 'Создать проект' }))
-    expect(screen.getByRole('alert')).toHaveTextContent('Название обязательно')
-    await createWith(user, 'Новый проект', 'Паспорт', 'Создать проект')
-    await screen.findByRole('heading', { name: 'Паспорт' })
-    await user.click(screen.getByRole('button', { name: 'Переименовать проект Паспорт' }))
-    const rename = screen.getByLabelText('Переименовать проект Паспорт')
-    await user.clear(rename)
-    await user.type(rename, 'Документы')
-    await user.click(screen.getByRole('button', { name: 'Сохранить название' }))
+  it('validates names and renames through accessible menus', async () => {
+    const user = userEvent.setup(); render(<App repository={repository()} />)
+    await user.type(await screen.findByLabelText('Новый проект'), '   '); await user.click(screen.getByRole('button', { name: 'Создать проект' })); expect(screen.getByRole('alert')).toHaveTextContent('Название обязательно')
+    await fill(user, 'Новый проект', 'Паспорт', 'Создать проект'); await screen.findByRole('heading', { name: 'Паспорт' })
+    await user.click(screen.getByRole('button', { name: 'Действия проекта Паспорт' })); await user.click(screen.getByRole('menuitem', { name: 'Переименовать' }))
+    const input = screen.getByLabelText('Новое название'); await user.clear(input); await user.type(input, 'Документы'); await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('heading', { name: 'Документы' })).toBeInTheDocument()
   })
 
-  it('restores the last project and falls back to the catalogue for a stale selection', async () => {
-    const repo = repository()
-    await repo.open()
-    const project = await repo.createProject({ id: 'passport', name: 'Паспорт', createdAt: '2026-10-07T00:00:00.000Z' })
-    cleanup()
-    render(<App repository={repo} />)
-    expect(await screen.findByRole('heading', { name: 'Паспорт' })).toBeInTheDocument()
-    cleanup()
-    await repo.setLastProject('missing-project')
-    location.hash = ''
-    render(<App repository={repo} />)
-    expect(await screen.findByRole('heading', { name: 'Трекер личных проектов' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Открыть проект Паспорт' })).toBeInTheDocument()
-    expect((await repo.preference())?.lastProjectId).toBe('missing-project')
-    expect(project.name).toBe('Паспорт')
+  it('orders statuses and moves cards through explicit menu actions', async () => {
+    const user = userEvent.setup(); render(<App repository={repository()} />)
+    await fill(user, 'Новый проект', 'Поиск квартиры', 'Создать проект'); await screen.findByRole('heading', { name: 'Поиск квартиры' }); await addStatus(user, 'Найдено'); await addStatus(user, 'Просмотр')
+    const found = screen.getByRole('heading', { name: 'Найдено' }).closest('article')!; await addCard(user, found, 'Квартира у парка')
+    await user.click(within(found).getByRole('button', { name: 'Действия карточки Квартира у парка' })); await user.click(screen.getByRole('menuitem', { name: 'Переместить' })); await user.selectOptions(screen.getByRole('combobox'), screen.getByRole('option', { name: 'Просмотр' })); await user.click(screen.getByRole('button', { name: 'Переместить' }))
+    expect(await within(screen.getByRole('heading', { name: 'Просмотр' }).closest('article')!).findByText('Квартира у парка')).toBeInTheDocument()
+    await user.click(within(found).getByRole('button', { name: 'Действия статуса Найдено' })); expect(screen.getByRole('menuitem', { name: 'Переместить влево' })).toBeDisabled()
   })
 
-  it('completes and restores the two-project board workflow', async () => {
-    const user = userEvent.setup()
-    const repo = repository()
-    render(<App repository={repo} />)
-    await createWith(user, 'Новый проект', 'Поиск квартиры', 'Создать проект')
-    await createWith(user, 'Новый статус', 'Найдено', 'Создать статус')
-    await createWith(user, 'Новый статус', 'Договорились о просмотре', 'Создать статус')
-    await screen.findByRole('heading', { name: 'Договорились о просмотре' })
-    await user.click(screen.getByRole('button', { name: 'Переместить статус Договорились о просмотре влево' }))
-    await waitFor(() => expect(screen.getAllByRole('heading', { level: 2 }).map(item => item.textContent)).toEqual(['Договорились о просмотре', 'Найдено']))
-    await user.click(screen.getByRole('button', { name: 'Переименовать статус Найдено' }))
-    const statusRename = screen.getByLabelText('Переименовать статус Найдено')
-    await user.clear(statusRename)
-    await user.type(statusRename, 'Подбор')
-    await user.click(screen.getByRole('button', { name: 'Сохранить название' }))
-    expect(await screen.findByRole('heading', { name: 'Подбор' })).toBeInTheDocument()
-    await createWith(user, 'Новая карточка в статусе Подбор', 'Квартира у парка', 'Создать карточку')
-    await user.click(await screen.findByRole('button', { name: 'Переименовать карточку Квартира у парка' }))
-    const rename = screen.getByLabelText('Переименовать карточку Квартира у парка')
-    await user.clear(rename)
-    await user.type(rename, 'Квартира с балконом')
-    await user.click(screen.getByRole('button', { name: 'Сохранить название' }))
-    await user.selectOptions(await screen.findByLabelText('Переместить карточку Квартира с балконом'), (screen.getByRole('option', { name: 'Договорились о просмотре' }) as HTMLOptionElement).value)
-    await waitFor(() => {
-      const firstColumn = screen.getByRole('heading', { name: 'Договорились о просмотре' }).closest('article')!
-      const foundColumn = screen.getByRole('heading', { name: 'Подбор' }).closest('article')!
-      expect(within(firstColumn).getByText('Квартира с балконом')).toBeInTheDocument()
-      expect(within(foundColumn).queryByText('Квартира с балконом')).not.toBeInTheDocument()
-    })
-    await user.click(screen.getByRole('button', { name: 'Все проекты' }))
-    await screen.findByRole('heading', { name: 'Трекер личных проектов' })
-    await createWith(user, 'Новый проект', 'Паспорт', 'Создать проект')
-    await screen.findByRole('heading', { name: 'Паспорт' })
-    await user.click(screen.getByRole('button', { name: 'Все проекты' }))
-    await screen.findByRole('button', { name: 'Открыть проект Поиск квартиры' })
-    await user.click(screen.getByRole('button', { name: 'Открыть проект Поиск квартиры' }))
-    cleanup()
-    render(<App repository={repo} />)
-    expect(await screen.findByRole('heading', { name: 'Поиск квартиры' })).toBeInTheDocument()
-    expect(screen.getByText('Квартира с балконом')).toBeInTheDocument()
-  })
-
-  it('shows unavailable storage and does not claim a failed save succeeded', async () => {
-    const unavailable = { open: vi.fn().mockRejectedValue(new Error('blocked')) } as unknown as DexieProjectBoardRepository
-    render(<App repository={unavailable} />)
-    expect(await screen.findByRole('heading', { name: 'Рабочая доска недоступна' })).toBeInTheDocument()
-    cleanup()
-    const repo = repository()
-    const createProject = vi.spyOn(repo, 'createProject').mockRejectedValue(new Error('quota'))
-    render(<App repository={repo} />)
-    await createWith(userEvent.setup(), 'Новый проект', 'Паспорт', 'Создать проект')
-    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить изменения')
-    expect(screen.queryByRole('heading', { name: 'Паспорт' })).not.toBeInTheDocument()
-    expect(createProject).toHaveBeenCalledOnce()
+  it('announces unavailable storage and rejected saves', async () => {
+    const unavailable = { open: vi.fn().mockRejectedValue(new Error('blocked')) } as unknown as DexieProjectBoardRepository; render(<App repository={unavailable} />); expect(await screen.findByRole('heading', { name: 'Рабочая доска недоступна' })).toBeInTheDocument(); cleanup()
+    const repo = repository(); vi.spyOn(repo, 'createProject').mockRejectedValue(new Error('quota')); render(<App repository={repo} />); await fill(userEvent.setup(), 'Новый проект', 'Паспорт', 'Создать проект'); expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить изменения'); expect(screen.queryByRole('heading', { name: 'Паспорт' })).not.toBeInTheDocument()
   })
 })

@@ -20,8 +20,8 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue 
   const renameCard = useStore(store, state => state.renameCard)
   const moveCard = useStore(store, state => state.moveCard)
 
-  if (workspace.kind === 'loading') return <main><p>Открываем рабочее пространство…</p></main>
-  if (workspace.kind === 'unavailable') return <main><h1>Рабочая доска недоступна</h1><p role="alert">Локальное хранилище недоступно. Изменения не будут показаны как сохранённые.</p></main>
+  if (workspace.kind === 'loading') return <main className="app-shell" aria-busy="true"><div className="loading-shell"><p className="muted-copy">Открываем рабочее пространство…</p><div className="skeleton skeleton-title" /><div className="skeleton-columns"><div className="skeleton skeleton-column" /><div className="skeleton skeleton-column" /></div></div></main>
+  if (workspace.kind === 'unavailable') return <main className="app-shell"><section className="unavailable-state surface-card"><h1>Рабочая доска недоступна</h1><p role="alert">Локальное хранилище недоступно. Изменения не будут показаны как сохранённые.</p></section></main>
   if (workspace.kind === 'catalogue') return <ProjectCatalogueView projects={workspace.projects} saveError={saveError}
     onCreate={async name => { const id = await createProject(name); if (id) await navigateToProject(id) }}
     onOpen={navigateToProject}

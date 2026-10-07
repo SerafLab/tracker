@@ -1,14 +1,8 @@
 # Agent instructions
 
-## Verify locally before pushing
+## Pre-push checks
 
-Before pushing a branch that changes application code, dependencies, tests, or CI:
-
-1. Run `npm ci`.
-2. Run `npm run check:architecture` when the script exists.
-3. Run `npm run test:run` when the script exists; otherwise run the project's non-watch test command.
-4. Run `npm run build`.
-5. Do not push when any required command fails. Report the failing command and resolve or escalate the failure first.
+`npm ci` configures the versioned `.githooks/pre-push` hook, which runs `npm run check`. Do not bypass the hook. Pull-request CI runs the same command and is the merge gate.
 
 ## Synchronize local `main` after merge confirmation
 

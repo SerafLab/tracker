@@ -11,7 +11,3 @@ export function requiredName(value: string): string | null {
   const name = value.trim()
   return name === '' ? null : name
 }
-
-export function newId(): Id {
-  return crypto.randomUUID()
-}

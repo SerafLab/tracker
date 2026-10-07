@@ -20,11 +20,10 @@ export function ActionMenu({ label, actions }: { label: string; actions: Action[
 
 export function ActionDialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
   const titleId = useId()
-  const opener = useRef<HTMLElement | null>(null)
+  const opener = useRef<HTMLElement | null>(document.activeElement instanceof HTMLElement ? document.activeElement : null)
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
-    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
-    panel.current?.querySelector<HTMLElement>('input, select, button:not([disabled])')?.focus()
+    panel.current?.querySelector<HTMLElement>('input, select, textarea')?.focus()
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
     document.addEventListener('keydown', closeOnEscape)
     return () => { document.removeEventListener('keydown', closeOnEscape); opener.current?.focus() }

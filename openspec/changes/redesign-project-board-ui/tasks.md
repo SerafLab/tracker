@@ -8,8 +8,8 @@
 
 ## 2. Reusable accessible presentation controls
 
-- [ ] 2.1 Add a reusable focus-managed action dialog that renders as a compact dialog on desktop and bottom sheet at 640 px and below; verify its form receives focus, Escape/Cancel dismisses without invoking callbacks, and focus returns to the opener.
-- [ ] 2.2 Add an accessible secondary-action menu for project, status and card actions; verify keyboard opening/closing, accessible labels, Escape behaviour and invocation of each menu action in component tests.
+- [x] 2.1 Add a reusable focus-managed action dialog that renders as a compact dialog on desktop and bottom sheet at 640 px and below; verify its form receives focus, Escape/Cancel dismisses without invoking callbacks, and focus returns to the opener.
+- [x] 2.2 Add an accessible secondary-action menu for project, status and card actions; verify keyboard opening/closing, accessible labels, Escape behaviour and invocation of each menu action in component tests.
 - [x] 2.3 Adapt `NameForm` and rename controls to the dialog workflow while preserving labels, whitespace validation and error announcements; verify the existing empty-name scenario passes through the new controls.
 
 ## 3. Catalogue redesign

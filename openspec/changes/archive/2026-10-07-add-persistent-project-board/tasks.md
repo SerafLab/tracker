@@ -22,4 +22,4 @@
 
 - [x] 4.1 Style the catalogue and horizontally reachable status columns for a narrow mobile viewport while retaining semantic forms, buttons, and selectors; verify responsive UI tests or browser assertions can reach every primary control without drag-and-drop.
 - [x] 4.2 Add the end-to-end-equivalent automated scenario for two projects, status reordering, card creation/rename/transfer, and reload persistence; verify it passes against a production build.
-- [ ] 4.3 Run the project’s configured test suite and production build, then manually check the published build’s core board scenario after deployment; record any follow-up needed for the later PWA/offline change.
+- [x] 4.3 Run the project’s configured test suite and production build, then manually check the published build’s core board scenario after deployment; record any follow-up needed for the later PWA/offline change.

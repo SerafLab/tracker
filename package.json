@@ -9,15 +9,18 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "check:architecture": "node scripts/check-architecture.mjs",
     "preview": "vite preview",
     "test": "vitest",
+    "test:run": "vitest --run",
     "test:production": "npm run build && vitest --run"
   },
   "dependencies": {
     "dexie": "^4.4.6",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "zustand": "^5.0.15"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^7.0.1",

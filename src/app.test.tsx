@@ -1,14 +1,15 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { App } from './main'
-import { TrackerDatabase, TrackerRepository } from './storage'
+import { App } from './app/app'
+import { ProjectBoardDatabase } from './features/project-board/infrastructure/indexeddb/database'
+import { DexieProjectBoardRepository } from './features/project-board/infrastructure/indexeddb/dexie-project-board-repository'
 
-const databases: TrackerDatabase[] = []
+const databases: ProjectBoardDatabase[] = []
 function repository() {
-  const database = new TrackerDatabase(`app-${crypto.randomUUID()}`)
+  const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`)
   databases.push(database)
-  return new TrackerRepository(database)
+  return new DexieProjectBoardRepository(database)
 }
 async function createWith(user: ReturnType<typeof userEvent.setup>, label: string, name: string, button: string) {
   const input = await screen.findByLabelText(label)
@@ -58,7 +59,7 @@ describe('project board', () => {
   it('restores the last project and falls back to the catalogue for a stale selection', async () => {
     const repo = repository()
     await repo.open()
-    const project = await repo.createProject('Паспорт')
+    const project = await repo.createProject({ id: 'passport', name: 'Паспорт', createdAt: '2026-10-07T00:00:00.000Z' })
     cleanup()
     render(<App repository={repo} />)
     expect(await screen.findByRole('heading', { name: 'Паспорт' })).toBeInTheDocument()
@@ -112,7 +113,7 @@ describe('project board', () => {
   })
 
   it('shows unavailable storage and does not claim a failed save succeeded', async () => {
-    const unavailable = { open: vi.fn().mockRejectedValue(new Error('blocked')) } as unknown as TrackerRepository
+    const unavailable = { open: vi.fn().mockRejectedValue(new Error('blocked')) } as unknown as DexieProjectBoardRepository
     render(<App repository={unavailable} />)
     expect(await screen.findByRole('heading', { name: 'Рабочая доска недоступна' })).toBeInTheDocument()
     cleanup()

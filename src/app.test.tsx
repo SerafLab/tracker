@@ -80,6 +80,7 @@ describe('project board', () => {
     await createWith(user, 'Новый проект', 'Поиск квартиры', 'Создать проект')
     await createWith(user, 'Новый статус', 'Найдено', 'Создать статус')
     await createWith(user, 'Новый статус', 'Договорились о просмотре', 'Создать статус')
+    await screen.findByRole('heading', { name: 'Договорились о просмотре' })
     await user.click(screen.getByRole('button', { name: 'Переместить статус Договорились о просмотре влево' }))
     expect((await screen.findAllByRole('heading', { level: 2 })).map(item => item.textContent)).toEqual(['Договорились о просмотре', 'Найдено'])
     await user.click(screen.getByRole('button', { name: 'Переименовать статус Найдено' }))

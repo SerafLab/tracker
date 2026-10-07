@@ -1,5 +1,9 @@
 # Agent instructions
 
+## Pre-push checks
+
+`npm ci` configures the versioned `.githooks/pre-push` hook, which runs `npm run check`. Do not bypass the hook. Pull-request CI runs the same command and is the merge gate.
+
 ## Synchronize local `main` after merge confirmation
 
 When the user confirms that the agent's changes have been merged into GitHub, immediately:

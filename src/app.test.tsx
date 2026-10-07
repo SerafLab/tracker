@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './app/app'
@@ -80,8 +80,9 @@ describe('project board', () => {
     await createWith(user, 'Новый проект', 'Поиск квартиры', 'Создать проект')
     await createWith(user, 'Новый статус', 'Найдено', 'Создать статус')
     await createWith(user, 'Новый статус', 'Договорились о просмотре', 'Создать статус')
+    await screen.findByRole('heading', { name: 'Договорились о просмотре' })
     await user.click(screen.getByRole('button', { name: 'Переместить статус Договорились о просмотре влево' }))
-    expect((await screen.findAllByRole('heading', { level: 2 })).map(item => item.textContent)).toEqual(['Договорились о просмотре', 'Найдено'])
+    await waitFor(() => expect(screen.getAllByRole('heading', { level: 2 }).map(item => item.textContent)).toEqual(['Договорились о просмотре', 'Найдено']))
     await user.click(screen.getByRole('button', { name: 'Переименовать статус Найдено' }))
     const statusRename = screen.getByLabelText('Переименовать статус Найдено')
     await user.clear(statusRename)
@@ -89,16 +90,18 @@ describe('project board', () => {
     await user.click(screen.getByRole('button', { name: 'Сохранить название' }))
     expect(await screen.findByRole('heading', { name: 'Подбор' })).toBeInTheDocument()
     await createWith(user, 'Новая карточка в статусе Подбор', 'Квартира у парка', 'Создать карточку')
-    await user.click(screen.getByRole('button', { name: 'Переименовать карточку Квартира у парка' }))
+    await user.click(await screen.findByRole('button', { name: 'Переименовать карточку Квартира у парка' }))
     const rename = screen.getByLabelText('Переименовать карточку Квартира у парка')
     await user.clear(rename)
     await user.type(rename, 'Квартира с балконом')
     await user.click(screen.getByRole('button', { name: 'Сохранить название' }))
     await user.selectOptions(await screen.findByLabelText('Переместить карточку Квартира с балконом'), (screen.getByRole('option', { name: 'Договорились о просмотре' }) as HTMLOptionElement).value)
-    const firstColumn = screen.getByRole('heading', { name: 'Договорились о просмотре' }).closest('article')!
-    const foundColumn = screen.getByRole('heading', { name: 'Подбор' }).closest('article')!
-    expect(within(firstColumn).getByText('Квартира с балконом')).toBeInTheDocument()
-    expect(within(foundColumn).queryByText('Квартира с балконом')).not.toBeInTheDocument()
+    await waitFor(() => {
+      const firstColumn = screen.getByRole('heading', { name: 'Договорились о просмотре' }).closest('article')!
+      const foundColumn = screen.getByRole('heading', { name: 'Подбор' }).closest('article')!
+      expect(within(firstColumn).getByText('Квартира с балконом')).toBeInTheDocument()
+      expect(within(foundColumn).queryByText('Квартира с балконом')).not.toBeInTheDocument()
+    })
     await user.click(screen.getByRole('button', { name: 'Все проекты' }))
     await screen.findByRole('heading', { name: 'Трекер личных проектов' })
     await createWith(user, 'Новый проект', 'Паспорт', 'Создать проект')

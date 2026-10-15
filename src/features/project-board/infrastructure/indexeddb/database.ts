@@ -7,13 +7,17 @@ export class ProjectBoardDatabase extends Dexie {
   cards!: EntityTable<Card, 'id'>
   workspace!: EntityTable<WorkspacePreference, 'id'>
 
-  constructor(name = 'personal-project-tracker') {
+  constructor(name = 'personal-project-tracker', onVersionChange?: () => void) {
     super(name)
     this.version(1).stores({
       projects: 'id, createdAt',
       statuses: 'id, projectId, [projectId+position]',
       cards: 'id, statusId, [statusId+position]',
       workspace: 'id',
+    })
+    this.on('versionchange', () => {
+      this.close()
+      onVersionChange?.()
     })
   }
 }

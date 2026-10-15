@@ -4,10 +4,11 @@ import type { ProjectBoardStore } from '../state/project-board-store'
 import { ProjectBoardView } from './project-board-view'
 import { ProjectCatalogueView } from './project-catalogue-view'
 
-export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue }: {
+export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue, onMutationSaved }: {
   store: ProjectBoardStore
   navigateToProject: (id: Id) => Promise<void>
   navigateToCatalogue: () => Promise<void>
+  onMutationSaved?: () => void
 }) {
   const workspace = useStore(store, state => state.workspace)
   const saveError = useStore(store, state => state.saveError)
@@ -23,20 +24,20 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue 
   if (workspace.kind === 'loading') return <main className="app-shell" aria-busy="true"><div className="loading-shell"><p className="muted-copy">Открываем рабочее пространство…</p><div className="skeleton skeleton-title" /><div className="skeleton-columns"><div className="skeleton skeleton-column" /><div className="skeleton skeleton-column" /></div></div></main>
   if (workspace.kind === 'unavailable') return <main className="app-shell"><section className="unavailable-state surface-card"><h1>Рабочая доска недоступна</h1><p role="alert">Локальное хранилище недоступно. Изменения не будут показаны как сохранённые.</p></section></main>
   if (workspace.kind === 'catalogue') return <ProjectCatalogueView projects={workspace.projects} saveError={saveError}
-    onCreate={async name => { const id = await createProject(name); if (id) await navigateToProject(id) }}
+    onCreate={async name => { const id = await createProject(name); if (id) { onMutationSaved?.(); await navigateToProject(id) } }}
     onOpen={navigateToProject}
-    onRename={renameProject}
+    onRename={async (id, name) => { if (await renameProject(id, name)) onMutationSaved?.() }}
   />
 
   const { board } = workspace
   return <ProjectBoardView board={board} saveError={saveError}
     onReturn={navigateToCatalogue}
-    onRenameProject={name => renameProject(board.id, name)}
-    onCreateStatus={name => createStatus(board.id, name)}
-    onRenameStatus={(statusId, name) => renameStatus(board.id, statusId, name)}
-    onMoveStatus={(statusId, direction) => moveStatus(board.id, statusId, direction)}
-    onCreateCard={(statusId, name) => createCard(board.id, statusId, name)}
-    onRenameCard={(cardId, name) => renameCard(board.id, cardId, name)}
-    onMoveCard={(cardId, statusId) => moveCard(board.id, cardId, statusId)}
+    onRenameProject={async name => { if (await renameProject(board.id, name)) onMutationSaved?.() }}
+    onCreateStatus={async name => { if (await createStatus(board.id, name)) onMutationSaved?.() }}
+    onRenameStatus={async (statusId, name) => { if (await renameStatus(board.id, statusId, name)) onMutationSaved?.() }}
+    onMoveStatus={async (statusId, direction) => { if (await moveStatus(board.id, statusId, direction)) onMutationSaved?.() }}
+    onCreateCard={async (statusId, name) => { if (await createCard(board.id, statusId, name)) onMutationSaved?.() }}
+    onRenameCard={async (cardId, name) => { if (await renameCard(board.id, cardId, name)) onMutationSaved?.() }}
+    onMoveCard={async (cardId, statusId) => { if (await moveCard(board.id, cardId, statusId)) onMutationSaved?.() }}
   />
 }

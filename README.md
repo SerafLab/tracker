@@ -16,6 +16,7 @@
 - [Гипотезы](docs/product/assumptions.md) — непроверенные предположения и открытые вопросы.
 - [Технический план](docs/technical-plan.md) — согласованные технические решения, требования к платформам, проверки и процесс выпуска.
 - [PWA release checklist](docs/release-checklist.md) — физическая приёмка установленного приложения на iPhone и Android и release record.
+- [План ручной визуальной проверки](docs/manual-visual-qa.md) — сценарии responsive и accessibility-приёмки с шаблоном фиксации результатов.
 
 ## Первая версия
 

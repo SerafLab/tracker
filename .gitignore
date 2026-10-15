@@ -10,3 +10,7 @@
 node_modules/
 dist/
 *.tsbuildinfo
+
+# Local editor and browser-test artifacts
+.vscode/
+test-results/

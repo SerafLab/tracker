@@ -1,35 +1,50 @@
-# Agent instructions
+# Инструкции для агентов
 
-## Pre-push checks
+## Маршрутизация агентов
 
-`npm ci` configures the versioned `.githooks/pre-push` hook, which runs `npm run check`. Do not bypass the hook. Pull-request CI runs the same command and is the merge gate.
+Основной чат координирует работу и отвечает за интеграцию.
+Он отвечает за требования, решения, общение с пользователем и итоговый результат.
 
-## Feature delivery and OpenSpec lifecycle
+Когда пользователь просит реализовать несколько функций:
 
-Completing implementation tasks and passing checks means a change is **ready for
-review**, not delivered. Keep its OpenSpec change active until the Git delivery
-lifecycle is complete.
+- Изучить выбранные предложения вместе до начала реализации.
+- Выявить зависимости, противоречия и общие контракты.
+- Использовать отдельную ветку и рабочее дерево для каждой функции.
+- Выполнять независимые функции параллельно.
+- Выполнять зависимые функции в порядке зависимостей.
+- После явного разрешения пользователя объединить принятые функции в одной интеграционной ветке.
+- Проверить объединённый результат перед публикацией интеграционной ветки.
 
-1. Do not create a commit, push a branch, create a pull request, merge, or deploy
-   unless the user explicitly asks for that action.
-2. Do not archive an OpenSpec change merely because every task checkbox is
-   complete. By default, archive only after the implementation is committed,
-   pushed, and the user confirms it has merged into `main`.
-3. Sync delta specs into `openspec/specs/` as part of that post-merge closure.
-   A user may explicitly request an earlier sync or archive; record that choice
-   and state that the Git delivery lifecycle remains incomplete.
-4. When implementation is ready but any delivery step has not been authorized or
-   completed, report the exact state (for example, “verified locally; changes
-   are uncommitted”) and ask for the next Git action. Do not call it released or
-   fully delivered.
+Основной чат может изучать код, запускать проверки, согласовывать планы, управлять ветками и рабочими деревьями, проверять изменения, разрешать конфликты интеграции и вносить интеграционные исправления.
+Существенную реализацию и независимое исследование по возможности поручать субагентам.
+Небольшие задачи выполнять самостоятельно, если делегирование создаёт лишние затраты.
 
-## Synchronize local `main` after merge confirmation
+Каждому субагенту давать одну ограниченную задачу и явно определённую область ответственности.
+Субагент сообщает основному чату о вопросах и препятствиях; с пользователем общается основной чат.
+Основной чат отвечает за проверку и интеграцию порученной работы.
 
-When the user confirms that the agent's changes have been merged into GitHub, immediately:
+Перед началом пакета функций или запуском субагента прочитать `docs/agents/rules/agent-routing.md`.
 
-1. Check the current branch and working tree.
-2. Switch to the local `main` branch.
-3. If the working tree is clean, run `git pull --ff-only origin main`.
-4. Verify that local `main` is synchronized with `origin/main`.
-5. If the merged feature branch is known and the working tree is clean, delete it locally and from `origin` after confirming it is fully merged into `main`.
-6. If there are uncommitted changes or a conflict, do not overwrite, stash, or delete a branch automatically. Report the situation and ask the user how to proceed.
+## Проверки перед отправкой ветки
+
+`npm ci` настраивает версионируемый хук `.githooks/pre-push`, который запускает `npm run check`. Не обходить хук. CI для pull request выполняет ту же команду; её успешное выполнение обязательно для слияния.
+
+## Доставка функций и жизненный цикл OpenSpec
+
+Завершение задач реализации и успешные проверки означают, что изменение **готово к проверке**, а не доставлено. Оставлять изменение OpenSpec активным до завершения доставки через Git.
+
+1. Не создавать коммит, не отправлять ветку, не создавать pull request, не выполнять слияние и не развёртывать приложение, если пользователь явно не попросил соответствующее действие.
+2. Не архивировать изменение OpenSpec лишь потому, что отмечены все задачи. По умолчанию архивировать его только после создания коммита, отправки ветки и подтверждения пользователем, что изменение слито в `main`.
+3. Переносить дельта-спецификации в `openspec/specs/` при закрытии изменения после слияния. Пользователь может явно попросить более раннюю синхронизацию или архивацию; зафиксировать этот выбор и сообщить, что доставка через Git ещё не завершена.
+4. Если реализация готова, но какой-либо шаг доставки не разрешён или не завершён, сообщить точное состояние (например, «проверено локально; изменения не закоммичены») и спросить о следующем действии в Git. Не называть изменение выпущенным или полностью доставленным.
+
+## Синхронизация локальной `main` после подтверждения слияния
+
+Когда пользователь подтвердит, что изменения агента слиты на GitHub, немедленно:
+
+1. Проверить текущую ветку и состояние рабочего дерева.
+2. Переключиться на локальную ветку `main`.
+3. Если рабочее дерево чистое, выполнить `git pull --ff-only origin main`.
+4. Проверить, что локальная `main` синхронизирована с `origin/main`.
+5. Если ветка функции известна и рабочее дерево чистое, удалить её локально и из `origin` после подтверждения, что она полностью слита в `main`.
+6. Если есть незакоммиченные изменения или конфликт, не перезаписывать и не прятать изменения через stash, а также не удалять ветку автоматически. Сообщить о ситуации и спросить пользователя, как продолжить.

@@ -1,4 +1,5 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
+import Dexie from 'dexie'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './app/app'
@@ -17,11 +18,13 @@ afterEach(async () => { cleanup(); await Promise.all(databases.splice(0).map(asy
 describe('project board', () => {
   it('creates isolated projects and uses dialogs for populated-catalogue creation', async () => {
     const user = userEvent.setup(); render(<App repository={repository()} />)
+    expect(document.title).toBe('EasyTrack — трекер личных проектов')
+    expect(await screen.findByRole('heading', { name: 'Трекер личных проектов' })).toBeInTheDocument()
     await fill(user, 'Новый проект', 'Поиск квартиры', 'Создать проект'); await screen.findByRole('heading', { name: 'Поиск квартиры' })
     await addStatus(user, 'Найдено')
     await addCard(user, screen.getByRole('heading', { name: 'Найдено' }).closest('article')!, 'Квартира у парка')
     await user.click(screen.getByRole('button', { name: /Все проекты/ }))
-    await user.click(screen.getByRole('button', { name: 'Создать проект' }))
+    await user.click(await screen.findByRole('button', { name: 'Создать проект' }))
     await fill(user, 'Название проекта', 'Паспорт', 'Создать проект')
     expect(await screen.findByText('Добавьте первый статус')).toBeInTheDocument()
     expect(screen.queryByText('Квартира у парка')).not.toBeInTheDocument()
@@ -57,5 +60,21 @@ describe('project board', () => {
   it('announces unavailable storage and rejected saves', async () => {
     const unavailable = { open: vi.fn().mockRejectedValue(new Error('blocked')) } as unknown as DexieProjectBoardRepository; render(<App repository={unavailable} />); expect(await screen.findByRole('heading', { name: 'Рабочая доска недоступна' })).toBeInTheDocument(); cleanup()
     const repo = repository(); vi.spyOn(repo, 'createProject').mockRejectedValue(new Error('quota')); render(<App repository={repo} />); await fill(userEvent.setup(), 'Новый проект', 'Паспорт', 'Создать проект'); expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить изменения'); expect(screen.queryByRole('heading', { name: 'Паспорт' })).not.toBeInTheDocument()
+  })
+
+  it('stops editing after this database connection becomes stale', async () => {
+    const databaseName = `stale-app-${crypto.randomUUID()}`
+    const reload = vi.fn()
+    const newer = new Dexie(databaseName)
+    render(<App databaseName={databaseName} reloadApp={reload} />)
+    await screen.findByRole('button', { name: 'Создать проект' })
+    newer.version(2).stores({ projects: 'id, createdAt', statuses: 'id, projectId, [projectId+position]', cards: 'id, statusId, [statusId+position]', workspace: 'id', releases: 'id' })
+    await newer.open()
+    expect(await screen.findByRole('heading', { name: 'Нужно перезапустить EasyTrack' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Создать проект' })).not.toBeInTheDocument()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Перезапустить' }))
+    expect(reload).toHaveBeenCalledOnce()
+    newer.close()
+    await newer.delete()
   })
 })

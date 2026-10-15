@@ -19,7 +19,7 @@ export function ProjectBoardView({ board, saveError, onReturn, onRenameProject, 
   const [creatingStatus, setCreatingStatus] = useState(false)
   const [renamingProject, setRenamingProject] = useState(false)
   return <main className="app-shell">
-    <header className="board-header"><div><button className="button button-quiet" onClick={() => void onReturn()}>← Все проекты</button><h1 className="page-title">{board.name}</h1></div><div className="button-row"><ActionMenu label={`Действия проекта ${board.name}`} actions={[{ label: 'Переименовать', onSelect: () => setRenamingProject(true) }]} /><button className="button button-primary" onClick={() => setCreatingStatus(true)}>Добавить статус</button></div></header>
+    <header className="board-header"><div><button className="button button-quiet" onClick={() => void onReturn()}>← Все проекты</button><p className="eyebrow">EasyTrack</p><h1 className="page-title">{board.name}</h1></div><div className="button-row"><ActionMenu label={`Действия проекта ${board.name}`} actions={[{ label: 'Переименовать', onSelect: () => setRenamingProject(true) }]} /><button className="button button-primary" onClick={() => setCreatingStatus(true)}>Добавить статус</button></div></header>
     {saveError ? <p className="save-error" role="alert">{saveError}</p> : null}
     {board.statuses.length === 0 ? <section className="empty-state surface-card"><h2>Добавьте первый статус</h2><p>Статусы отражают этапы именно вашего проекта. После этого можно будет добавлять карточки.</p><button className="button button-primary" onClick={() => setCreatingStatus(true)}>Добавить статус</button></section> : null}
     <section className="status-columns" aria-label="Статусы проекта">

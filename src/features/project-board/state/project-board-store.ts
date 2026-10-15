@@ -16,20 +16,21 @@ export type ProjectBoardState = {
   showCatalogue(): Promise<void>
   showBoard(id: Id, remember?: boolean): Promise<boolean>
   createProject(name: string): Promise<Id | undefined>
-  renameProject(id: Id, name: string): Promise<void>
-  createStatus(projectId: Id, name: string): Promise<void>
-  renameStatus(projectId: Id, statusId: Id, name: string): Promise<void>
-  moveStatus(projectId: Id, statusId: Id, direction: -1 | 1): Promise<void>
-  createCard(projectId: Id, statusId: Id, name: string): Promise<void>
-  renameCard(projectId: Id, cardId: Id, name: string): Promise<void>
-  moveCard(projectId: Id, cardId: Id, statusId: Id): Promise<void>
+  renameProject(id: Id, name: string): Promise<boolean>
+  createStatus(projectId: Id, name: string): Promise<boolean>
+  renameStatus(projectId: Id, statusId: Id, name: string): Promise<boolean>
+  moveStatus(projectId: Id, statusId: Id, direction: -1 | 1): Promise<boolean>
+  createCard(projectId: Id, statusId: Id, name: string): Promise<boolean>
+  renameCard(projectId: Id, cardId: Id, name: string): Promise<boolean>
+  moveCard(projectId: Id, cardId: Id, statusId: Id): Promise<boolean>
 }
 
 const saveError = 'Не удалось сохранить изменения. Проверьте доступность локального хранилища и повторите попытку.'
 
-export function createProjectBoardStore(useCases: ProjectBoardUseCases) {
+export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutate = () => true) {
   return createStore<ProjectBoardState>((set, get) => {
     const preserveConfirmedState = async (operation: () => Promise<unknown>) => {
+      if (!canMutate()) return false
       try {
         await operation()
         set({ saveError: '' })
@@ -66,7 +67,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases) {
         try {
           const board = await useCases.board(id)
           if (!board) return false
-          if (remember) await useCases.setLastProject(id)
+          if (remember && canMutate()) await useCases.setLastProject(id)
           set({ workspace: { kind: 'board', board } })
           return true
         } catch {
@@ -75,6 +76,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases) {
         }
       },
       async createProject(name) {
+        if (!canMutate()) return undefined
         try {
           const project = await useCases.createProject(name)
           set({ saveError: '' })
@@ -90,25 +92,39 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases) {
         if (await preserveConfirmedState(() => useCases.renameProject(id, name))) {
           if (wasOpen) await get().showBoard(id)
           else await get().showCatalogue()
+          return true
         }
+        return false
       },
       async createStatus(projectId, name) {
-        if (await preserveConfirmedState(() => useCases.createStatus(projectId, name))) await get().showBoard(projectId)
+        if (!await preserveConfirmedState(() => useCases.createStatus(projectId, name))) return false
+        await get().showBoard(projectId)
+        return true
       },
       async renameStatus(projectId, statusId, name) {
-        if (await preserveConfirmedState(() => useCases.renameStatus(statusId, name))) await get().showBoard(projectId)
+        if (!await preserveConfirmedState(() => useCases.renameStatus(statusId, name))) return false
+        await get().showBoard(projectId)
+        return true
       },
       async moveStatus(projectId, statusId, direction) {
-        if (await preserveConfirmedState(() => useCases.moveStatus(statusId, direction))) await get().showBoard(projectId)
+        if (!await preserveConfirmedState(() => useCases.moveStatus(statusId, direction))) return false
+        await get().showBoard(projectId)
+        return true
       },
       async createCard(projectId, statusId, name) {
-        if (await preserveConfirmedState(() => useCases.createCard(statusId, name))) await get().showBoard(projectId)
+        if (!await preserveConfirmedState(() => useCases.createCard(statusId, name))) return false
+        await get().showBoard(projectId)
+        return true
       },
       async renameCard(projectId, cardId, name) {
-        if (await preserveConfirmedState(() => useCases.renameCard(cardId, name))) await get().showBoard(projectId)
+        if (!await preserveConfirmedState(() => useCases.renameCard(cardId, name))) return false
+        await get().showBoard(projectId)
+        return true
       },
       async moveCard(projectId, cardId, statusId) {
-        if (await preserveConfirmedState(() => useCases.moveCard(cardId, statusId))) await get().showBoard(projectId)
+        if (!await preserveConfirmedState(() => useCases.moveCard(cardId, statusId))) return false
+        await get().showBoard(projectId)
+        return true
       },
     }
   })

@@ -52,18 +52,17 @@ describe('project board', () => {
   it('orders statuses and moves cards through explicit menu actions', async () => {
     const user = userEvent.setup(); render(<App repository={repository()} />)
     await fill(user, 'Новый проект', 'Поиск квартиры', 'Создать проект'); await screen.findByRole('heading', { name: 'Поиск квартиры' }); await addStatus(user, 'Найдено'); await addStatus(user, 'Просмотр')
-    const found = screen.getByRole('heading', { name: 'Найдено' }).closest('article')!; await addCard(user, found, 'Квартира у парка')
-    await user.click(within(found).getByRole('button', { name: 'Действия карточки Квартира у парка' })); await user.click(screen.getByRole('menuitem', { name: 'Переместить' })); await user.selectOptions(screen.getByRole('combobox'), screen.getByRole('option', { name: 'Просмотр' })); await user.click(screen.getByRole('button', { name: 'Переместить' }))
+    await addCard(user, screen.getByRole('heading', { name: 'Найдено' }).closest('article')!, 'Квартира у парка')
+    await user.click(within(screen.getByRole('heading', { name: 'Найдено' }).closest('article')!).getByRole('button', { name: 'Действия карточки Квартира у парка' })); await user.click(screen.getByRole('menuitem', { name: 'Переместить' })); await user.selectOptions(screen.getByRole('combobox'), screen.getByRole('option', { name: 'Просмотр' })); await user.click(screen.getByRole('button', { name: 'Переместить' }))
     expect(await within(screen.getByRole('heading', { name: 'Просмотр' }).closest('article')!).findByText('Квартира у парка')).toBeInTheDocument()
-    await user.click(within(found).getByRole('button', { name: 'Действия статуса Найдено' })); expect(screen.getByRole('menuitem', { name: 'Переместить влево' })).toBeDisabled()
+    await user.click(within(screen.getByRole('heading', { name: 'Найдено' }).closest('article')!).getByRole('button', { name: 'Действия статуса Найдено' })); expect(screen.getByRole('menuitem', { name: 'Переместить влево' })).toBeDisabled()
   })
 
   it('keeps every board column and primary action reachable at mobile and desktop widths', async () => {
     const user = userEvent.setup(); render(<App repository={repository()} />)
     await fill(user, 'Новый проект', 'Поиск квартиры', 'Создать проект'); await screen.findByRole('heading', { name: 'Поиск квартиры' })
     await addStatus(user, 'Идеи'); await addStatus(user, 'В работе'); await addStatus(user, 'Завершено')
-    const ideas = screen.getByRole('heading', { name: 'Идеи' }).closest('article')!
-    await addCard(user, ideas, 'Позвонить арендодателю')
+    await addCard(user, screen.getByRole('heading', { name: 'Идеи' }).closest('article')!, 'Позвонить арендодателю')
 
     setViewport(320)
     for (const name of ['Идеи', 'В работе', 'Завершено']) {
@@ -71,7 +70,7 @@ describe('project board', () => {
       expect(screen.getByRole('button', { name: `Действия статуса ${name}` })).toBeEnabled()
       expect(within(screen.getByRole('heading', { name }).closest('article')!).getByRole('button', { name: /Добавить карточку/ })).toBeEnabled()
     }
-    expect(within(ideas).getByRole('button', { name: 'Действия карточки Позвонить арендодателю' })).toBeEnabled()
+    expect(within(screen.getByRole('heading', { name: 'Идеи' }).closest('article')!).getByRole('button', { name: 'Действия карточки Позвонить арендодателю' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Действия статуса Идеи' }))
     expect(screen.getByRole('menuitem', { name: 'Переименовать' })).toBeEnabled()
     expect(screen.getByRole('menuitem', { name: 'Переместить влево' })).toBeDisabled()

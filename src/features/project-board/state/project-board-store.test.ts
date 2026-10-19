@@ -27,6 +27,6 @@ describe('project-board store', () => {
     await store.getState().showBoard('project')
     await store.getState().renameCard('project', 'card', 'Новое имя')
     expect(store.getState().workspace).toEqual({ kind: 'board', board })
-    expect(store.getState().saveError).toMatch('Не удалось сохранить')
+    expect(store.getState().saveError).toBe(true)
   })
 })

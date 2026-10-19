@@ -9,20 +9,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'prompt',
       injectRegister: false,
-      manifest: {
-        name: 'EasyTrack',
-        short_name: 'EasyTrack',
-        description: 'Трекер личных проектов',
-        start_url: '/tracker/',
-        scope: '/tracker/',
-        display: 'standalone',
-        theme_color: '#0F766E',
-        background_color: '#F7F8F7',
-        icons: [
-          { src: 'icons/easytrack-192.png', sizes: '192x192', type: 'image/png' },
-          { src: 'icons/easytrack-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-        ],
-      },
+      manifest: false,
+      includeAssets: ['manifest.*.webmanifest', 'icons/*.png'],
       workbox: {
         runtimeCaching: [],
       },

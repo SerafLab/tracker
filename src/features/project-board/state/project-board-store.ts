@@ -10,7 +10,7 @@ export type Workspace =
 
 export type ProjectBoardState = {
   workspace: Workspace
-  saveError: string
+  saveError: boolean
   openStorage(): Promise<boolean>
   clearLastProject(): Promise<boolean>
   showCatalogue(): Promise<void>
@@ -25,7 +25,6 @@ export type ProjectBoardState = {
   moveCard(projectId: Id, cardId: Id, statusId: Id): Promise<boolean>
 }
 
-const saveError = 'Не удалось сохранить изменения. Проверьте доступность локального хранилища и повторите попытку.'
 
 export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutate = () => true) {
   return createStore<ProjectBoardState>((set, get) => {
@@ -33,17 +32,17 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       if (!canMutate()) return false
       try {
         await operation()
-        set({ saveError: '' })
+        set({ saveError: false })
         return true
       } catch {
-        set({ saveError })
+        set({ saveError: true })
         return false
       }
     }
 
     return {
       workspace: { kind: 'loading' },
-      saveError: '',
+      saveError: false,
       async openStorage() {
         try {
           await useCases.open()
@@ -79,10 +78,10 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         if (!canMutate()) return undefined
         try {
           const project = await useCases.createProject(name)
-          set({ saveError: '' })
+          set({ saveError: false })
           return project.id
         } catch {
-          set({ saveError })
+          set({ saveError: true })
           return undefined
         }
       },

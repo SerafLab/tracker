@@ -1,4 +1,6 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { LocaleSelector } from '../../../i18n/provider'
+import { useTranslation } from 'react-i18next'
+import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
 type Action = { label: string; onSelect: () => void; disabled?: boolean }
 
@@ -19,24 +21,27 @@ export function ActionMenu({ label, actions }: { label: string; actions: Action[
 }
 
 export function ActionDialog({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+  const { t } = useTranslation()
   const titleId = useId()
+  const closeFromKeyboard = useEffectEvent(onClose)
   const opener = useRef<HTMLElement | null>(document.activeElement instanceof HTMLElement ? document.activeElement : null)
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
     panel.current?.querySelector<HTMLElement>('input, select, textarea')?.focus()
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose() }
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') closeFromKeyboard() }
     document.addEventListener('keydown', closeOnEscape)
     return () => { document.removeEventListener('keydown', closeOnEscape); opener.current?.focus() }
-  }, [onClose])
-  return <div className="dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><section ref={panel} className="action-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={event => event.stopPropagation()}><header className="dialog-header"><h2 id={titleId} className="dialog-title">{title}</h2><button className="button button-quiet button-icon" aria-label="Закрыть" onClick={onClose}>×</button></header>{children}</section></div>
+  }, [])
+  return <div className="dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><section ref={panel} className="action-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={event => event.stopPropagation()}><header className="dialog-header"><h2 id={titleId} className="dialog-title">{title}</h2><button className="button button-quiet button-icon" aria-label={t('close')} onClick={onClose}>×</button></header>{children}<div className="dialog-locale"><LocaleSelector inDialog /></div></section></div>
 }
 
 export function NameForm({ label, button, initialName = '', onSubmit, onCancel }: { label: string; button: string; initialName?: string; onSubmit: (name: string) => Promise<void>; onCancel?: () => void }) {
+  const { t } = useTranslation()
   const [name, setName] = useState(initialName)
   const [invalid, setInvalid] = useState(false)
   const errorId = useId()
   const submit = async (event: FormEvent) => { event.preventDefault(); if (!name.trim()) { setInvalid(true); return }; setInvalid(false); await onSubmit(name); setName('') }
-  return <form onSubmit={event => void submit(event)}><label className="field"><span className="field-label">{label}</span><input className="text-input" autoFocus value={name} aria-describedby={invalid ? errorId : undefined} onChange={event => setName(event.target.value)} /></label>{invalid ? <p id={errorId} className="field-error" role="alert">Название обязательно</p> : null}<div className="form-actions">{onCancel ? <button type="button" className="button button-secondary" onClick={onCancel}>Отмена</button> : null}<button className="button button-primary">{button}</button></div></form>
+  return <form onSubmit={event => void submit(event)}><label className="field"><span className="field-label">{label}</span><input className="text-input" autoFocus value={name} aria-describedby={invalid ? errorId : undefined} onChange={event => setName(event.target.value)} /></label>{invalid ? <p id={errorId} className="field-error" role="alert">{t('nameRequired')}</p> : null}<div className="form-actions">{onCancel ? <button type="button" className="button button-secondary" onClick={onCancel}>{t('cancel')}</button> : null}<button className="button button-primary">{button}</button></div></form>
 }
 
 export function NameDialog({ title, label, button, initialName, onSubmit, onClose }: { title: string; label: string; button: string; initialName?: string; onSubmit: (name: string) => Promise<void>; onClose: () => void }) {

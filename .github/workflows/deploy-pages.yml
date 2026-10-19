@@ -60,9 +60,11 @@ jobs:
           for attempt in {1..12}; do
             response="$(curl --fail --silent --show-error --location "$PUBLIC_URL" || true)"
             if [[ "$response" == *'data-app-shell="tracker"'* ]]; then
-              curl --fail --silent --show-error --location "${PUBLIC_URL}manifest.webmanifest" | grep -q '"name":"EasyTrack"'
+              for locale in en ru; do
+                curl --fail --silent --show-error --location "${PUBLIC_URL}manifest.${locale}.webmanifest" | grep -Eq '"name"[[:space:]]*:[[:space:]]*"EasyTrack"'
+              done
               curl --fail --silent --show-error --location "${PUBLIC_URL}sw.js" > /dev/null
-              echo "Smoke check passed: $PUBLIC_URL (shell, manifest, service worker)"
+              echo "Smoke check passed: $PUBLIC_URL (shell, localized manifests, service worker)"
               exit 0
             fi
 

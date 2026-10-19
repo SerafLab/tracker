@@ -1,3 +1,4 @@
+import { LocaleProvider } from '../i18n/provider'
 import { useEffect, useRef, useState } from 'react'
 import { createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type Id, type ProjectBoardRepository } from '../features/project-board'
 import { InstallGuidance } from './pwa/install-guidance'
@@ -6,13 +7,12 @@ import { usePersistentStorage } from './pwa/persistent-storage'
 import { RestartRequired } from './pwa/restart-required'
 
 const routeFor = (id: Id) => `#project/${encodeURIComponent(id)}`
-const appTitle = 'EasyTrack — трекер личных проектов'
 const projectIdFromHash = (): Id | undefined => {
   const match = location.hash.match(/^#project\/([^/]+)$/)
   return match ? decodeURIComponent(match[1]) : undefined
 }
 
-export function App({ repository: suppliedRepository, databaseName, reloadApp = () => location.reload() }: { repository?: ProjectBoardRepository; databaseName?: string; reloadApp?: () => void }) {
+function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp = () => location.reload() }: { repository?: ProjectBoardRepository; databaseName?: string; reloadApp?: () => void }) {
   const requestPersistentStorage = usePersistentStorage()
   const staleConnection = useRef(false)
   const [restartRequired, setRestartRequired] = useState(false)
@@ -23,7 +23,6 @@ export function App({ repository: suppliedRepository, databaseName, reloadApp = 
     return { useCases, store: createProjectBoardStore(useCases, () => !staleConnection.current) }
   })
 
-  useEffect(() => { document.title = appTitle }, [])
 
   useEffect(() => {
     let active = true
@@ -67,4 +66,8 @@ export function App({ repository: suppliedRepository, databaseName, reloadApp = 
   }
   if (restartRequired) return <RestartRequired onRestart={reloadApp} />
   return <><ProjectBoardApp store={runtime.store} navigateToProject={navigateToProject} navigateToCatalogue={navigateToCatalogue} onMutationSaved={requestPersistentStorage} /><InstallGuidance /><PwaUpdateRegistration /></>
+}
+
+export function App(props: Parameters<typeof WorkspaceApp>[0]) {
+  return <LocaleProvider><WorkspaceApp {...props} /></LocaleProvider>
 }

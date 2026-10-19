@@ -21,7 +21,7 @@ async function prepareUpdate(page: import('@playwright/test').Page) {
 test('delivers the manifest and keeps local projects usable offline', async ({ page, context }) => {
   await openAndControl(page)
   const metadata = await page.evaluate(async () => {
-    const manifest = await fetch('/tracker/manifest.webmanifest').then(response => response.json())
+    const manifest = await fetch(document.querySelector<HTMLLinkElement>('link[rel="manifest"]')!.href).then(response => response.json())
     const iconStatuses = await Promise.all(manifest.icons.map((icon: { src: string }) => fetch(`/tracker/${icon.src}`).then(response => response.status)))
     return { manifest, iconStatuses, registration: Boolean(await navigator.serviceWorker.getRegistration('/tracker/')) }
   })
@@ -59,3 +59,66 @@ test('activates a waiting worker only after the user chooses Update', async ({ p
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null)
   expect(await page.evaluate(async () => !(await navigator.serviceWorker.getRegistration('/tracker/'))?.waiting)).toBe(true)
 })
+
+for (const locale of ['ru', 'en'] as const) {
+  test(`localizes manifests and keeps ${locale} selected after offline reopen at mobile width`, async ({ page, context }) => {
+    await openAndControl(page)
+    await page.setViewportSize({ width: 320, height: 740 })
+    const selector = page.getByRole('combobox', { name: 'Язык интерфейса' })
+    await selector.focus()
+    // Native select is keyboard accessible; selecting the option emits the native change event.
+    await page.keyboard.press('ArrowUp')
+    await page.keyboard.press('Enter')
+    await selector.selectOption(locale)
+    const activeSelector = page.getByRole('combobox', { name: locale === 'en' ? 'Interface language' : 'Язык интерфейса' })
+    await expect(activeSelector).toBeVisible()
+    const bounds = await activeSelector.boundingBox()
+    expect(bounds!.x).toBeGreaterThanOrEqual(0)
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320)
+    const manifests = await page.evaluate(async () => {
+      const links = [...document.querySelectorAll<HTMLLinkElement>('link[rel="manifest"]')]
+      const variants = await Promise.all(['ru', 'en'].map(async language => fetch(`/tracker/manifest.${language}.webmanifest`).then(response => response.json())))
+      return { count: links.length, active: await fetch(links[0].href).then(response => response.json()), variants }
+    })
+    expect(manifests.count).toBe(1)
+    expect(manifests.active.lang).toBe(locale)
+    expect(manifests.active.description).toBe(locale === 'en' ? 'Personal project tracker' : 'Трекер личных проектов')
+    const [ru, en] = manifests.variants
+    expect({ ...ru, lang: '', description: '' }).toEqual({ ...en, lang: '', description: '' })
+    expect(ru.id).toBe('/tracker/')
+    await expect(page.locator('html')).toHaveAttribute('lang', locale)
+    await context.setOffline(true)
+    await page.reload()
+    await expect(page.getByRole('combobox')).toHaveValue(locale)
+    await expect(page.getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' })).toBeVisible()
+    expect(await page.evaluate(async () => {
+      const active = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')!
+      return (await fetch(active.href).then(response => response.json())).lang
+    })).toBe(locale)
+    await page.screenshot({ path: `test-results/locale-${locale}-mobile.png`, fullPage: true })
+  })
+}
+
+for (const width of [1280, 320]) {
+  test(`switches language by pointer and keyboard inside an unfinished dialog at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto(app)
+    await page.getByLabel('Новый проект').fill('Мой проект')
+    await page.getByRole('button', { name: 'Создать проект' }).click()
+    await expect(page.getByRole('heading', { name: 'Мой проект' })).toBeVisible()
+    await page.getByRole('button', { name: 'Добавить статус' }).first().click()
+    await page.getByLabel('Название статуса').fill('Незавершённый черновик')
+    const dialog = page.getByRole('dialog')
+    const selector = dialog.getByRole('combobox')
+    // A real click must reach the control rather than the backdrop and retain the draft.
+    await selector.click()
+    await page.keyboard.press('e')
+    await page.keyboard.press('Enter')
+    await expect(dialog).toHaveAccessibleName('New status')
+    await expect(selector).toBeFocused()
+    await expect(dialog.getByLabel('Status name')).toHaveValue('Незавершённый черновик')
+    await expect(page.getByRole('heading', { name: 'Мой проект' })).toBeVisible()
+    await dialog.getByRole('button', { name: 'Create status' }).click()
+    await expect(page.getByRole('heading', { name: 'Незавершённый черновик' })).toBeVisible()
+  })
+}

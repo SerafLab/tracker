@@ -27,4 +27,4 @@ createServer(async (request, response) => {
     if (extname(path)) return send(response, 404, 'Not found')
     send(response, 200, await readFile(new URL('index.html', dist)), 'text/html')
   }
-}).listen(4173, '127.0.0.1')
+}).listen(Number(process.env.E2E_PORT ?? 4173), '127.0.0.1')

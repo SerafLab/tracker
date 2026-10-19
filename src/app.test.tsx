@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { App } from './app/app'
 import { ProjectBoardDatabase } from './features/project-board/infrastructure/indexeddb/database'
 import { DexieProjectBoardRepository } from './features/project-board/infrastructure/indexeddb/dexie-project-board-repository'
+import { ActionMenu } from './features/project-board/presentation/controls'
 
 const databases: ProjectBoardDatabase[] = []
 function repository() { const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`); databases.push(database); return new DexieProjectBoardRepository(database) }
@@ -16,7 +17,84 @@ function setViewport(width: number) { Object.defineProperty(window, 'innerWidth'
 beforeEach(() => { location.hash = ''; setViewport(1280) })
 afterEach(async () => { cleanup(); setViewport(1280); await Promise.all(databases.splice(0).map(async database => { database.close(); await database.delete() })) })
 
+describe('action menu interactions', () => {
+  it.each(['mouse', 'touch'])('preserves the outside target action and focus after a %s press', async pointerType => {
+    const user = userEvent.setup(); const select = vi.fn(); const outsideAction = vi.fn()
+    render(<><ActionMenu label="Действия" actions={[{ label: 'Выбрать', onSelect: select }]} /><button onClick={outsideAction}>Внешнее действие</button></>)
+    await user.click(screen.getByRole('button', { name: 'Действия' }))
+    const outside = screen.getByRole('button', { name: 'Внешнее действие' })
+    if (pointerType === 'touch') await user.pointer([{ keys: '[TouchA>]', target: outside }, { keys: '[/TouchA]' }])
+    else await user.click(outside)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(outsideAction).toHaveBeenCalledOnce()
+    expect(outside).toHaveFocus()
+    expect(select).not.toHaveBeenCalled()
+  })
+
+  it('switches menus with one press and toggles the same trigger', async () => {
+    const user = userEvent.setup(); const select = vi.fn()
+    render(<><ActionMenu label="Первое меню" actions={[{ label: 'Первое действие', onSelect: select }]} /><ActionMenu label="Второе меню" actions={[{ label: 'Второе действие', onSelect: select }]} /></>)
+    const first = screen.getByRole('button', { name: 'Первое меню' }); const second = screen.getByRole('button', { name: 'Второе меню' })
+    await user.click(first); await user.click(second)
+    expect(screen.getAllByRole('menu')).toHaveLength(1)
+    expect(screen.getByRole('menu', { name: 'Второе меню' })).toBeInTheDocument()
+    expect(first).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('menuitem', { name: 'Второе действие' })).toHaveFocus()
+    await user.click(second)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(second).toHaveFocus()
+    expect(select).not.toHaveBeenCalled()
+  })
+
+  it('keeps internal Tab focus and dismisses when Tab leaves the menu', async () => {
+    const user = userEvent.setup(); const select = vi.fn()
+    render(<><ActionMenu label="Действия" actions={[{ label: 'Недоступно', onSelect: select, disabled: true }, { label: 'Первое', onSelect: select }, { label: 'Второе', onSelect: select }]} /><button>После меню</button></>)
+    await user.click(screen.getByRole('button', { name: 'Действия' }))
+    expect(screen.getByRole('menuitem', { name: 'Первое' })).toHaveFocus()
+    await user.tab()
+    expect(screen.getByRole('menuitem', { name: 'Второе' })).toHaveFocus()
+    await user.tab()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'После меню' })).toHaveFocus()
+    expect(select).not.toHaveBeenCalled()
+  })
+
+  it('selects enabled items and restores trigger focus on Escape', async () => {
+    const user = userEvent.setup(); const select = vi.fn()
+    render(<ActionMenu label="Действия" actions={[{ label: 'Недоступно', onSelect: select, disabled: true }, { label: 'Выбрать', onSelect: select }]} />)
+    const trigger = screen.getByRole('button', { name: 'Действия' })
+    await user.click(trigger)
+    await user.click(screen.getByRole('menuitem', { name: 'Выбрать' }))
+    expect(select).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    await user.click(trigger); await user.keyboard('{Escape}')
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(trigger).toHaveFocus()
+    expect(select).toHaveBeenCalledOnce()
+  })
+})
+
 describe('project board', () => {
+  it.each([
+    ['проекта', 'mouse'], ['статуса', 'mouse'], ['карточки', 'mouse'],
+    ['проекта', 'touch'], ['статуса', 'touch'], ['карточки', 'touch'],
+  ])('dismisses the %s menu with an outside %s press and runs the destination action', async (kind, pointerType) => {
+    const user = userEvent.setup(); render(<App repository={repository()} />)
+    await fill(user, 'Новый проект', 'Проект', 'Создать проект'); await screen.findByRole('heading', { name: 'Проект' })
+    await addStatus(user, 'Статус')
+    const column = screen.getByRole('heading', { name: 'Статус' }).closest('article')!
+    await addCard(user, column, 'Карточка')
+    const name = kind === 'проекта' ? 'Проект' : kind === 'статуса' ? 'Статус' : 'Карточка'
+    await user.click(await screen.findByRole('button', { name: `Действия ${kind} ${name}` }))
+    expect(screen.getByRole('menu')).toBeInTheDocument()
+    const outside = screen.getByRole('button', { name: 'Добавить статус' })
+    if (pointerType === 'touch') await user.pointer([{ keys: '[TouchA>]', target: outside }, { keys: '[/TouchA]' }])
+    else await user.click(outside)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+    expect(screen.getByRole('dialog', { name: 'Новый статус' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Название статуса')).toHaveFocus()
+  })
+
   it('creates isolated projects and uses dialogs for populated-catalogue creation', async () => {
     const user = userEvent.setup(); render(<App repository={repository()} />)
     expect(document.title).toBe('EasyTrack — трекер личных проектов')

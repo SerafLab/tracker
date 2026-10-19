@@ -9,9 +9,18 @@ export function ActionMenu({ label, actions }: { label: string; actions: Action[
   useEffect(() => {
     if (!open) return
     menu.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
+    const closeOnOutsideInteraction = (event: Event) => {
+      if (event.target instanceof Node && !button.current?.contains(event.target) && !menu.current?.contains(event.target)) setOpen(false)
+    }
     const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setOpen(false); button.current?.focus() } }
+    document.addEventListener('pointerdown', closeOnOutsideInteraction)
+    document.addEventListener('focusin', closeOnOutsideInteraction)
     document.addEventListener('keydown', closeOnEscape)
-    return () => document.removeEventListener('keydown', closeOnEscape)
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideInteraction)
+      document.removeEventListener('focusin', closeOnOutsideInteraction)
+      document.removeEventListener('keydown', closeOnEscape)
+    }
   }, [open])
   return <div className="menu"><button ref={button} className="button button-quiet button-icon" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}>•••</button>
     {open ? <div ref={menu} className="menu-items" role="menu" aria-label={label}>{actions.map(action => <button className="menu-item" role="menuitem" key={action.label} disabled={action.disabled} onClick={() => { setOpen(false); action.onSelect() }}>{action.label}</button>)}</div> : null}

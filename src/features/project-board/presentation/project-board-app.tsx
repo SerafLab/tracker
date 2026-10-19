@@ -38,6 +38,6 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
     onMoveStatus={async (statusId, direction) => { if (await moveStatus(board.id, statusId, direction)) onMutationSaved?.() }}
     onCreateCard={async (statusId, name) => { if (await createCard(board.id, statusId, name)) onMutationSaved?.() }}
     onRenameCard={async (cardId, name) => { if (await renameCard(board.id, cardId, name)) onMutationSaved?.() }}
-    onMoveCard={async (cardId, statusId) => { if (await moveCard(board.id, cardId, statusId)) onMutationSaved?.() }}
+    onMoveCard={async (cardId, statusId) => { const saved = await moveCard(board.id, cardId, statusId); if (saved) onMutationSaved?.(); return saved }}
   />
 }

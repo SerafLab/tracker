@@ -1,4 +1,4 @@
-import type { Card, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../domain/model'
+import type { Card, CardInput, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../domain/model'
 
 export type NewStatus = Omit<Status, 'position'>
 export type NewCard = Omit<Card, 'position'>
@@ -15,6 +15,6 @@ export interface ProjectBoardRepository {
   renameStatus(id: Id, name: string): Promise<void>
   moveStatus(id: Id, direction: -1 | 1): Promise<void>
   createCard(card: NewCard): Promise<Card>
-  renameCard(id: Id, name: string): Promise<void>
+  updateCard(id: Id, input: CardInput): Promise<void>
   moveCard(id: Id, statusId: Id): Promise<void>
 }

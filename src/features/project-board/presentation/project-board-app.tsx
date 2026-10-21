@@ -20,7 +20,7 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   const renameStatus = useStore(store, state => state.renameStatus)
   const moveStatus = useStore(store, state => state.moveStatus)
   const createCard = useStore(store, state => state.createCard)
-  const renameCard = useStore(store, state => state.renameCard)
+  const updateCard = useStore(store, state => state.updateCard)
   const moveCard = useStore(store, state => state.moveCard)
 
   if (workspace.kind === 'loading') return <main className="app-shell" aria-busy="true"><div className="loading-shell"><p className="muted-copy">{t('loading')}</p><div className="skeleton skeleton-title" /><div className="skeleton-columns"><div className="skeleton skeleton-column" /><div className="skeleton skeleton-column" /></div></div></main>
@@ -38,8 +38,8 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
     onCreateStatus={async name => { if (await createStatus(board.id, name)) onMutationSaved?.() }}
     onRenameStatus={async (statusId, name) => { if (await renameStatus(board.id, statusId, name)) onMutationSaved?.() }}
     onMoveStatus={async (statusId, direction) => { if (await moveStatus(board.id, statusId, direction)) onMutationSaved?.() }}
-    onCreateCard={async (statusId, name) => { if (await createCard(board.id, statusId, name)) onMutationSaved?.() }}
-    onRenameCard={async (cardId, name) => { if (await renameCard(board.id, cardId, name)) onMutationSaved?.() }}
+    onCreateCard={async (statusId, name) => { const saved = await createCard(board.id, statusId, name); if (saved) onMutationSaved?.(); return saved }}
+    onUpdateCard={async (cardId, name) => { const saved = await updateCard(board.id, cardId, name); if (saved) onMutationSaved?.(); return saved }}
     onMoveCard={async (cardId, statusId) => { const saved = await moveCard(board.id, cardId, statusId); if (saved) onMutationSaved?.(); return saved }}
   />
 }

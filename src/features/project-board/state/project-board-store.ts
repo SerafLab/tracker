@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla'
-import type { Id, Project, ProjectBoard } from '../domain/model'
+import type { CardInput, Id, Project, ProjectBoard } from '../domain/model'
 import type { ProjectBoardUseCases } from '../application/use-cases'
 
 export type Workspace =
@@ -20,8 +20,8 @@ export type ProjectBoardState = {
   createStatus(projectId: Id, name: string): Promise<boolean>
   renameStatus(projectId: Id, statusId: Id, name: string): Promise<boolean>
   moveStatus(projectId: Id, statusId: Id, direction: -1 | 1): Promise<boolean>
-  createCard(projectId: Id, statusId: Id, name: string): Promise<boolean>
-  renameCard(projectId: Id, cardId: Id, name: string): Promise<boolean>
+  createCard(projectId: Id, statusId: Id, input: CardInput): Promise<boolean>
+  updateCard(projectId: Id, cardId: Id, input: CardInput): Promise<boolean>
   moveCard(projectId: Id, cardId: Id, statusId: Id): Promise<boolean>
 }
 
@@ -110,13 +110,13 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         await get().showBoard(projectId)
         return true
       },
-      async createCard(projectId, statusId, name) {
-        if (!await preserveConfirmedState(() => useCases.createCard(statusId, name))) return false
+      async createCard(projectId, statusId, input) {
+        if (!await preserveConfirmedState(() => useCases.createCard(statusId, input))) return false
         await get().showBoard(projectId)
         return true
       },
-      async renameCard(projectId, cardId, name) {
-        if (!await preserveConfirmedState(() => useCases.renameCard(cardId, name))) return false
+      async updateCard(projectId, cardId, input) {
+        if (!await preserveConfirmedState(() => useCases.updateCard(cardId, input))) return false
         await get().showBoard(projectId)
         return true
       },

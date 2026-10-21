@@ -2,7 +2,8 @@ export type Id = string
 
 export type Project = { id: Id; name: string; createdAt: string }
 export type Status = { id: Id; projectId: Id; name: string; position: number }
-export type Card = { id: Id; statusId: Id; name: string; position: number }
+export type Card = { id: Id; statusId: Id; name: string; position: number; important: boolean; urgent: boolean }
+export type CardInput = Pick<Card, 'name' | 'important' | 'urgent'>
 export type WorkspacePreference = { id: 'workspace'; lastProjectId?: Id }
 
 export type ProjectBoard = Project & { statuses: Array<Status & { cards: Card[] }> }

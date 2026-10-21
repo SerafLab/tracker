@@ -15,6 +15,7 @@ export class ProjectBoardDatabase extends Dexie {
       cards: 'id, statusId, [statusId+position]',
       workspace: 'id',
     })
+    this.version(2).stores({ projects: 'id, createdAt', statuses: 'id, projectId, [projectId+position]', cards: 'id, statusId, [statusId+position]', workspace: 'id' }).upgrade(transaction => transaction.table('cards').toCollection().modify({ important: false, urgent: false }))
     this.on('versionchange', () => {
       this.close()
       onVersionChange?.()

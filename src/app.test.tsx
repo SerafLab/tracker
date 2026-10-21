@@ -10,7 +10,7 @@ import { ActionMenu } from './features/project-board/presentation/controls'
 const databases: ProjectBoardDatabase[] = []
 function repository() { const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`); databases.push(database); return new DexieProjectBoardRepository(database) }
 async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string, button: string) { const input = await screen.findByLabelText(label); await user.clear(input); await user.type(input, value); await user.click(within(input.closest('form')!).getByRole('button', { name: button })) }
-async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string) { await user.click(screen.getAllByRole('button', { name: 'Добавить статус' })[0]); await fill(user, 'Название статуса', name, 'Создать статус'); await screen.findAllByRole('heading', { name }); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
+async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string) { await user.click((await screen.findAllByRole('button', { name: 'Добавить статус' }))[0]); await fill(user, 'Название статуса', name, 'Создать статус'); await screen.findAllByRole('heading', { name }); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
 async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(within(column).getByRole('button', { name: /Добавить карточку/ })); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
 function setViewport(width: number) { Object.defineProperty(window, 'innerWidth', { configurable: true, value: width }); window.dispatchEvent(new Event('resize')) }
 
@@ -286,7 +286,7 @@ it('retains the card creation draft on validation and storage errors and retries
   await user.click(within(dialog).getByLabelText('Важная')); await user.click(within(dialog).getByLabelText('Срочная'))
   vi.spyOn(repo, 'createCard').mockRejectedValueOnce(new Error('quota'))
   await user.click(within(dialog).getByRole('button', { name: 'Создать карточку' }))
-  expect(within(dialog).getByRole('alert')).toHaveTextContent('Не удалось сохранить')
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Не удалось сохранить')
   expect(within(dialog).getByLabelText('Название карточки')).toHaveValue('  Draft  ')
   expect(within(dialog).getByLabelText('Важная')).toBeChecked()
   expect(column.querySelectorAll('.work-card')).toHaveLength(0)
@@ -309,7 +309,7 @@ it('edits flags atomically, keeps failed drafts, reorders after success and tran
   await user.click(within(dialog).getByLabelText('Важная'))
   vi.spyOn(repo, 'updateCard').mockRejectedValueOnce(new Error('quota'))
   await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
-  expect(within(dialog).getByRole('alert')).toHaveTextContent('Не удалось сохранить')
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Не удалось сохранить')
   expect(Array.from(column.querySelectorAll('.card-name')).map(node => node.textContent)).toEqual(['First', 'Second'])
   expect(within(dialog).getByLabelText('Важная')).toBeChecked()
   await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))

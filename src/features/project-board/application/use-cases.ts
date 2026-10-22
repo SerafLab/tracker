@@ -28,9 +28,11 @@ export function createProjectBoardUseCases(dependencies: {
     renameProject: (id: Id, input: string) => repository.renameProject(id, name(input)),
     createStatus: (projectId: Id, input: string) => repository.createStatus({ id: createId(), projectId, name: name(input) }),
     renameStatus: (id: Id, input: string) => repository.renameStatus(id, name(input)),
+    deleteStatus: (id: Id) => repository.deleteStatus(id),
     moveStatus: (id: Id, direction: -1 | 1) => repository.moveStatus(id, direction),
     createCard: (statusId: Id, input: CardInput) => repository.createCard({ id: createId(), statusId, name: name(input.name), important: input.important, urgent: input.urgent }),
     updateCard: (id: Id, input: CardInput) => repository.updateCard(id, { name: name(input.name), important: input.important, urgent: input.urgent }),
+    deleteCard: (id: Id) => repository.deleteCard(id),
     moveCard: (id: Id, statusId: Id) => repository.moveCard(id, statusId),
   }
 }

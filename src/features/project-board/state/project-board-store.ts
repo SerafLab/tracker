@@ -1,5 +1,6 @@
 import { createStore } from 'zustand/vanilla'
 import type { CardInput, Id, Project, ProjectBoard } from '../domain/model'
+import type { DeleteStatusResult } from '../application/repository'
 import type { ProjectBoardUseCases } from '../application/use-cases'
 
 export type Workspace =
@@ -7,6 +8,8 @@ export type Workspace =
   | { kind: 'catalogue'; projects: Project[] }
   | { kind: 'board'; board: ProjectBoard }
   | { kind: 'unavailable' }
+
+export type DeleteStatusStateResult = DeleteStatusResult | 'failed'
 
 export type ProjectBoardState = {
   workspace: Workspace
@@ -19,9 +22,11 @@ export type ProjectBoardState = {
   renameProject(id: Id, name: string): Promise<boolean>
   createStatus(projectId: Id, name: string): Promise<boolean>
   renameStatus(projectId: Id, statusId: Id, name: string): Promise<boolean>
+  deleteStatus(projectId: Id, statusId: Id): Promise<DeleteStatusStateResult>
   moveStatus(projectId: Id, statusId: Id, direction: -1 | 1): Promise<boolean>
   createCard(projectId: Id, statusId: Id, input: CardInput): Promise<boolean>
   updateCard(projectId: Id, cardId: Id, input: CardInput): Promise<boolean>
+  deleteCard(projectId: Id, cardId: Id): Promise<boolean>
   moveCard(projectId: Id, cardId: Id, statusId: Id): Promise<boolean>
 }
 
@@ -105,6 +110,18 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         await get().showBoard(projectId)
         return true
       },
+      async deleteStatus(projectId, statusId) {
+        if (!canMutate()) return 'failed'
+        try {
+          const result = await useCases.deleteStatus(statusId)
+          if (result === 'deleted') await get().showBoard(projectId)
+          set({ saveError: false })
+          return result
+        } catch {
+          set({ saveError: true })
+          return 'failed'
+        }
+      },
       async moveStatus(projectId, statusId, direction) {
         if (!await preserveConfirmedState(() => useCases.moveStatus(statusId, direction))) return false
         await get().showBoard(projectId)
@@ -117,6 +134,11 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       },
       async updateCard(projectId, cardId, input) {
         if (!await preserveConfirmedState(() => useCases.updateCard(cardId, input))) return false
+        await get().showBoard(projectId)
+        return true
+      },
+      async deleteCard(projectId, cardId) {
+        if (!await preserveConfirmedState(() => useCases.deleteCard(cardId))) return false
         await get().showBoard(projectId)
         return true
       },

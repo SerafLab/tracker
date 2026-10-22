@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CardInput, Id, ProjectBoard, Status } from '../domain/model'
+import { AppBar } from '../../../ui/app-bar'
 import { CardView, type CardMoveFocus } from './card-view'
 import { ActionMenu, CardDialog, NameDialog } from './controls'
 
@@ -38,16 +39,16 @@ export function ProjectBoardView({ board, saveError, onReturn, onRenameProject, 
   const statuses = board.statuses.map(({ cards: _cards, ...status }) => status)
   const [creatingStatus, setCreatingStatus] = useState(false)
   const [renamingProject, setRenamingProject] = useState(false)
-  return <main ref={root} className="app-shell">
-    <header className="board-header"><div><button className="button button-quiet" onClick={() => void onReturn()}>{t('allProjects')}</button><p className="eyebrow">EasyTrack</p><h1 className="page-title">{board.name}</h1></div><div className="button-row"><ActionMenu label={t('projectActions', { name: board.name })} actions={[{ label: t('rename'), onSelect: () => setRenamingProject(true) }]} /><button className="button button-primary" onClick={() => setCreatingStatus(true)}>{t('addStatus')}</button></div></header>
+  const projectMenu = useRef<HTMLButtonElement>(null)
+  return <><AppBar title={board.name} navigation={<button className="button button-quiet" onClick={() => void onReturn()}>{t('allProjects')}</button>} actions={<><ActionMenu triggerRef={projectMenu} label={t('projectActions', { name: board.name })} actions={[{ label: t('rename'), onSelect: () => setRenamingProject(true) }]} /><button className="button button-primary" onClick={() => setCreatingStatus(true)}>{t('addStatus')}</button></>} /><main ref={root} className="app-shell">
     {saveError ? <p className="save-error" role={moveDialogCardId ? undefined : 'alert'}>{t('saveError')}</p> : null}
-    {board.statuses.length === 0 ? <section className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p><button className="button button-primary" onClick={() => setCreatingStatus(true)}>{t('addStatus')}</button></section> : null}
+    {board.statuses.length === 0 ? <section className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p></section> : null}
     <section className="status-columns" aria-label={t('statuses')}>
       {board.statuses.map((status, index) => <StatusColumn key={status.id} status={status} index={index} total={board.statuses.length} statuses={statuses} saveError={saveError} onMoveDialogChange={setMoveDialogCardId} onRename={name => onRenameStatus(status.id, name)} onMove={direction => onMoveStatus(status.id, direction)} onCreateCard={name => onCreateCard(status.id, name)} onUpdateCard={(cardId, name) => onUpdateCard(cardId, name)} onMoveCard={moveCard} />)}
     </section>
     {creatingStatus ? <NameDialog title={t('newStatus')} label={t('statusName')} button={t('createStatus')} onSubmit={onCreateStatus} onClose={() => setCreatingStatus(false)} /> : null}
-    {renamingProject ? <NameDialog title={t('renameProject')} label={t('newName')} button={t('save')} initialName={board.name} onSubmit={onRenameProject} onClose={() => setRenamingProject(false)} /> : null}
-  </main>
+    {renamingProject ? <NameDialog returnFocus={projectMenu} title={t('renameProject')} label={t('newName')} button={t('save')} initialName={board.name} onSubmit={onRenameProject} onClose={() => setRenamingProject(false)} /> : null}
+  </main></>
 }
 
 type StatusColumnProps = {

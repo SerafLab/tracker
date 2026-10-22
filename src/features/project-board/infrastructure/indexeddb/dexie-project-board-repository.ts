@@ -1,6 +1,6 @@
 import { moveByOffset, placeCardInGroup } from '../../domain/order'
 import type { Card, CardInput, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../../domain/model'
-import type { NewCard, NewStatus, ProjectBoardRepository } from '../../application/repository'
+import type { DeleteStatusResult, NewCard, NewStatus, ProjectBoardRepository } from '../../application/repository'
 import { ProjectBoardDatabase } from './database'
 
 export class DexieProjectBoardRepository implements ProjectBoardRepository {
@@ -44,6 +44,18 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
 
   async renameStatus(id: Id, name: string) { await this.db.statuses.update(id, { name }) }
 
+  async deleteStatus(id: Id): Promise<DeleteStatusResult> {
+    return this.db.transaction('rw', this.db.statuses, this.db.cards, async () => {
+      const status = await this.db.statuses.get(id)
+      if (!status) throw new Error('Статус не найден')
+      if (await this.db.cards.where('statusId').equals(id).count()) return 'not-empty'
+      const statuses = await this.db.statuses.where('projectId').equals(status.projectId).sortBy('position')
+      await this.db.statuses.delete(id)
+      await this.db.statuses.bulkPut(statuses.filter(item => item.id !== id).map((item, position) => ({ ...item, position })))
+      return 'deleted'
+    })
+  }
+
   async moveStatus(id: Id, direction: -1 | 1) {
     await this.db.transaction('rw', this.db.statuses, async () => {
       const current = await this.db.statuses.get(id)
@@ -76,6 +88,16 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
       }
       const cards = await this.db.cards.where('statusId').equals(card.statusId).sortBy('position')
       await this.db.cards.bulkPut(placeCardInGroup(cards, updated))
+    })
+  }
+
+  async deleteCard(id: Id) {
+    await this.db.transaction('rw', this.db.cards, async () => {
+      const card = await this.db.cards.get(id)
+      if (!card) throw new Error('Карточка не найдена')
+      const cards = await this.db.cards.where('statusId').equals(card.statusId).sortBy('position')
+      await this.db.cards.delete(id)
+      await this.db.cards.bulkPut(cards.filter(item => item.id !== id).map((item, position) => ({ ...item, position })))
     })
   }
 

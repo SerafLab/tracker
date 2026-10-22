@@ -100,3 +100,66 @@ it('edits only editable fields even when a stale UI object includes status and p
   expect(cards.map(card => card.id)).toEqual(['b', 'a'])
   expect(cards[1]).toMatchObject({ name: 'Edited', position: 1, statusId: 't', important: true, urgent: false })
 })
+
+it('deletes only the selected card with a duplicate name and persists dense order in its status', async () => {
+  const { repository: repo, database, add } = await populated()
+  await add('a', true); await add('b', true); await add('c'); await add('other', false, false, 't')
+  await database.cards.update('a', { name: 'Same' }); await database.cards.update('b', { name: 'Same' })
+  const otherStatus = (await repo.board('p'))!.statuses[1]
+  await repo.deleteCard('a')
+  database.close(); await repo.open()
+  const board = (await repo.board('p'))!
+  expect(board.statuses[0].cards.map(({ id, position }) => ({ id, position }))).toEqual([{ id: 'b', position: 0 }, { id: 'c', position: 1 }])
+  expect(board.statuses[0].cards[0].name).toBe('Same')
+  expect(board.statuses[1]).toEqual(otherStatus)
+})
+
+it('rolls back card deletion and compaction together when writing fails', async () => {
+  const { repository: repo, database, add } = await populated()
+  await add('a'); await add('b'); await add('c')
+  const before = await repo.board('p')
+  const bulkPut = database.cards.bulkPut.bind(database.cards)
+  vi.spyOn(database.cards, 'bulkPut').mockImplementationOnce((...args: Parameters<typeof bulkPut>) => bulkPut(...args).then(() => { throw new Error('quota') }))
+  await expect(repo.deleteCard('b')).rejects.toThrow('quota')
+  expect(await repo.board('p')).toEqual(before)
+})
+
+it('deletes empty statuses in order including the last status without altering another project', async () => {
+  const { repository: repo, database } = await populated()
+  await repo.createStatus({ id: 'last', projectId: 'p', name: 'last' })
+  const otherProject = await repo.board('q')
+  expect(await repo.deleteStatus('t')).toBe('deleted')
+  expect((await repo.board('p'))!.statuses.map(({ id, position }) => ({ id, position }))).toEqual([{ id: 's', position: 0 }, { id: 'last', position: 1 }])
+  await repo.deleteStatus('s'); await repo.deleteStatus('last')
+  database.close(); await repo.open()
+  expect((await repo.board('p'))!.statuses).toEqual([])
+  expect(await repo.board('q')).toEqual(otherProject)
+})
+
+it('refuses a nonempty status and checks cards saved after a stale empty-board read', async () => {
+  const { repository: repo, add } = await populated()
+  const stale = await repo.board('p')
+  expect(stale!.statuses[0].cards).toEqual([])
+  await add('new-card')
+  const before = await repo.board('p')
+  expect(await repo.deleteStatus('s')).toBe('not-empty')
+  expect(await repo.board('p')).toEqual(before)
+})
+
+it('serializes a pending card creation before status deletion without orphaning the card', async () => {
+  const { repository: repo, add } = await populated()
+  const adding = add('new-card')
+  const deleting = repo.deleteStatus('s')
+  await adding
+  expect(await deleting).toBe('not-empty')
+  expect((await repo.board('p'))!.statuses[0].cards.map(card => card.id)).toEqual(['new-card'])
+})
+
+it('rolls back status deletion and compaction together when writing fails', async () => {
+  const { repository: repo, database } = await populated()
+  const before = await repo.board('p')
+  const bulkPut = database.statuses.bulkPut.bind(database.statuses)
+  vi.spyOn(database.statuses, 'bulkPut').mockImplementationOnce((...args: Parameters<typeof bulkPut>) => bulkPut(...args).then(() => { throw new Error('quota') }))
+  await expect(repo.deleteStatus('s')).rejects.toThrow('quota')
+  expect(await repo.board('p')).toEqual(before)
+})

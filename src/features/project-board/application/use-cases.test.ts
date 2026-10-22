@@ -8,7 +8,7 @@ function repository(): ProjectBoardRepository {
     createProject: vi.fn().mockImplementation(project => Promise.resolve(project)), renameProject: vi.fn(),
     board: vi.fn(), createStatus: vi.fn().mockImplementation(status => Promise.resolve({ ...status, position: 0 })),
     renameStatus: vi.fn(), moveStatus: vi.fn(), createCard: vi.fn().mockImplementation(card => Promise.resolve({ ...card, position: 0 })),
-    updateCard: vi.fn(), moveCard: vi.fn(),
+    updateCard: vi.fn(), moveCard: vi.fn(), deleteCard: vi.fn(), deleteStatus: vi.fn().mockResolvedValue('deleted'),
   }
 }
 
@@ -61,4 +61,20 @@ it('validates card names and preserves both independent flags for create and upd
   }
   expect(() => api.createCard('s', { name: ' ', important: true, urgent: true })).toThrow()
   expect(() => api.updateCard('id', { name: ' ', important: false, urgent: false })).toThrow()
+})
+
+
+it('deletes by selected ID and distinguishes nonempty status refusal from storage errors', async () => {
+  const port = repository()
+  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => 'unused' })
+  await api.deleteCard('selected-card')
+  expect(port.deleteCard).toHaveBeenCalledWith('selected-card')
+  expect(await api.deleteStatus('selected-status')).toBe('deleted')
+  expect(port.deleteStatus).toHaveBeenCalledWith('selected-status')
+  vi.mocked(port.deleteStatus).mockResolvedValueOnce('not-empty')
+  expect(await api.deleteStatus('selected-status')).toBe('not-empty')
+  vi.mocked(port.deleteStatus).mockRejectedValueOnce(new Error('quota'))
+  await expect(api.deleteStatus('selected-status')).rejects.toThrow('quota')
+  vi.mocked(port.deleteCard).mockRejectedValueOnce(new Error('quota'))
+  await expect(api.deleteCard('selected-card')).rejects.toThrow('quota')
 })

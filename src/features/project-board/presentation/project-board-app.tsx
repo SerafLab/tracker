@@ -1,3 +1,4 @@
+import { AppBar } from '../../../ui/app-bar'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'zustand'
 import type { Id } from '../domain/model'
@@ -23,8 +24,8 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   const updateCard = useStore(store, state => state.updateCard)
   const moveCard = useStore(store, state => state.moveCard)
 
-  if (workspace.kind === 'loading') return <main className="app-shell" aria-busy="true"><div className="loading-shell"><p className="muted-copy">{t('loading')}</p><div className="skeleton skeleton-title" /><div className="skeleton-columns"><div className="skeleton skeleton-column" /><div className="skeleton skeleton-column" /></div></div></main>
-  if (workspace.kind === 'unavailable') return <main className="app-shell"><section className="unavailable-state surface-card"><h1>{t('unavailable')}</h1><p role="alert">{t('unavailableHelp')}</p></section></main>
+  if (workspace.kind === 'loading') return <><AppBar title={t('loading')} /><main className="app-shell" aria-busy="true"><div className="loading-shell"><div className="skeleton skeleton-title" /><div className="skeleton-columns"><div className="skeleton skeleton-column" /><div className="skeleton skeleton-column" /></div></div></main></>
+  if (workspace.kind === 'unavailable') return <><AppBar title={t('unavailable')} /><main className="app-shell"><section className="unavailable-state surface-card"><p role="alert">{t('unavailableHelp')}</p></section></main></>
   if (workspace.kind === 'catalogue') return <ProjectCatalogueView projects={workspace.projects} saveError={saveError}
     onCreate={async name => { const id = await createProject(name); if (id) { onMutationSaved?.(); await navigateToProject(id) } }}
     onOpen={navigateToProject}

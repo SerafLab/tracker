@@ -1,4 +1,4 @@
-import { LocaleSelector } from '../../../i18n/provider'
+import { registerModal } from '../../../ui/modal-state'
 import { useTranslation } from 'react-i18next'
 import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
@@ -28,7 +28,7 @@ export function ActionMenu({ label, actions, triggerRef }: { label: string; acti
     }
   }, [open])
   return <div className="menu"><button ref={button} className="button button-quiet button-icon" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}>•••</button>
-    {open ? <div ref={menu} className="menu-items" role="menu" aria-label={label}>{actions.map(action => <button className="menu-item" role="menuitem" key={action.label} disabled={action.disabled} onClick={() => { setOpen(false); action.onSelect() }}>{action.label}</button>)}</div> : null}
+    {open ? <div ref={menu} className="menu-items" role="menu" aria-label={label}>{actions.map(action => <button className="menu-item" role="menuitem" key={action.label} disabled={action.disabled} onClick={() => { setOpen(false); button.current?.focus(); action.onSelect() }}>{action.label}</button>)}</div> : null}
   </div>
 }
 
@@ -39,12 +39,34 @@ export function ActionDialog({ title, children, onClose, returnFocus }: { title:
   const opener = useRef<HTMLElement | null>(document.activeElement instanceof HTMLElement ? document.activeElement : null)
   const panel = useRef<HTMLElement>(null)
   useEffect(() => {
-    panel.current?.querySelector<HTMLElement>('input, select, textarea')?.focus()
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') closeFromKeyboard() }
-    document.addEventListener('keydown', closeOnEscape)
-    return () => { document.removeEventListener('keydown', closeOnEscape); (returnFocus?.current ?? opener.current)?.focus({ preventScroll: true }) }
+    const releaseModal = registerModal()
+    const focusable = () => Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]') ?? [])
+    ;(panel.current?.querySelector<HTMLElement>('input, select, textarea') ?? focusable()[0])?.focus()
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); closeFromKeyboard() }
+      if (event.key === 'Tab') {
+        const elements = focusable()
+        const first = elements[0], last = elements.at(-1)
+        if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus() }
+        else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+      }
+    }
+    const keepFocus = (event: FocusEvent) => {
+      if (event.target instanceof Node && !panel.current?.contains(event.target)) focusable()[0]?.focus()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    document.addEventListener('focusin', keepFocus)
+    return () => {
+      document.removeEventListener('keydown', onKeyDown)
+      document.removeEventListener('focusin', keepFocus)
+      releaseModal()
+      queueMicrotask(() => {
+        const target = returnFocus?.current ?? opener.current
+        if (target?.isConnected) target.focus({ preventScroll: true })
+      })
+    }
   }, [])
-  return <div className="dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><section ref={panel} className="action-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={event => event.stopPropagation()}><header className="dialog-header"><h2 id={titleId} className="dialog-title">{title}</h2><button className="button button-quiet button-icon" aria-label={t('close')} onClick={onClose}>×</button></header>{children}<div className="dialog-locale"><LocaleSelector inDialog /></div></section></div>
+  return <div className="dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><section ref={panel} className="action-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={event => event.stopPropagation()}><header className="dialog-header"><h2 id={titleId} className="dialog-title">{title}</h2><button className="button button-quiet button-icon" aria-label={t('close')} onClick={onClose}>×</button></header>{children}</section></div>
 }
 
 export function NameForm({ label, button, initialName = '', onSubmit, onCancel }: { label: string; button: string; initialName?: string; onSubmit: (name: string) => Promise<void>; onCancel?: () => void }) {
@@ -56,8 +78,8 @@ export function NameForm({ label, button, initialName = '', onSubmit, onCancel }
   return <form onSubmit={event => void submit(event)}><label className="field"><span className="field-label">{label}</span><input className="text-input" autoFocus value={name} aria-describedby={invalid ? errorId : undefined} onChange={event => setName(event.target.value)} /></label>{invalid ? <p id={errorId} className="field-error" role="alert">{t('nameRequired')}</p> : null}<div className="form-actions">{onCancel ? <button type="button" className="button button-secondary" onClick={onCancel}>{t('cancel')}</button> : null}<button className="button button-primary">{button}</button></div></form>
 }
 
-export function NameDialog({ title, label, button, initialName, onSubmit, onClose }: { title: string; label: string; button: string; initialName?: string; onSubmit: (name: string) => Promise<void>; onClose: () => void }) {
-  return <ActionDialog title={title} onClose={onClose}><NameForm label={label} button={button} initialName={initialName} onCancel={onClose} onSubmit={async name => { await onSubmit(name); onClose() }} /></ActionDialog>
+export function NameDialog({ title, label, button, initialName, onSubmit, onClose, returnFocus }: { returnFocus?: React.RefObject<HTMLButtonElement | null>; title: string; label: string; button: string; initialName?: string; onSubmit: (name: string) => Promise<void>; onClose: () => void }) {
+  return <ActionDialog title={title} onClose={onClose} returnFocus={returnFocus}><NameForm label={label} button={button} initialName={initialName} onCancel={onClose} onSubmit={async name => { await onSubmit(name); onClose() }} /></ActionDialog>
 }
 
 

@@ -9,7 +9,7 @@ import { ActionMenu } from './features/project-board/presentation/controls'
 
 const databases: ProjectBoardDatabase[] = []
 function repository() { const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`); databases.push(database); return new DexieProjectBoardRepository(database) }
-async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string, button: string) { const input = await screen.findByLabelText(label); await user.clear(input); await user.type(input, value); await user.click(within(input.closest('form')!).getByRole('button', { name: button })) }
+async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string, button: string) { if (label === 'Новый проект') { await user.click(await screen.findByRole('button', { name: 'Создать проект' })); label = 'Название проекта' }; const input = await screen.findByLabelText(label); await user.clear(input); await user.type(input, value); await user.click(within(input.closest('form')!).getByRole('button', { name: button })) }
 async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string) { await user.click((await screen.findAllByRole('button', { name: 'Добавить статус' }))[0]); await fill(user, 'Название статуса', name, 'Создать статус'); await screen.findAllByRole('heading', { name }); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
 async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(within(column).getByRole('button', { name: /Добавить карточку/ })); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
 function setViewport(width: number) { Object.defineProperty(window, 'innerWidth', { configurable: true, value: width }); window.dispatchEvent(new Event('resize')) }
@@ -111,8 +111,8 @@ describe('project board', () => {
 
   it('validates names and renames through accessible menus', async () => {
     const user = userEvent.setup(); render(<App repository={repository()} />)
-    await user.type(await screen.findByLabelText('Новый проект'), '   '); await user.click(screen.getByRole('button', { name: 'Создать проект' })); expect(screen.getByRole('alert')).toHaveTextContent('Название обязательно')
-    await fill(user, 'Новый проект', 'Паспорт', 'Создать проект'); await screen.findByRole('heading', { name: 'Паспорт' })
+    await user.click(await screen.findByRole('button', { name: 'Создать проект' })); await user.type(screen.getByLabelText('Название проекта'), '   '); await user.click(screen.getByRole('button', { name: 'Создать проект' })); expect(screen.getByRole('alert')).toHaveTextContent('Название обязательно')
+    await fill(user, 'Название проекта', 'Паспорт', 'Создать проект'); await screen.findByRole('heading', { name: 'Паспорт' })
     await user.click(screen.getByRole('button', { name: 'Действия проекта Паспорт' })); await user.click(screen.getByRole('menuitem', { name: 'Переименовать' }))
     const input = screen.getByLabelText('Новое название'); await user.clear(input); await user.type(input, 'Документы'); await user.click(screen.getByRole('button', { name: 'Сохранить' }))
     expect(await screen.findByRole('heading', { name: 'Документы' })).toBeInTheDocument()

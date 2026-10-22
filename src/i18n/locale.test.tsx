@@ -1,11 +1,14 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../app/app'
 import { ProjectBoardDatabase, DexieProjectBoardRepository, type ProjectBoardRepository } from '../features/project-board'
 import { InstallGuidance } from '../app/pwa/install-guidance'
 import { PwaUpdateNotice } from '../app/pwa/update-notice'
 import { RestartRequired } from '../app/pwa/restart-required'
+import { AppBar } from '../ui/app-bar'
+import { ActionDialog } from '../features/project-board/presentation/controls'
 import { LocaleProvider } from './provider'
 import { localeStorageKey, resolveLocale } from './locale'
 
@@ -35,7 +38,7 @@ it('updates metadata from first launch, persists selection, and retains session 
   localStorage.removeItem(localeStorageKey)
   vi.spyOn(navigator, 'language', 'get').mockReturnValue('fr-FR')
   const user = userEvent.setup()
-  const view = render(<LocaleProvider><span>EasyTrack</span></LocaleProvider>)
+  const view = render(<LocaleProvider><AppBar title="EasyTrack" /></LocaleProvider>)
   expect(document.documentElement.lang).toBe('en')
   expect(document.title).toBe('EasyTrack — personal project tracker')
   expect(localStorage.getItem(localeStorageKey)).toBeNull()
@@ -45,7 +48,7 @@ it('updates metadata from first launch, persists selection, and retains session 
   expect(document.querySelector('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.ru.webmanifest')
   expect(localStorage.getItem(localeStorageKey)).toBe('ru')
   view.unmount()
-  render(<LocaleProvider><span>EasyTrack</span></LocaleProvider>)
+  render(<LocaleProvider><AppBar title="EasyTrack" /></LocaleProvider>)
   expect(screen.getByRole('combobox')).toHaveValue('ru')
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw Error('blocked') })
   await user.selectOptions(screen.getByRole('combobox'), 'en')
@@ -62,24 +65,51 @@ it.each(['loading', 'unavailable'] as const)('keeps keyboard language switching 
   fireEvent.change(selector, { target: { value: 'en' } })
   expect(await screen.findByText(kind === 'loading' ? 'Opening workspace…' : 'Project board unavailable')).toBeInTheDocument()
   expect(selector).toHaveFocus()
+  expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+  expect(screen.getAllByRole('combobox')).toHaveLength(1)
+  expect(screen.queryByRole('button', { name: /Создать|Добавить|Create|Add status/ })).not.toBeInTheDocument()
 })
 
-it('keeps the current project and unfinished dialog input across language switches', async () => {
+it('isolates a dialog and restores the sole language selector after closing', async () => {
   const user = userEvent.setup()
   render(<App repository={repository()} />)
-  await user.type(await screen.findByLabelText('Новый проект'), 'Мой проект')
+  await user.click(await screen.findByRole('button', { name: 'Создать проект' }))
+  await user.type(screen.getByLabelText('Название проекта'), 'Мой проект')
   await user.click(screen.getByRole('button', { name: 'Создать проект' }))
   await screen.findByRole('heading', { name: 'Мой проект' })
-  await user.click(screen.getAllByRole('button', { name: 'Добавить статус' })[0])
-  await user.type(screen.getByLabelText('Название статуса'), 'Мой черновик')
-  await user.selectOptions(within(screen.getByRole('dialog')).getByRole('combobox', { name: 'Язык интерфейса' }), 'en')
+  const trigger = screen.getByRole('button', { name: 'Добавить статус' })
+  await user.click(trigger)
+  const dialog = screen.getByRole('dialog')
+  expect(within(dialog).queryByRole('combobox')).not.toBeInTheDocument()
+  expect(document.querySelectorAll('.locale-selector select')).toHaveLength(1)
+  expect(document.querySelector('.app-bar')).toHaveAttribute('aria-hidden', 'true')
+  expect(document.querySelector('.app-bar')).toHaveAttribute('inert')
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  await user.type(screen.getByLabelText('Название статуса'), 'Черновик')
+  for (let index = 0; index < 8; index++) { await user.tab(); expect(dialog.contains(document.activeElement)).toBe(true) }
+  for (let index = 0; index < 8; index++) { await user.tab({ shift: true }); expect(dialog.contains(document.activeElement)).toBe(true) }
+  await user.keyboard('{Escape}')
+  expect(trigger).toHaveFocus()
+  await user.selectOptions(screen.getByRole('combobox'), 'en')
   expect(screen.getByRole('heading', { name: 'Мой проект' })).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Add status' }))
   expect(screen.getByRole('dialog', { name: 'New status' })).toBeInTheDocument()
-  expect(screen.getByLabelText('Status name')).toHaveValue('Мой черновик')
-  await user.click(screen.getByRole('button', { name: 'Create status' }))
-  expect(await screen.findByRole('heading', { name: 'Мой черновик' })).toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Status actions for Мой черновик' }))
-  expect(screen.getByRole('menuitem', { name: 'Rename' })).toBeInTheDocument()
+})
+
+it('keeps a replacement app bar inert while an existing dialog remains open', async () => {
+  function ChangingBar() {
+    const [title, setTitle] = useState('Loading')
+    const [open, setOpen] = useState(true)
+    return <><AppBar key={title} title={title} />{open ? <ActionDialog title="Guidance" onClose={() => setOpen(false)}><button onClick={() => setTitle('Ready')}>Finish loading</button></ActionDialog> : null}</>
+  }
+  const user = userEvent.setup()
+  render(<LocaleProvider><ChangingBar /></LocaleProvider>)
+  await user.click(screen.getByRole('button', { name: 'Finish loading' }))
+  expect(document.querySelector('.app-bar')).toHaveAttribute('inert')
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('heading', { name: 'Ready' })).toBeInTheDocument()
+  expect(screen.getByRole('combobox')).toBeEnabled()
 })
 
 it.each(['en', 'ru'] as const)('translates validation and save errors in %s', async locale => {
@@ -90,9 +120,10 @@ it.each(['en', 'ru'] as const)('translates validation and save errors in %s', as
   render(<App repository={repo} />)
   const create = await screen.findByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' })
   await user.click(create)
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' }))
   expect(screen.getByRole('alert')).toHaveTextContent(locale === 'en' ? 'Name is required' : 'Название обязательно')
   await user.type(screen.getByRole('textbox'), 'Название')
-  await user.click(create)
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' }))
   expect(await screen.findByText(locale === 'en' ? /Could not save changes/ : /Не удалось сохранить изменения/)).toBeInTheDocument()
 })
 
@@ -104,25 +135,28 @@ it.each(['en', 'ru'] as const)('translates platform installation, update and res
   await user.click(screen.getByRole('button', { name: locale === 'en' ? 'How to install EasyTrack' : 'Как установить EasyTrack' }))
   expect(screen.getByRole('dialog')).toHaveTextContent(locale === 'en' ? 'Add to Home Screen' : 'На экран')
   expect(screen.getByRole('status')).toHaveAccessibleName(locale === 'en' ? 'EasyTrack update' : 'Обновление EasyTrack')
-  expect(screen.getByRole('heading', { name: locale === 'en' ? 'Restart EasyTrack' : 'Нужно перезапустить EasyTrack' })).toBeInTheDocument()
+  expect(document.querySelector('h1')).toHaveTextContent(locale === 'en' ? 'Restart EasyTrack' : 'Нужно перезапустить EasyTrack')
   await user.click(screen.getByRole('button', { name: locale === 'en' ? 'Close' : 'Закрыть' }))
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Chrome')
   view.rerender(<LocaleProvider><InstallGuidance /><RestartRequired onRestart={() => {}} /></LocaleProvider>)
   await user.click(screen.getByRole('button', { name: locale === 'en' ? 'How to install EasyTrack' : 'Как установить EasyTrack' }))
   expect(screen.getByRole('dialog')).toHaveTextContent(locale === 'en' ? 'Open the browser menu' : 'Откройте меню браузера')
-  await act(async () => { fireEvent.change(within(screen.getByRole('dialog')).getByRole('combobox'), { target: { value: locale === 'en' ? 'ru' : 'en' } }) })
+  expect(within(screen.getByRole('dialog')).queryByRole('combobox')).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: locale === 'en' ? 'ru' : 'en' } })
   expect(screen.getByRole('heading', { name: locale === 'en' ? 'Нужно перезапустить EasyTrack' : 'Restart EasyTrack' })).toBeInTheDocument()
 })
 
 
-it('announces preference write failures once inside the active dialog', async () => {
+it('keeps the preference warning in the app bar after a dialog closes', async () => {
   const user = userEvent.setup()
-  render(<LocaleProvider><InstallGuidance /></LocaleProvider>)
-  await user.click(screen.getByRole('button', { name: 'Как установить EasyTrack' }))
+  render(<LocaleProvider><AppBar title="EasyTrack" /><InstallGuidance /></LocaleProvider>)
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw Error('blocked') })
-  await user.selectOptions(within(screen.getByRole('dialog')).getByRole('combobox'), 'en')
+  await user.selectOptions(screen.getByRole('combobox'), 'en')
+  expect(screen.getByRole('alert')).toHaveTextContent('Could not save your language')
+  await user.click(screen.getByRole('button', { name: 'How to install EasyTrack' }))
+  expect(within(screen.getByRole('dialog')).queryByRole('combobox')).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
   expect(screen.getAllByRole('alert')).toHaveLength(1)
-  expect(within(screen.getByRole('dialog')).getByRole('alert')).toHaveTextContent('Could not save your language')
-  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Close' }))
-  expect(screen.getAllByRole('alert')).toHaveLength(1)
+  expect(within(screen.getByRole('banner')).getByRole('alert')).toHaveTextContent('Could not save your language')
 })

@@ -20,4 +20,9 @@ The user authorized local commits and merges after both features were implemente
 - `codex/delete-cards-and-statuses`: all 9 tasks complete; strict OpenSpec validation and final `npm run check` pass (93 unit and 15 browser tests). Review found and fixed the committed-deletion/failed-refresh error contract. Commit `63caaab`.
 - Temporary preview `/private/tmp/traker-combined-review` combined uncommitted work for early checks. Its full `npm run check` passed (96 unit and 19 browser tests). It exposed the last-status focus issue, which was fixed in the deletion branch before merging.
 - Integration merge commits: `729a1dc` (app bar) and `da39a32` (deletion). The first merge passed `npm run check` (76 unit, 17 browser tests); the second passed (97 unit, 19 browser tests). One UI conflict was resolved with the already tested preview version. An integration-only browser assertion now verifies that deletion dialogs have no second language selector.
-- No branch has been pushed, no PR exists, and OpenSpec changes remain active pending Git delivery and later confirmation of merge into `main`.
+- At this checkpoint, no branch had been pushed, no PR existed, and both OpenSpec changes remained active pending Git delivery.
+
+## Delivery recorded on 2026-10-23
+
+- The integration branch was pushed, and PR #12 merged into `main` as `41506b0`.
+- Both completed changes were synced into the main specifications and archived in `codex/archive-active-changes` after merge confirmation.

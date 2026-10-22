@@ -22,11 +22,15 @@ The system SHALL use Russian when the browser's primary preferred language is Ru
 - **THEN** the interface follows the new browser preference according to the Russian/English fallback rule
 
 ### Requirement: User can select and retain an interface language
-The system SHALL provide an accessible Russian/English selector in every application state. A selection SHALL take effect without reloading, apply across all projects in the current storage context, and override browser preference on later visits.
+The system SHALL provide exactly one accessible Russian/English selector in the application bar on every workspace and service screen. The selector SHALL be unavailable while a modal dialog is open and SHALL be available again when the dialog closes. A selection SHALL take effect without reloading, apply across all projects in the current storage context, and override browser preference on later visits.
 
 #### Scenario: User switches language while editing
-- **WHEN** the user changes language with a project open and text entered in an unfinished form
-- **THEN** application text changes immediately while the project and entered text remain in place
+- **WHEN** the user closes an unfinished create or rename dialog and changes language in the application bar while viewing a project
+- **THEN** application text changes immediately while the same project remains open, and no language selector appears inside the dialog
+
+#### Scenario: User opens and closes a modal dialog
+- **WHEN** the user opens a create, rename, move, or installation-guidance dialog and then closes it
+- **THEN** no language selector appears in the dialog, the application bar remains its sole location, and the selector is usable again after the dialog closes
 
 #### Scenario: User returns after selecting English
 - **WHEN** the user selects English, closes EasyTrack, and opens it again in the same browser or installed-app storage context

@@ -1,5 +1,5 @@
-import { moveByOffset } from '../../domain/order'
-import type { Card, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../../domain/model'
+import { moveByOffset, placeCardInGroup } from '../../domain/order'
+import type { Card, CardInput, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../../domain/model'
 import type { NewCard, NewStatus, ProjectBoardRepository } from '../../application/repository'
 import { ProjectBoardDatabase } from './database'
 
@@ -55,14 +55,29 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
   }
 
   async createCard(card: NewCard): Promise<Card> {
-    if (!await this.db.statuses.get(card.statusId)) throw new Error('Статус не найден')
-    const position = await this.db.cards.where('statusId').equals(card.statusId).count()
-    const saved = { ...card, position }
-    await this.db.cards.add(saved)
-    return saved
+    return this.db.transaction('rw', this.db.statuses, this.db.cards, async () => {
+      if (!await this.db.statuses.get(card.statusId)) throw new Error('Статус не найден')
+      if (await this.db.cards.get(card.id)) throw new Error('Карточка уже существует')
+      const cards = await this.db.cards.where('statusId').equals(card.statusId).sortBy('position')
+      const ordered = placeCardInGroup(cards, { ...card, position: 0 })
+      await this.db.cards.bulkPut(ordered)
+      return ordered.find(item => item.id === card.id)!
+    })
   }
 
-  async renameCard(id: Id, name: string) { await this.db.cards.update(id, { name }) }
+  async updateCard(id: Id, input: CardInput) {
+    await this.db.transaction('rw', this.db.cards, async () => {
+      const card = await this.db.cards.get(id)
+      if (!card) throw new Error('Карточка не найдена')
+      const updated = { ...card, name: input.name, important: input.important, urgent: input.urgent }
+      if (card.important === input.important && card.urgent === input.urgent) {
+        await this.db.cards.put(updated)
+        return
+      }
+      const cards = await this.db.cards.where('statusId').equals(card.statusId).sortBy('position')
+      await this.db.cards.bulkPut(placeCardInGroup(cards, updated))
+    })
+  }
 
   async moveCard(id: Id, statusId: Id) {
     await this.db.transaction('rw', this.db.cards, this.db.statuses, async () => {
@@ -72,8 +87,8 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
       const sourceStatus = await this.db.statuses.get(card.statusId)
       if (!destination || !sourceStatus || destination.projectId !== sourceStatus.projectId) throw new Error('Нельзя перенести карточку в другой проект')
       const source = await this.db.cards.where('statusId').equals(card.statusId).sortBy('position')
-      const destinationPosition = await this.db.cards.where('statusId').equals(statusId).count()
-      await this.db.cards.put({ ...card, statusId, position: destinationPosition })
+      const targetCards = await this.db.cards.where('statusId').equals(statusId).sortBy('position')
+      await this.db.cards.bulkPut(placeCardInGroup(targetCards, { ...card, statusId }))
       await this.db.cards.bulkPut(source.filter(item => item.id !== id).map((item, position) => ({ ...item, position })))
     })
   }

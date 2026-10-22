@@ -1,4 +1,4 @@
-import { requiredName, type Id } from '../domain/model'
+import { requiredName, type CardInput, type Id } from '../domain/model'
 import type { ProjectBoardRepository } from './repository'
 
 export type IdGenerator = () => Id
@@ -29,8 +29,8 @@ export function createProjectBoardUseCases(dependencies: {
     createStatus: (projectId: Id, input: string) => repository.createStatus({ id: createId(), projectId, name: name(input) }),
     renameStatus: (id: Id, input: string) => repository.renameStatus(id, name(input)),
     moveStatus: (id: Id, direction: -1 | 1) => repository.moveStatus(id, direction),
-    createCard: (statusId: Id, input: string) => repository.createCard({ id: createId(), statusId, name: name(input) }),
-    renameCard: (id: Id, input: string) => repository.renameCard(id, name(input)),
+    createCard: (statusId: Id, input: CardInput) => repository.createCard({ id: createId(), statusId, name: name(input.name), important: input.important, urgent: input.urgent }),
+    updateCard: (id: Id, input: CardInput) => repository.updateCard(id, { name: name(input.name), important: input.important, urgent: input.urgent }),
     moveCard: (id: Id, statusId: Id) => repository.moveCard(id, statusId),
   }
 }

@@ -19,7 +19,7 @@ describe('DexieProjectBoardRepository', () => {
       { id: 'found', projectId: 'project', name: 'Найдено', position: 0 },
       { id: 'viewing', projectId: 'project', name: 'Просмотр', position: 1 },
     ])
-    await database.cards.add({ id: 'card', statusId: 'found', name: 'Квартира у парка', position: 0 })
+    await database.cards.add({ id: 'card', statusId: 'found', name: 'Квартира у парка', position: 0, important: false, urgent: false })
     await repo.moveStatus('viewing', -1)
     await repo.moveCard('card', 'viewing')
     expect((await repo.board('project'))?.statuses.map(status => status.name)).toEqual(['Просмотр', 'Найдено'])
@@ -36,4 +36,67 @@ describe('DexieProjectBoardRepository', () => {
     await repo.createStatus({ id: 'status', projectId: 'first', name: 'Найдено' })
     expect((await repo.board('second'))?.statuses).toEqual([])
   })
+})
+
+
+async function populated() {
+  const fixture = repository(); const { repository: repo } = fixture
+  await repo.createProject({ id: 'p', name: 'P', createdAt: 'now' })
+  await repo.createProject({ id: 'q', name: 'Q', createdAt: 'later' })
+  for (const [id, projectId] of [['s', 'p'], ['t', 'p'], ['foreign', 'q']]) await repo.createStatus({ id, projectId, name: id })
+  const add = (id: string, important = false, urgent = false, statusId = 's') => repo.createCard({ id, statusId, name: id, important, urgent })
+  return { ...fixture, add }
+}
+it('creates and edits at group tails with dense positions while unchanged flags preserve place', async () => {
+  const { repository: repo, add } = await populated()
+  await add('none'); await add('both', true, true); await add('urgent', false, true); await add('important', true); await add('peer', true, true)
+  const cards = async () => (await repo.board('p'))!.statuses[0].cards
+  expect((await cards()).map(card => card.id)).toEqual(['both', 'peer', 'important', 'urgent', 'none'])
+  await repo.updateCard('both', { name: 'Renamed', important: true, urgent: true })
+  expect((await cards())[0].name).toBe('Renamed')
+  await repo.updateCard('both', { name: 'Changed', important: false, urgent: true })
+  expect((await cards()).map(card => card.id)).toEqual(['peer', 'important', 'urgent', 'both', 'none'])
+  await repo.updateCard('both', { name: 'Back', important: true, urgent: true })
+  expect((await cards()).map(card => card.id)).toEqual(['peer', 'both', 'important', 'urgent', 'none'])
+  expect((await cards()).map(card => card.position)).toEqual([0, 1, 2, 3, 4])
+  await expect(repo.updateCard('missing', { name: 'X', important: true, urgent: false })).rejects.toThrow()
+})
+it('moves into group tails, compacts sources, preserves peers, and rejects cross-project moves', async () => {
+  const { repository: repo, add } = await populated()
+  await add('a', true); await add('b', true); await add('c'); await add('peer', true, false, 't'); await add('tail', false, false, 't')
+  await repo.moveCard('a', 't')
+  let board = (await repo.board('p'))!
+  expect(board.statuses.map(status => status.cards.map(card => card.id))).toEqual([['b', 'c'], ['peer', 'a', 'tail']])
+  await repo.moveCard('a', 's'); await repo.moveCard('b', 's')
+  board = (await repo.board('p'))!
+  expect(board.statuses[0].cards.map(card => card.id)).toEqual(['b', 'a', 'c'])
+  expect(board.statuses[0].cards.map(card => card.position)).toEqual([0, 1, 2])
+  expect(board.statuses[0].cards[1]).toMatchObject({ important: true, urgent: false })
+  await expect(repo.moveCard('a', 'foreign')).rejects.toThrow('другой проект')
+  expect(await repo.board('p')).toEqual(board)
+})
+it.each(['create', 'update', 'move'])('rolls back fields and ordering when %s fails partway through a write', async operation => {
+  const { repository: repo, database, add } = await populated()
+  await add('a', true); await add('b'); await add('target', false, false, 't')
+  const before = await repo.board('p')
+  const original = database.cards.bulkPut.bind(database.cards)
+  vi.spyOn(database.cards, 'bulkPut').mockImplementationOnce((...args: Parameters<typeof original>) => original(...args).then(() => { throw new Error('quota') }))
+  const action = operation === 'create' ? add('new', true, true) : operation === 'update' ? repo.updateCard('b', { name: 'New', important: true, urgent: true }) : repo.moveCard('a', 't')
+  await expect(action).rejects.toThrow('quota')
+  expect(await repo.board('p')).toEqual(before)
+})
+it('serializes concurrent creates without losing cards or duplicating positions', async () => {
+  const { repository: repo, add } = await populated()
+  await Promise.all([add('a', true), add('b', true), add('c', false, true)])
+  expect((await repo.board('p'))!.statuses[0].cards.map(card => card.position)).toEqual([0, 1, 2])
+})
+
+it('edits only editable fields even when a stale UI object includes status and position', async () => {
+  const { repository: repo, add } = await populated()
+  const stale = await add('a', true)
+  await add('b', true, false, 't'); await repo.moveCard('a', 't')
+  await repo.updateCard('a', { ...stale, name: 'Edited' })
+  const cards = (await repo.board('p'))!.statuses[1].cards
+  expect(cards.map(card => card.id)).toEqual(['b', 'a'])
+  expect(cards[1]).toMatchObject({ name: 'Edited', position: 1, statusId: 't', important: true, urgent: false })
 })

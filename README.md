@@ -61,7 +61,7 @@ EasyTrack можно установить как самостоятельное 
 
 ## Публикация на GitHub Pages
 
-После первого merge в `main` владелец репозитория один раз выбирает **GitHub Actions** в GitHub: **Settings → Pages → Build and deployment → Source**. Workflow `deploy-pages.yml` затем автоматически собирает `dist`, публикует его на `https://seraflab.github.io/tracker/` и проверяет этот адрес после deploy.
+Агент отправляет готовую ветку и создаёт PR в `main`. После обязательной проверки `check` PR сливается методом squash без нового запроса разработчику: через GitHub auto-merge, если включена настройка **Allow auto-merge**, либо агентом после результата CI. Workflow `deploy-pages.yml` затем автоматически собирает `dist`, публикует его на `https://seraflab.github.io/tracker/` и проверяет адрес после deploy. Источник Pages — **GitHub Actions** в **Settings → Pages → Build and deployment → Source**.
 
 ## Проверка доски проектов перед релизом
 

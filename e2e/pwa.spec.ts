@@ -29,7 +29,8 @@ test('delivers the manifest and keeps local projects usable offline', async ({ p
   expect(metadata.iconStatuses).toEqual([200, 200])
   expect(metadata.registration).toBe(true)
 
-  await page.getByLabel('Новый проект').fill('Поиск квартиры')
+  await page.getByRole('button', { name: 'Создать проект' }).click()
+  await page.getByLabel('Название проекта').fill('Поиск квартиры')
   await page.getByRole('button', { name: 'Создать проект' }).click()
   await expect(page.getByRole('heading', { name: 'Поиск квартиры' })).toBeVisible()
   await context.setOffline(true)
@@ -100,24 +101,28 @@ for (const locale of ['ru', 'en'] as const) {
 }
 
 for (const width of [1280, 320]) {
-  test(`switches language by pointer and keyboard inside an unfinished dialog at ${width}px`, async ({ page }) => {
+  test(`switches language after closing an unfinished dialog at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
     await page.goto(app)
-    await page.getByLabel('Новый проект').fill('Мой проект')
+    await page.getByRole('button', { name: 'Создать проект' }).click()
+    await page.getByLabel('Название проекта').fill('Мой проект')
     await page.getByRole('button', { name: 'Создать проект' }).click()
     await expect(page.getByRole('heading', { name: 'Мой проект' })).toBeVisible()
     await page.getByRole('button', { name: 'Добавить статус' }).first().click()
     await page.getByLabel('Название статуса').fill('Незавершённый черновик')
     const dialog = page.getByRole('dialog')
-    const selector = dialog.getByRole('combobox')
-    // A real click must reach the control rather than the backdrop and retain the draft.
-    await selector.click()
-    await page.keyboard.press('e')
-    await page.keyboard.press('Enter')
-    await expect(dialog).toHaveAccessibleName('New status')
+    await expect(dialog.getByRole('combobox')).toHaveCount(0)
+    await expect(page.getByRole('combobox')).toHaveCount(0)
+    await page.keyboard.press('Escape')
+    const selector = page.getByRole('combobox')
+    await selector.focus()
+    await selector.selectOption('en')
     await expect(selector).toBeFocused()
-    await expect(dialog.getByLabel('Status name')).toHaveValue('Незавершённый черновик')
     await expect(page.getByRole('heading', { name: 'Мой проект' })).toBeVisible()
+    await page.getByRole('button', { name: 'Add status' }).click()
+    await expect(dialog).toHaveAccessibleName('New status')
+    await expect(dialog.getByLabel('Status name')).toHaveValue('')
+    await dialog.getByLabel('Status name').fill('Незавершённый черновик')
     await dialog.getByRole('button', { name: 'Create status' }).click()
     await expect(page.getByRole('heading', { name: 'Незавершённый черновик' })).toBeVisible()
   })

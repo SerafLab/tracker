@@ -1,3 +1,4 @@
+import { AppBar } from '../../../ui/app-bar'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'zustand'
 import type { Id } from '../domain/model'
@@ -22,9 +23,11 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   const createCard = useStore(store, state => state.createCard)
   const updateCard = useStore(store, state => state.updateCard)
   const moveCard = useStore(store, state => state.moveCard)
+  const deleteCard = useStore(store, state => state.deleteCard)
+  const deleteStatus = useStore(store, state => state.deleteStatus)
 
-  if (workspace.kind === 'loading') return <main className="app-shell" aria-busy="true"><div className="loading-shell"><p className="muted-copy">{t('loading')}</p><div className="skeleton skeleton-title" /><div className="skeleton-columns"><div className="skeleton skeleton-column" /><div className="skeleton skeleton-column" /></div></div></main>
-  if (workspace.kind === 'unavailable') return <main className="app-shell"><section className="unavailable-state surface-card"><h1>{t('unavailable')}</h1><p role="alert">{t('unavailableHelp')}</p></section></main>
+  if (workspace.kind === 'loading') return <><AppBar title={t('loading')} /><main className="app-shell" aria-busy="true"><div className="loading-shell"><div className="skeleton skeleton-title" /><div className="skeleton-columns"><div className="skeleton skeleton-column" /><div className="skeleton skeleton-column" /></div></div></main></>
+  if (workspace.kind === 'unavailable') return <><AppBar title={t('unavailable')} /><main className="app-shell"><section className="unavailable-state surface-card"><p role="alert">{t('unavailableHelp')}</p></section></main></>
   if (workspace.kind === 'catalogue') return <ProjectCatalogueView projects={workspace.projects} saveError={saveError}
     onCreate={async name => { const id = await createProject(name); if (id) { onMutationSaved?.(); await navigateToProject(id) } }}
     onOpen={navigateToProject}
@@ -40,6 +43,8 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
     onMoveStatus={async (statusId, direction) => { if (await moveStatus(board.id, statusId, direction)) onMutationSaved?.() }}
     onCreateCard={async (statusId, name) => { const saved = await createCard(board.id, statusId, name); if (saved) onMutationSaved?.(); return saved }}
     onUpdateCard={async (cardId, name) => { const saved = await updateCard(board.id, cardId, name); if (saved) onMutationSaved?.(); return saved }}
+    onDeleteCard={async cardId => { const saved = await deleteCard(board.id, cardId); if (saved) onMutationSaved?.(); return saved }}
+    onDeleteStatus={async statusId => { const result = await deleteStatus(board.id, statusId); if (result === 'deleted') onMutationSaved?.(); return result }}
     onMoveCard={async (cardId, statusId) => { const saved = await moveCard(board.id, cardId, statusId); if (saved) onMutationSaved?.(); return saved }}
   />
 }

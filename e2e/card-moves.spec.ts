@@ -4,7 +4,8 @@ for (const width of [320, 1280]) {
   test(`keeps card move controls readable and keyboard focus on the card at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 844 })
     await page.goto('/tracker/')
-    await page.getByLabel('Новый проект').fill('Доска')
+    await page.getByRole('button', { name: 'Создать проект' }).click()
+    await page.getByLabel('Название проекта').fill('Доска')
     await page.getByRole('button', { name: 'Создать проект' }).click()
     for (const name of ['Первый', 'Средний', 'Последний']) {
       await page.getByRole('button', { name: 'Добавить статус' }).first().click()

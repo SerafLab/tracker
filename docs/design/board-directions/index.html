@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>EasyTrack — два направления</title><link rel="stylesheet" href="./preview.css"></head>
+<body data-direction="a">
+<a class="skip-link" href="#main-content">Перейти к доске / Skip to board</a>
+<aside class="preview-panel" aria-label="Сравнение вариантов дизайна">
+  <div class="preview-top"><strong>Два направления EasyTrack</strong><div class="switch" role="group" aria-label="Вариант дизайна"><button data-variant="a" aria-pressed="true">A · Спокойная доска</button><button data-variant="b" aria-pressed="false">B · Чёткий порядок</button></div><button class="reset" id="reset">Сбросить пример</button></div>
+  <p id="direction-note">A — больше воздуха, отдельные карточки и тёплая поверхность. Для спокойного просмотра личных дел.</p>
+  <p class="demo-note">Интерактивные варианты на одинаковых демонстрационных данных. Изменения общие для A/B и не сохраняются после перезагрузки.</p>
+</aside>
+<div id="application"></div>
+<div id="feedback" class="sr-only" role="status" aria-live="polite"></div>
+<div id="menu" class="action-menu" popover="manual" role="menu"></div>
+<dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+<script type="module" src="./preview.js"></script>
+</body></html>

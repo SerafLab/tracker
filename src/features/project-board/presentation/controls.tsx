@@ -1,8 +1,9 @@
 import { registerModal } from '../../../ui/modal-state'
 import { useTranslation } from 'react-i18next'
-import { useEffect, useEffectEvent, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useEffectEvent, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
 import type { CardInput } from '../domain/model'
+import { BoardIcon } from './board-icon'
 
 type Action = { label: string; onSelect: () => void; disabled?: boolean }
 
@@ -11,24 +12,59 @@ export function ActionMenu({ label, actions, triggerRef }: { label: string; acti
   const localButton = useRef<HTMLButtonElement>(null)
   const button = triggerRef ?? localButton
   const menu = useRef<HTMLDivElement>(null)
+  useLayoutEffect(() => {
+    if (!open || !menu.current || !button.current) return
+    const panel = menu.current
+    panel.showPopover()
+    const position = (afterScroll = false) => {
+      if (!button.current) return
+      const trigger = button.current.getBoundingClientRect()
+      const bounds = panel.getBoundingClientRect()
+      if (afterScroll && (trigger.bottom <= 0 || trigger.top >= window.innerHeight || trigger.right <= 0 || trigger.left >= window.innerWidth)) {
+        setOpen(false)
+        return
+      }
+      panel.style.left = `${Math.max(8, Math.min(window.innerWidth - bounds.width - 8, trigger.right - bounds.width))}px`
+      panel.style.top = `${Math.max(8, Math.min(window.innerHeight - bounds.height - 8, trigger.bottom + 6))}px`
+    }
+    const onScroll = (event: Event) => {
+      if (!(event.target instanceof Node) || !panel.contains(event.target)) position(true)
+    }
+    position()
+    document.addEventListener('scroll', onScroll, true)
+    return () => document.removeEventListener('scroll', onScroll, true)
+  }, [open, button])
   useEffect(() => {
     if (!open) return
-    menu.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
+    menu.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
     const closeOnOutsideInteraction = (event: Event) => {
       if (event.target instanceof Node && !button.current?.contains(event.target) && !menu.current?.contains(event.target)) setOpen(false)
     }
-    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') { setOpen(false); button.current?.focus() } }
+    const closeOnKeyboard = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); setOpen(false); button.current?.focus() }
+      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+        event.preventDefault()
+        const items = Array.from(menu.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])
+        const index = items.indexOf(document.activeElement as HTMLButtonElement)
+        items[(index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
+      }
+    }
+    const closeOnViewportChange = (event: Event) => {
+      if (!(event.target instanceof Node) || !menu.current?.contains(event.target)) setOpen(false)
+    }
     document.addEventListener('pointerdown', closeOnOutsideInteraction)
     document.addEventListener('focusin', closeOnOutsideInteraction)
-    document.addEventListener('keydown', closeOnEscape)
+    document.addEventListener('keydown', closeOnKeyboard)
+    window.addEventListener('resize', closeOnViewportChange)
     return () => {
       document.removeEventListener('pointerdown', closeOnOutsideInteraction)
       document.removeEventListener('focusin', closeOnOutsideInteraction)
-      document.removeEventListener('keydown', closeOnEscape)
+      document.removeEventListener('keydown', closeOnKeyboard)
+      window.removeEventListener('resize', closeOnViewportChange)
     }
   }, [open])
-  return <div className="menu"><button ref={button} className="button button-quiet button-icon" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}>•••</button>
-    {open ? <div ref={menu} className="menu-items" role="menu" aria-label={label}>{actions.map(action => <button className="menu-item" role="menuitem" key={action.label} disabled={action.disabled} onClick={() => { setOpen(false); button.current?.focus(); action.onSelect() }}>{action.label}</button>)}</div> : null}
+  return <div className="menu"><button ref={button} className="button button-quiet button-icon" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}><BoardIcon name="more" /></button>
+    {open ? <div ref={menu} className="menu-items" popover="manual" role="menu" aria-label={label}>{actions.map(action => <button className="menu-item" role="menuitem" key={action.label} disabled={action.disabled} onClick={() => { setOpen(false); button.current?.focus(); action.onSelect() }}>{action.label}</button>)}</div> : null}
   </div>
 }
 
@@ -66,7 +102,7 @@ export function ActionDialog({ title, children, onClose, returnFocus }: { title:
       })
     }
   }, [])
-  return <div className="dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><section ref={panel} className="action-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={event => event.stopPropagation()}><header className="dialog-header"><h2 id={titleId} className="dialog-title">{title}</h2><button className="button button-quiet button-icon" aria-label={t('close')} onClick={onClose}>×</button></header>{children}</section></div>
+  return <div className="dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><section ref={panel} className="action-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={event => event.stopPropagation()}><header className="dialog-header"><h2 id={titleId} className="dialog-title">{title}</h2><button className="button button-quiet button-icon" aria-label={t('close')} onClick={onClose}><BoardIcon name="close" /></button></header>{children}</section></div>
 }
 
 export function NameForm({ label, button, initialName = '', onSubmit, onCancel }: { label: string; button: string; initialName?: string; onSubmit: (name: string) => Promise<void>; onCancel?: () => void }) {

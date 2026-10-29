@@ -2,6 +2,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Card, CardInput, Id, Status } from '../domain/model'
 import { ActionDialog, ActionMenu, CardDialog } from './controls'
+import { BoardIcon } from './board-icon'
 
 export type CardMoveFocus = 'left' | 'right' | 'menu'
 
@@ -55,11 +56,11 @@ export function CardView({ card, statuses, previousStatus, nextStatus, saveError
 
   return <li className="work-card surface-card" data-card-id={card.id}>
     <span className="card-name">{card.name}</span>
-    <div className="card-badges">{card.important ? <span className="card-badge">{t('important')}</span> : null}{card.urgent ? <span className="card-badge">{t('urgent')}</span> : null}</div>
+    <div className="card-badges">{card.important ? <span className="card-badge card-badge-important"><BoardIcon name="important" />{t('important')}</span> : null}{card.urgent ? <span className="card-badge card-badge-urgent"><BoardIcon name="urgent" />{t('urgent')}</span> : null}</div>
     <div className="card-controls">
       <div className="card-move-arrows" role="group" aria-label={t('moveCardActions', { name: card.name })}>
-        <button className="button button-quiet button-icon" data-card-move="left" aria-label={previousStatus ? t('moveAdjacentLeft', { name: previousStatus.name }) : t('moveLeft')} disabled={!previousStatus || saving} onClick={event => { if (previousStatus) void move(previousStatus.id, event.detail === 0 ? 'left' : undefined) }}>←</button>
-        <button className="button button-quiet button-icon" data-card-move="right" aria-label={nextStatus ? t('moveAdjacentRight', { name: nextStatus.name }) : t('moveRight')} disabled={!nextStatus || saving} onClick={event => { if (nextStatus) void move(nextStatus.id, event.detail === 0 ? 'right' : undefined) }}>→</button>
+        <button className="button button-quiet button-icon" data-card-move="left" aria-label={previousStatus ? t('moveAdjacentLeft', { name: previousStatus.name }) : t('moveLeft')} disabled={!previousStatus || saving} onClick={event => { if (previousStatus) void move(previousStatus.id, event.detail === 0 ? 'left' : undefined) }}><BoardIcon name="left" /></button>
+        <button className="button button-quiet button-icon" data-card-move="right" aria-label={nextStatus ? t('moveAdjacentRight', { name: nextStatus.name }) : t('moveRight')} disabled={!nextStatus || saving} onClick={event => { if (nextStatus) void move(nextStatus.id, event.detail === 0 ? 'right' : undefined) }}><BoardIcon name="right" /></button>
       </div>
       <ActionMenu triggerRef={menuTrigger} label={t('cardActions', { name: card.name })} actions={[{ label: t('edit'), onSelect: () => setRenaming(true) }, ...(otherStatuses.length ? [{ label: t('moveToOther'), onSelect: () => { setDestination(otherStatuses[0].id); setMoving(true) } }] : []), { label: t('delete'), onSelect: () => onDelete(menuTrigger) }]} />
     </div>

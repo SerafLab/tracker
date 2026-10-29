@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { CardInput, Id, ProjectBoard, Status } from '../domain/model'
 import { AppBar } from '../../../ui/app-bar'
 import { CardView, type CardMoveFocus } from './card-view'
+import { BoardIcon } from './board-icon'
 import { ActionMenu, CardDialog, NameDialog } from './controls'
 import { DeleteDialog } from './delete-dialog'
 import type { DeleteStatusStateResult } from '../state/project-board-store'
@@ -77,16 +78,44 @@ export function ProjectBoardView({ board, saveError, onReturn, onRenameProject, 
   const [creatingStatus, setCreatingStatus] = useState(false)
   const [renamingProject, setRenamingProject] = useState(false)
   const projectMenu = useRef<HTMLButtonElement>(null)
-  return <><AppBar title={board.name} navigation={<button className="button button-quiet" onClick={() => void onReturn()}>{t('allProjects')}</button>} actions={<><ActionMenu triggerRef={projectMenu} label={t('projectActions', { name: board.name })} actions={[{ label: t('rename'), onSelect: () => setRenamingProject(true) }]} /><button ref={addStatusTrigger} className="button button-primary" onClick={() => setCreatingStatus(true)}>{t('addStatus')}</button></>} /><main ref={root} className="app-shell">
-    {saveError ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
-    {board.statuses.length === 0 ? <section className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p></section> : null}
-    <section className="status-columns" aria-label={t('statuses')}>
-      {board.statuses.map((status, index) => <StatusColumn key={status.id} status={status} index={index} total={board.statuses.length} statuses={statuses} saveError={saveError} onDeleteStatus={returnFocus => setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus })} onDeleteCard={(cardId, returnFocus) => { const card = status.cards.find(item => item.id === cardId); if (card) setDeleting({ kind: 'card', id: card.id, statusId: status.id, name: card.name, returnFocus }) }} onMoveDialogChange={setMoveDialogCardId} onRename={name => onRenameStatus(status.id, name)} onMove={direction => onMoveStatus(status.id, direction)} onCreateCard={name => onCreateCard(status.id, name)} onUpdateCard={(cardId, name) => onUpdateCard(cardId, name)} onMoveCard={moveCard} />)}
-    </section>
-    {deleting ? <DeleteDialog kind={deleting.kind} name={deleting.name} blocked={deleting.kind === 'status' && !!board.statuses.find(status => status.id === deleting.id)?.cards.length} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}
-    {creatingStatus ? <NameDialog title={t('newStatus')} label={t('statusName')} button={t('createStatus')} onSubmit={onCreateStatus} onClose={() => setCreatingStatus(false)} /> : null}
-    {renamingProject ? <NameDialog returnFocus={projectMenu} title={t('renameProject')} label={t('newName')} button={t('save')} initialName={board.name} onSubmit={onRenameProject} onClose={() => setRenamingProject(false)} /> : null}
-  </main></>
+  return <>
+    <AppBar
+      title={board.name}
+      navigation={<button className="button button-quiet" onClick={() => void onReturn()}><BoardIcon name="left" />{t('allProjects')}</button>}
+      actions={<>
+        <ActionMenu triggerRef={projectMenu} label={t('projectActions', { name: board.name })} actions={[{ label: t('rename'), onSelect: () => setRenamingProject(true) }]} />
+        <button ref={addStatusTrigger} className="button button-primary" onClick={() => setCreatingStatus(true)}><BoardIcon name="plus" />{t('addStatus')}</button>
+      </>}
+    />
+    <main ref={root} className="app-shell">
+      {saveError ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
+      {board.statuses.length === 0 ? <section className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p></section> : null}
+      <section className="status-columns" aria-label={t('statuses')}>
+        {board.statuses.map((status, index) => <StatusColumn
+          key={status.id}
+          status={status}
+          index={index}
+          total={board.statuses.length}
+          statuses={statuses}
+          saveError={saveError}
+          onDeleteStatus={returnFocus => setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus })}
+          onDeleteCard={(cardId, returnFocus) => {
+            const card = status.cards.find(item => item.id === cardId)
+            if (card) setDeleting({ kind: 'card', id: card.id, statusId: status.id, name: card.name, returnFocus })
+          }}
+          onMoveDialogChange={setMoveDialogCardId}
+          onRename={name => onRenameStatus(status.id, name)}
+          onMove={direction => onMoveStatus(status.id, direction)}
+          onCreateCard={input => onCreateCard(status.id, input)}
+          onUpdateCard={(cardId, input) => onUpdateCard(cardId, input)}
+          onMoveCard={moveCard}
+        />)}
+      </section>
+      {deleting ? <DeleteDialog kind={deleting.kind} name={deleting.name} blocked={deleting.kind === 'status' && !!board.statuses.find(status => status.id === deleting.id)?.cards.length} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}
+      {creatingStatus ? <NameDialog title={t('newStatus')} label={t('statusName')} button={t('createStatus')} onSubmit={onCreateStatus} onClose={() => setCreatingStatus(false)} /> : null}
+      {renamingProject ? <NameDialog returnFocus={projectMenu} title={t('renameProject')} label={t('newName')} button={t('save')} initialName={board.name} onSubmit={onRenameProject} onClose={() => setRenamingProject(false)} /> : null}
+    </main>
+  </>
 }
 
 type StatusColumnProps = {
@@ -111,5 +140,33 @@ function StatusColumn({ status, index, total, statuses, saveError, onMoveDialogC
   const menuTrigger = useRef<HTMLButtonElement>(null)
   const createTrigger = useRef<HTMLButtonElement>(null)
   const [creatingCard, setCreatingCard] = useState(false)
-  return <article className="status-column" data-status-id={status.id}><header className="column-header"><div><h2 className="column-title">{status.name}</h2><p className="card-count">{t('cardCount', { count: status.cards.length })}</p></div><ActionMenu triggerRef={menuTrigger} label={t('statusActions', { name: status.name })} actions={[{ label: t('rename'), onSelect: () => setRenaming(true) }, { label: t('moveLeft'), disabled: index === 0, onSelect: () => void onMove(-1) }, { label: t('moveRight'), disabled: index === total - 1, onSelect: () => void onMove(1) }, { label: t('delete'), onSelect: () => onDeleteStatus(menuTrigger) }]} /></header><button ref={createTrigger} className="button button-quiet add-card" onClick={() => setCreatingCard(true)}>{t('addCard')}</button><ul className="card-list">{status.cards.map(card => <CardView key={card.id} card={card} onDelete={returnFocus => onDeleteCard(card.id, returnFocus)} statuses={statuses} saveError={saveError} onMoveDialogChange={onMoveDialogChange} previousStatus={statuses[index - 1]} nextStatus={statuses[index + 1]} onUpdate={input => onUpdateCard(card.id, input)} onMove={(statusId, focus) => onMoveCard(card.id, statusId, focus)} />)}</ul>{renaming ? <NameDialog title={t('renameStatus')} label={t('newName')} button={t('save')} initialName={status.name} onSubmit={onRename} onClose={() => setRenaming(false)} /> : null}{creatingCard ? <CardDialog title={t('newCard')} returnFocus={createTrigger} button={t('createCard')} onSubmit={onCreateCard} onClose={() => setCreatingCard(false)} /> : null}</article>
+  return <article className="status-column" data-status-id={status.id}>
+    <header className="column-header">
+      <div className="column-heading">
+        <h2 className="column-title">{status.name}</h2>
+        <span className="card-count"><span aria-hidden="true">{status.cards.length}</span><span className="sr-only">{t('cardCount', { count: status.cards.length })}</span></span>
+      </div>
+      <ActionMenu triggerRef={menuTrigger} label={t('statusActions', { name: status.name })} actions={[
+        { label: t('rename'), onSelect: () => setRenaming(true) },
+        { label: t('moveLeft'), disabled: index === 0, onSelect: () => void onMove(-1) },
+        { label: t('moveRight'), disabled: index === total - 1, onSelect: () => void onMove(1) },
+        { label: t('delete'), onSelect: () => onDeleteStatus(menuTrigger) },
+      ]} />
+    </header>
+    <ul className="card-list">{status.cards.map(card => <CardView
+      key={card.id}
+      card={card}
+      onDelete={returnFocus => onDeleteCard(card.id, returnFocus)}
+      statuses={statuses}
+      saveError={saveError}
+      onMoveDialogChange={onMoveDialogChange}
+      previousStatus={statuses[index - 1]}
+      nextStatus={statuses[index + 1]}
+      onUpdate={input => onUpdateCard(card.id, input)}
+      onMove={(statusId, focus) => onMoveCard(card.id, statusId, focus)}
+    />)}</ul>
+    <button ref={createTrigger} className="button button-quiet add-card" onClick={() => setCreatingCard(true)}><BoardIcon name="plus" />{t('addCard')}</button>
+    {renaming ? <NameDialog title={t('renameStatus')} label={t('newName')} button={t('save')} initialName={status.name} onSubmit={onRename} onClose={() => setRenaming(false)} /> : null}
+    {creatingCard ? <CardDialog title={t('newCard')} returnFocus={createTrigger} button={t('createCard')} onSubmit={onCreateCard} onClose={() => setCreatingCard(false)} /> : null}
+  </article>
 }

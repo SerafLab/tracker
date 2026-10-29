@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
+for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] as const) {
   test(`shares app bar controls in ${language} at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 740 })
     await page.goto('/tracker/')
@@ -41,12 +41,12 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
       const locale = element.querySelector('select')!.getBoundingClientRect()
       const controls = element.querySelector('.app-bar-controls')!.getBoundingClientRect()
       const main = document.querySelector('main')!.getBoundingClientRect()
-      return { overflow: document.documentElement.scrollWidth > window.innerWidth, rows: getComputedStyle(inner).gridTemplateRows.split(' ').length, title: title.width, locale: locale.width, controls: controls.width, mainLeft: main.left + parseFloat(getComputedStyle(document.querySelector('main')!).paddingLeft), titleLeft: title.left }
+      return { overflow: document.documentElement.scrollWidth > window.innerWidth, rows: getComputedStyle(inner).gridTemplateRows.split(' ').length, title: title.width, locale: locale.width, controls: controls.width, mainLeft: main.left + parseFloat(getComputedStyle(document.querySelector('main')!).paddingLeft), barLeft: inner.getBoundingClientRect().left + parseFloat(getComputedStyle(inner).paddingLeft) }
     })
     expect(geometry.overflow).toBe(false)
     expect(geometry.rows).toBeLessThanOrEqual(2)
     expect(geometry.title).toBeGreaterThan(0); expect(geometry.locale).toBeGreaterThan(0); expect(geometry.controls).toBeGreaterThan(0)
-    expect(geometry.titleLeft).toBe(geometry.mainLeft)
+    expect(geometry.barLeft).toBe(geometry.mainLeft)
     await page.screenshot({ path: testInfo.outputPath(`app-bar-${language}-${width}.png`), fullPage: true })
     await page.setViewportSize({ width, height: 200 })
     await page.evaluate(() => window.scrollTo(0, 200))

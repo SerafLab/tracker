@@ -8,7 +8,7 @@ export function LocaleSelector() {
   const { t, i18n } = useTranslation()
   const preference = useContext(LocalePreferenceContext)
   if (!preference) return null
-  return <div className="locale-selector"><label className="locale-control"><span>{t('language')}</span><select className="select-input" value={i18n.resolvedLanguage} onChange={event => preference.select(event.target.value as Locale)}><option value="ru" lang="ru">Русский</option><option value="en" lang="en">English</option></select></label>{preference.warning ? <p role="alert">{t('preferenceWarning')}</p> : null}</div>
+  return <div className="locale-selector"><label className="locale-control"><span className="sr-only">{t('language')}</span><select className="select-input" value={i18n.resolvedLanguage} onChange={event => preference.select(event.target.value as Locale)}><option value="ru" lang="ru">RU</option><option value="en" lang="en">EN</option></select></label>{preference.warning ? <p role="alert">{t('preferenceWarning')}</p> : null}</div>
 }
 
 function LocaleShell({ children }: { children: ReactNode }) {

@@ -86,10 +86,11 @@ it.each(['card', 'status'] as const)('keeps the %s and dialog after a storage fa
 
 it('translates deletion menus and dialogs and never offers project deletion', async () => {
   const { user } = await setup(false)
-  await user.click(screen.getByRole('button', { name: 'Действия проекта Project' }))
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
   expect(screen.queryByRole('menuitem', { name: 'Удалить' })).not.toBeInTheDocument()
   await user.keyboard('{Escape}')
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Язык интерфейса' }), 'en')
+  await user.click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Язык приложения' }), 'en')
   await user.click(screen.getByRole('button', { name: 'Status actions for Status' }))
   await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
   const dialog = screen.getByRole('dialog', { name: 'Delete status' })

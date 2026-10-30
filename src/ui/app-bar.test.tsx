@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createRef } from 'react'
@@ -68,4 +68,29 @@ it('closes the top-layer settings when a modal opens and keeps replacement bars 
   view.rerender(<LocaleProvider><AppBar title="Catalogue" /></LocaleProvider>)
   expect(screen.getByRole('banner')).not.toHaveAttribute('inert')
   expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+})
+
+
+it('only dismisses offscreen settings on document scrolling, not resizing or nested scrolling', async () => {
+  let resize = () => {}
+  vi.stubGlobal('ResizeObserver', class {
+    constructor(callback: () => void) { resize = callback }
+    observe() {}
+    disconnect() {}
+  })
+  const user = userEvent.setup()
+  render(<LocaleProvider><AppBar title="Project" /><section data-testid="board-scroller" /></LocaleProvider>)
+  const gear = screen.getByRole('button', {name: 'Настройки'})
+  await user.click(gear)
+  vi.spyOn(gear, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 12, 44, 44))
+  // Full-page capture can briefly change viewport metrics and scroll a nested board.
+  vi.stubGlobal('innerHeight', 1)
+  try {
+    act(() => resize())
+    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    fireEvent.scroll(screen.getByTestId('board-scroller'))
+    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    fireEvent.scroll(document)
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  } finally { vi.unstubAllGlobals() }
 })

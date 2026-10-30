@@ -21,7 +21,6 @@ export function AppBar({ title, onReturn, creation, rename }: { title: string; o
     const position = () => {
       const trigger = gear.current?.getBoundingClientRect()
       if (!trigger) return
-      if (trigger.height > 0 && (trigger.bottom <= 0 || trigger.top >= window.innerHeight)) { setOpen(false); return }
       const bounds = element.getBoundingClientRect()
       element.style.left = `${Math.max(8, Math.min(window.innerWidth - bounds.width - 8, trigger.right - bounds.width))}px`
       element.style.top = `${Math.max(8, Math.min(window.innerHeight - bounds.height - 8, trigger.bottom + 6))}px`
@@ -37,10 +36,17 @@ export function AppBar({ title, onReturn, creation, rename }: { title: string; o
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(position)
     observer?.observe(element)
     if (gear.current?.closest('.app-bar-inner')) observer?.observe(gear.current.closest('.app-bar-inner')!)
+    const scroll = (event: Event) => {
+      // Nested scrollers do not move the application bar.
+      if (event.target !== document) return
+      const trigger = gear.current?.getBoundingClientRect()
+      if (trigger && trigger.height > 0 && (trigger.bottom <= 0 || trigger.top >= window.innerHeight)) setOpen(false)
+      else position()
+    }
     document.addEventListener('pointerdown', outside)
     document.addEventListener('focusin', outside)
     document.addEventListener('keydown', keyboard)
-    document.addEventListener('scroll', position, true)
+    document.addEventListener('scroll', scroll, true)
     window.addEventListener('resize', position)
     element.addEventListener('toggle', toggle)
     return () => {
@@ -48,7 +54,7 @@ export function AppBar({ title, onReturn, creation, rename }: { title: string; o
       document.removeEventListener('pointerdown', outside)
       document.removeEventListener('focusin', outside)
       document.removeEventListener('keydown', keyboard)
-      document.removeEventListener('scroll', position, true)
+      document.removeEventListener('scroll', scroll, true)
       window.removeEventListener('resize', position)
       element.removeEventListener('toggle', toggle)
     }

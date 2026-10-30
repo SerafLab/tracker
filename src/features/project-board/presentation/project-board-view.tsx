@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CardInput, Id, ProjectBoard, Status } from '../domain/model'
+import type { Card, CardInput, Id, ProjectBoard, Status } from '../domain/model'
 import { AppBar } from '../../../ui/app-bar'
 import { CardView, type CardMoveFocus } from './card-view'
 import { BoardIcon } from './board-icon'
@@ -69,12 +69,18 @@ export function ProjectBoardView({ board, saveError, onReturn, onRenameProject, 
     ;(preferred ?? fallback)?.focus({ preventScroll: true })
     setMoveFocus(null)
   }, [moveFocus])
-  const moveCard = async (cardId: Id, statusId: Id, control?: CardMoveFocus) => {
+  const moveCard = useCallback(async (cardId: Id, statusId: Id, control?: CardMoveFocus) => {
     const saved = await onMoveCard(cardId, statusId)
     if (saved && control) setMoveFocus({ cardId, control })
     return saved
-  }
-  const statuses = board.statuses.map(({ cards: _cards, ...status }) => status)
+  }, [onMoveCard])
+  const requestStatusDeletion = useCallback((status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => {
+    setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus })
+  }, [])
+  const requestCardDeletion = useCallback((card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => {
+    setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus })
+  }, [])
+  const statuses = useMemo(() => board.statuses.map(({ cards: _cards, ...status }) => status), [board.statuses])
   const [creatingStatus, setCreatingStatus] = useState(false)
   const [renamingProject, setRenamingProject] = useState(false)
   const projectMenu = useRef<HTMLButtonElement>(null)
@@ -98,16 +104,13 @@ export function ProjectBoardView({ board, saveError, onReturn, onRenameProject, 
           total={board.statuses.length}
           statuses={statuses}
           saveError={saveError}
-          onDeleteStatus={returnFocus => setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus })}
-          onDeleteCard={(cardId, returnFocus) => {
-            const card = status.cards.find(item => item.id === cardId)
-            if (card) setDeleting({ kind: 'card', id: card.id, statusId: status.id, name: card.name, returnFocus })
-          }}
+          onDeleteStatus={requestStatusDeletion}
+          onDeleteCard={requestCardDeletion}
           onMoveDialogChange={setMoveDialogCardId}
-          onRename={name => onRenameStatus(status.id, name)}
-          onMove={direction => onMoveStatus(status.id, direction)}
-          onCreateCard={input => onCreateCard(status.id, input)}
-          onUpdateCard={(cardId, input) => onUpdateCard(cardId, input)}
+          onRename={onRenameStatus}
+          onMove={onMoveStatus}
+          onCreateCard={onCreateCard}
+          onUpdateCard={onUpdateCard}
           onMoveCard={moveCard}
         />)}
       </section>
@@ -124,17 +127,17 @@ type StatusColumnProps = {
   total: number
   statuses: Status[]
   saveError: boolean
-  onDeleteStatus: (returnFocus: React.RefObject<HTMLButtonElement | null>) => void
-  onDeleteCard: (cardId: Id, returnFocus: React.RefObject<HTMLButtonElement | null>) => void
+  onDeleteStatus: (status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => void
+  onDeleteCard: (card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => void
   onMoveDialogChange: (cardId: Id | null) => void
-  onRename: (name: string) => Promise<void>
-  onMove: (direction: -1 | 1) => Promise<void>
-  onCreateCard: (input: CardInput) => Promise<boolean>
+  onRename: (statusId: Id, name: string) => Promise<void>
+  onMove: (statusId: Id, direction: -1 | 1) => Promise<void>
+  onCreateCard: (statusId: Id, input: CardInput) => Promise<boolean>
   onUpdateCard: (cardId: Id, input: CardInput) => Promise<boolean>
   onMoveCard: (cardId: Id, statusId: Id, focus?: CardMoveFocus) => Promise<boolean>
 }
 
-function StatusColumn({ status, index, total, statuses, saveError, onMoveDialogChange, onRename, onMove, onCreateCard, onUpdateCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
+const StatusColumn = memo(function StatusColumn({ status, index, total, statuses, saveError, onMoveDialogChange, onRename, onMove, onCreateCard, onUpdateCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const menuTrigger = useRef<HTMLButtonElement>(null)
@@ -148,25 +151,25 @@ function StatusColumn({ status, index, total, statuses, saveError, onMoveDialogC
       </div>
       <ActionMenu triggerRef={menuTrigger} label={t('statusActions', { name: status.name })} actions={[
         { label: t('rename'), onSelect: () => setRenaming(true) },
-        { label: t('moveLeft'), disabled: index === 0, onSelect: () => void onMove(-1) },
-        { label: t('moveRight'), disabled: index === total - 1, onSelect: () => void onMove(1) },
-        { label: t('delete'), onSelect: () => onDeleteStatus(menuTrigger) },
+        { label: t('moveLeft'), disabled: index === 0, onSelect: () => void onMove(status.id, -1) },
+        { label: t('moveRight'), disabled: index === total - 1, onSelect: () => void onMove(status.id, 1) },
+        { label: t('delete'), onSelect: () => onDeleteStatus(status, menuTrigger) },
       ]} />
     </header>
     <ul className="card-list">{status.cards.map(card => <CardView
       key={card.id}
       card={card}
-      onDelete={returnFocus => onDeleteCard(card.id, returnFocus)}
+      onDelete={onDeleteCard}
       statuses={statuses}
       saveError={saveError}
       onMoveDialogChange={onMoveDialogChange}
       previousStatus={statuses[index - 1]}
       nextStatus={statuses[index + 1]}
-      onUpdate={input => onUpdateCard(card.id, input)}
-      onMove={(statusId, focus) => onMoveCard(card.id, statusId, focus)}
+      onUpdate={onUpdateCard}
+      onMove={onMoveCard}
     />)}</ul>
     <button ref={createTrigger} className="button button-quiet add-card" onClick={() => setCreatingCard(true)}><BoardIcon name="plus" />{t('addCard')}</button>
-    {renaming ? <NameDialog title={t('renameStatus')} label={t('newName')} button={t('save')} initialName={status.name} onSubmit={onRename} onClose={() => setRenaming(false)} /> : null}
-    {creatingCard ? <CardDialog title={t('newCard')} returnFocus={createTrigger} button={t('createCard')} onSubmit={onCreateCard} onClose={() => setCreatingCard(false)} /> : null}
+    {renaming ? <NameDialog title={t('renameStatus')} label={t('newName')} button={t('save')} initialName={status.name} onSubmit={name => onRename(status.id, name)} onClose={() => setRenaming(false)} /> : null}
+    {creatingCard ? <CardDialog title={t('newCard')} returnFocus={createTrigger} button={t('createCard')} onSubmit={input => onCreateCard(status.id, input)} onClose={() => setCreatingCard(false)} /> : null}
   </article>
-}
+})

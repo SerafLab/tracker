@@ -67,10 +67,10 @@ a { text-underline-offset: .2em; }
   display: grid;
   grid-template-columns: 9.625rem minmax(0, 1fr) auto;
   align-items: center;
-  gap: 1.375rem 1.5rem;
+  gap: 1.5rem;
   max-width: var(--workspace-width);
   margin: 0 auto;
-  padding: 1.5rem 2rem 1.25rem;
+  padding: .875rem 2rem;
 }
 .app-brand {
   display: flex;
@@ -91,16 +91,18 @@ a { text-underline-offset: .2em; }
   overflow-wrap: anywhere;
   text-wrap: pretty;
 }
-.app-bar-controls { display: flex; align-items: center; grid-column: 1 / -1; gap: .625rem; min-width: 0; }
-.app-bar-controls nav { flex-shrink: 0; }
-.app-bar-controls nav .button { padding-left: 0; color: var(--text-muted); }
-.app-bar-controls .button-row { flex: 1; gap: .625rem; }
-.app-bar-controls .button-row > .button-primary { margin-left: auto; }
-.app-bar-controls nav + .button-row > .menu { border-left: 1px solid var(--border); padding-left: .625rem; }
-.locale-selector { min-width: 0; max-width: 14rem; justify-self: end; }
-.locale-control { display: block; }
-.locale-control select { width: 4.1875rem; min-height: 2.75rem; padding: .375rem .5rem; font-size: .75rem; background: var(--surface); }
-.locale-selector p { max-width: 10rem; margin: .5rem 0 0; color: var(--danger); font-size: .75rem; line-height: 1.5; overflow-wrap: anywhere; }
+.app-bar-controls { display: flex; align-items: center; gap: .5rem; min-width: 0; }
+button.app-brand { border: 0; padding: 0; background: transparent; color: inherit; min-height: 44px; }
+.bar-hint { position: relative; }
+.bar-hint::after { content: attr(data-hint); position: absolute; top: calc(100% + 6px); right: 0; z-index: 5; width: max-content; max-width: 14rem; padding: .4rem .6rem; border-radius: var(--radius-control); background: var(--text); color: var(--surface); font-size: .75rem; font-weight: 400; letter-spacing: normal; pointer-events: none; visibility: hidden; }
+.app-brand.bar-hint::after { left: 0; right: auto; }
+.bar-hint:hover::after, .bar-hint:focus::after { visibility: visible; }
+.settings-panel { position: fixed; inset: auto; margin: 0; width: max-content; max-width: calc(100vw - 16px); max-height: calc(100dvh - 16px); overflow: auto; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--surface); color: var(--text); box-shadow: var(--shadow-raised); gap: .75rem; }
+.settings-panel:popover-open { display: grid; }
+.locale-selector { min-width: 0; max-width: 15rem; }
+.locale-control { display: grid; gap: .5rem; font-size: .875rem; }
+.locale-control select { width: 100%; min-height: 2.75rem; padding: .375rem .5rem; background: var(--surface); }
+.locale-selector p { margin: .5rem 0 0; color: var(--danger); font-size: .75rem; line-height: 1.5; overflow-wrap: anywhere; }
 .app-shell { max-width: var(--workspace-width); min-width: 0; margin: 0 auto; padding: 1.875rem 2rem 4rem; }
 .page-subtitle, .muted-copy { color: var(--text-secondary); margin: .5rem 0 0; }
 .catalogue-subtitle { margin: 0 0 1.5rem; }
@@ -240,17 +242,10 @@ a { text-underline-offset: .2em; }
   .status-column { flex-basis: 16.875rem; }
 }
 @media (max-width: 40.625rem) {
-  .app-bar-inner { grid-template-columns: 4.0625rem minmax(0, 1fr) 3.4375rem; gap: 1rem .625rem; padding: 1.1875rem 1rem .875rem; }
-  .app-brand { font-size: .75rem; letter-spacing: -.03em; gap: 0; }
-  .brand-mark { display: none; }
-  .page-title { font-size: 1.125rem; line-height: 1.3; letter-spacing: -.025em; }
-  .locale-control select { width: 3.4375rem; padding: .3125rem .25rem; }
-  .locale-selector p { max-width: 3.4375rem; }
-  .app-bar-controls, .app-bar-controls .button-row { gap: .125rem; }
-  .app-bar-controls .button { padding-inline: .5rem; font-size: .75rem; }
-  .app-bar-controls nav .button { padding-left: 0; padding-right: .25rem; }
-  .app-bar-controls nav + .button-row > .menu { padding-left: 0; }
-  .app-bar-controls .button-primary { padding-inline: .5rem; }
+  .app-bar-inner { grid-template-columns: minmax(0, 1fr) auto; gap: .75rem; padding: .75rem 1rem 1rem; }
+  .app-brand { font-size: 1rem; }
+  .app-bar-controls { grid-column: 2; grid-row: 1; }
+  .page-title { grid-column: 1 / -1; grid-row: 2; font-size: 1.25rem; line-height: 1.3; letter-spacing: -.025em; }
   .app-shell { padding: 1.375rem 1rem 1.5rem; }
   .status-columns { min-height: 33.75rem; gap: 1rem; margin-right: -1rem; padding-right: 1rem; }
   .status-column { flex: 0 0 calc(100vw - 3.375rem); max-width: 20.625rem; }
@@ -266,8 +261,6 @@ a { text-underline-offset: .2em; }
   .install-help { position: static; display: flex; justify-content: flex-end; margin: 0 1rem 1rem; }
 }
 @media (max-width: 22.5rem) {
-  .app-bar-controls nav .ui-icon, .app-bar-controls .button-primary .ui-icon { display: none; }
-  .app-bar-controls .button-primary { padding-inline: .6875rem; }
   .page-title { font-size: 1.0625rem; }
 }
 @media (prefers-reduced-motion: reduce) {

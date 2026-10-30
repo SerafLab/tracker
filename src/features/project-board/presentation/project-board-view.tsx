@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Card, CardInput, Id, ProjectBoard, Status } from '../domain/model'
+import { useModalOpen } from '../../../ui/modal-state'
 import { AppBar } from '../../../ui/app-bar'
 import { CardView, type CardMoveFocus } from './card-view'
 import { BoardIcon } from './board-icon'
@@ -9,6 +10,8 @@ import { DeleteDialog } from './delete-dialog'
 import type { DeleteStatusStateResult } from '../state/project-board-store'
 
 type BoardProps = {
+  focusCreation: boolean
+  onCreationFocused: () => void
   board: ProjectBoard
   saveError: boolean
   onReturn: () => Promise<void>
@@ -23,11 +26,15 @@ type BoardProps = {
   onMoveCard: (cardId: Id, statusId: Id) => Promise<boolean>
 }
 
-export function ProjectBoardView({ board, saveError, onReturn, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onUpdateCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
+export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, onReturn, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onUpdateCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
   const { t } = useTranslation()
   const [moveDialogCardId, setMoveDialogCardId] = useState<Id | null>(null)
   const root = useRef<HTMLElement>(null)
   const addStatusTrigger = useRef<HTMLButtonElement>(null)
+  const modalOpen = useModalOpen()
+  useEffect(() => {
+    if (focusCreation && !modalOpen) { addStatusTrigger.current?.focus({ preventScroll: true }); onCreationFocused() }
+  }, [focusCreation, modalOpen, onCreationFocused])
   const [deleting, setDeleting] = useState<{ kind: 'card' | 'status'; id: Id; name: string; statusId: Id; returnFocus: React.RefObject<HTMLButtonElement | null> } | null>(null)
   const [deleteFocus, setDeleteFocus] = useState<{ statusId?: Id; cardId?: Id } | null>(null)
   useEffect(() => {
@@ -87,11 +94,9 @@ export function ProjectBoardView({ board, saveError, onReturn, onRenameProject, 
   return <>
     <AppBar
       title={board.name}
-      navigation={<button className="button button-quiet" onClick={() => void onReturn()}><BoardIcon name="left" />{t('allProjects')}</button>}
-      actions={<>
-        <ActionMenu triggerRef={projectMenu} label={t('projectActions', { name: board.name })} actions={[{ label: t('rename'), onSelect: () => setRenamingProject(true) }]} />
-        <button ref={addStatusTrigger} className="button button-primary" onClick={() => setCreatingStatus(true)}><BoardIcon name="plus" />{t('addStatus')}</button>
-      </>}
+      onReturn={() => void onReturn()}
+      creation={{ label: t('addStatus'), triggerRef: addStatusTrigger, onSelect: () => setCreatingStatus(true) }}
+      rename={{ triggerRef: projectMenu, onSelect: () => setRenamingProject(true) }}
     />
     <main ref={root} className="app-shell">
       {saveError ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
@@ -115,7 +120,7 @@ export function ProjectBoardView({ board, saveError, onReturn, onRenameProject, 
         />)}
       </section>
       {deleting ? <DeleteDialog kind={deleting.kind} name={deleting.name} blocked={deleting.kind === 'status' && !!board.statuses.find(status => status.id === deleting.id)?.cards.length} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}
-      {creatingStatus ? <NameDialog title={t('newStatus')} label={t('statusName')} button={t('createStatus')} onSubmit={onCreateStatus} onClose={() => setCreatingStatus(false)} /> : null}
+      {creatingStatus ? <NameDialog returnFocus={addStatusTrigger} title={t('newStatus')} label={t('statusName')} button={t('createStatus')} onSubmit={onCreateStatus} onClose={() => setCreatingStatus(false)} /> : null}
       {renamingProject ? <NameDialog returnFocus={projectMenu} title={t('renameProject')} label={t('newName')} button={t('save')} initialName={board.name} onSubmit={onRenameProject} onClose={() => setRenamingProject(false)} /> : null}
     </main>
   </>

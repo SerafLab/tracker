@@ -28,7 +28,7 @@ it('isolates board dialogs, column dialogs and a card move dialog from unchanged
     })),
   }
   const user = userEvent.setup()
-  render(<ProjectBoardView board={board} saveError={false}
+  render(<ProjectBoardView board={board} saveError={false} focusCreation={false} onCreationFocused={vi.fn()}
     onReturn={vi.fn()} onRenameProject={vi.fn()} onCreateStatus={vi.fn()}
     onRenameStatus={vi.fn()} onMoveStatus={vi.fn()} onCreateCard={vi.fn()}
     onUpdateCard={vi.fn()} onDeleteCard={vi.fn()} onDeleteStatus={vi.fn()} onMoveCard={vi.fn()}
@@ -51,7 +51,9 @@ it('isolates board dialogs, column dialogs and a card move dialog from unchanged
     expect(renders(`Действия карточки Card ${name}`)).toBeGreaterThan(0)
   }
   menuRenders.mockClear()
-  await openAction('Действия проекта Project', 'Переименовать')
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  await user.click(screen.getByRole('button', { name: 'Переименовать проект' }))
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
   await user.keyboard('{Escape}')
   expectUnchangedBoard()
   await user.click(screen.getByRole('button', { name: 'Добавить статус' }))

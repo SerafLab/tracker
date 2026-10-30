@@ -8,7 +8,7 @@ test('keeps the selected project consistent through history and reloads', async 
     await dialog.getByRole('textbox').fill(name)
     await dialog.getByRole('button', { name: 'Создать проект', exact: true }).click()
     await expect(page.getByRole('heading', { level: 1, name, exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Все проекты', exact: true }).click()
+    await page.getByRole('button', { name: 'EasyTrack — Все проекты', exact: true }).click()
     await expect(page.getByRole('button', { name, exact: true })).toBeVisible()
   }
 
@@ -23,13 +23,13 @@ test('keeps the selected project consistent through history and reloads', async 
 
   await page.reload()
   await expect(page.getByRole('heading', { level: 1, name: 'Первый проект', exact: true })).toBeVisible()
-  await page.getByRole('button', { name: 'Все проекты', exact: true }).click()
+  await page.getByRole('button', { name: 'EasyTrack — Все проекты', exact: true }).click()
   await page.getByRole('button', { name: 'Второй проект', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Второй проект', exact: true })).toBeVisible()
   await page.reload()
   await expect(page.getByRole('heading', { level: 1, name: 'Второй проект', exact: true })).toBeVisible()
 
-  await page.getByRole('button', { name: 'Все проекты', exact: true }).click()
+  await page.getByRole('button', { name: 'EasyTrack — Все проекты', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Второй проект', exact: true })).toBeVisible()
   await page.reload()
   await expect(page.getByRole('button', { name: 'Первый проект', exact: true })).toBeVisible()

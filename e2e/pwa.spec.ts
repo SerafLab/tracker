@@ -65,13 +65,14 @@ for (const locale of ['ru', 'en'] as const) {
   test(`localizes manifests and keeps ${locale} selected after offline reopen at mobile width`, async ({ page, context }) => {
     await openAndControl(page)
     await page.setViewportSize({ width: 320, height: 740 })
-    const selector = page.getByRole('combobox', { name: 'Язык интерфейса' })
+    await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
+    const selector = page.getByRole('combobox', { name: 'Язык приложения' })
     await selector.focus()
     // Native select is keyboard accessible; selecting the option emits the native change event.
     await page.keyboard.press('ArrowUp')
     await page.keyboard.press('Enter')
     await selector.selectOption(locale)
-    const activeSelector = page.getByRole('combobox', { name: locale === 'en' ? 'Interface language' : 'Язык интерфейса' })
+    const activeSelector = page.getByRole('combobox', { name: locale === 'en' ? 'Application language' : 'Язык приложения' })
     await expect(activeSelector).toBeVisible()
     const bounds = await activeSelector.boundingBox()
     expect(bounds!.x).toBeGreaterThanOrEqual(0)
@@ -90,6 +91,7 @@ for (const locale of ['ru', 'en'] as const) {
     await expect(page.locator('html')).toHaveAttribute('lang', locale)
     await context.setOffline(true)
     await page.reload()
+    await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
     await expect(page.getByRole('combobox')).toHaveValue(locale)
     await expect(page.getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' })).toBeVisible()
     expect(await page.evaluate(async () => {
@@ -114,6 +116,7 @@ for (const width of [1280, 320]) {
     await expect(dialog.getByRole('combobox')).toHaveCount(0)
     await expect(page.getByRole('combobox')).toHaveCount(0)
     await page.keyboard.press('Escape')
+    await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
     const selector = page.getByRole('combobox')
     await selector.focus()
     await selector.selectOption('en')

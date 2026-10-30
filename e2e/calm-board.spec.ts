@@ -5,7 +5,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     const en = language === 'en'
     await page.setViewportSize({ width, height: width === 320 ? 568 : 900 })
     await page.goto('/tracker/')
-    if (en) await page.getByRole('combobox').selectOption('en')
+    if (en) { await page.getByRole('button', {name: 'Настройки'}).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
     await expect(page.getByRole('heading', { name: en ? 'Start with your first project' : 'Начните с первого проекта' })).toBeVisible()
     await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await page.getByRole('dialog').getByRole('textbox').fill('Поиск квартиры')
@@ -52,9 +52,11 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     expect(geometry.openColumns).toBe(true)
     expect(geometry.createAfterCards).toBe(true)
     for (const target of geometry.targets) { expect(target.width).toBeGreaterThanOrEqual(44); expect(target.height).toBeGreaterThanOrEqual(44) }
-    const locale = page.getByRole('combobox', { name: en ? 'Interface language' : 'Язык интерфейса' })
+    await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
+    const locale = page.getByRole('combobox', { name: en ? 'Application language' : 'Язык приложения' })
     await expect(locale).toHaveCount(1)
     await expect(locale.locator('option')).toHaveText(['RU', 'EN'])
+    await page.keyboard.press('Escape')
     await expect(first.locator('.card-badge')).toHaveCount(4)
     if (width < 1280) {
       expect(await page.locator('.install-help').evaluate(element => getComputedStyle(element).position)).toBe('static')
@@ -108,14 +110,14 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
 
     if (width === 320) {
       await page.evaluate(() => window.scrollTo(0, 0))
-      await page.getByRole('button', { name: en ? 'Project actions for Поиск квартиры' : 'Действия проекта Поиск квартиры', exact: true }).click()
-      await expect(page.getByRole('menu')).toBeVisible()
+      await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
+      await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
       await page.keyboard.press('PageDown')
       await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100)
-      await expect(page.getByRole('menu')).toBeHidden()
+      await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeHidden()
       // Reopening after the viewport change must still give a correctly placed menu.
-      await page.getByRole('button', { name: en ? 'Project actions for Поиск квартиры' : 'Действия проекта Поиск квартиры', exact: true }).click()
-      await expect(page.getByRole('menu')).toBeVisible()
+      await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
+      await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
       await page.keyboard.press('Escape')
     }
   })

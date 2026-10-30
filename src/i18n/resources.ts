@@ -1,4 +1,5 @@
 export const ru = {
+  "settings": "Настройки", "applicationLanguage": "Язык приложения",
   "title": "Трекер личных проектов",
   "subtitle": "Держите важные дела в понятном порядке.",
   "firstProject": "Начните с первого проекта",
@@ -76,6 +77,7 @@ export const ru = {
 } as const
 
 export const en: { [Key in keyof typeof ru]: string } = {
+  "settings": "Settings", "applicationLanguage": "Application language",
   "title": "Personal project tracker",
   "subtitle": "Keep important tasks in clear order.",
   "firstProject": "Start with your first project",

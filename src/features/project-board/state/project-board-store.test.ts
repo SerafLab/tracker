@@ -111,3 +111,115 @@ it.each(['deleteCard', 'deleteStatus'] as const)('reports the saved %s when relo
   expect(store.getState().saveError).toBe(false)
   expect(store.getState().workspace).toEqual({ kind: 'unavailable' })
 })
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error: Error) => void
+  const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no })
+  return { promise, resolve, reject }
+}
+
+it.each(['resolve', 'reject'] as const)('ignores a stale board %s after opening another board', async finish => {
+  const pending = deferred<typeof board | undefined>()
+  const next = { ...board, id: 'next' }
+  const api = useCases({ board: vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(next) })
+  const store = createProjectBoardStore(api)
+  const first = store.getState().showBoard('project', true)
+  await store.getState().showBoard('next', true)
+  if (finish === 'resolve') pending.resolve(board)
+  else pending.reject(new Error('old read failed'))
+  expect(await first).toBe(false)
+  expect(store.getState().workspace).toEqual({ kind: 'board', board: next })
+  expect(api.setLastProject).toHaveBeenCalledExactlyOnceWith('next')
+})
+
+it.each(['resolve', 'reject'] as const)('ignores a stale catalogue %s after opening a board', async finish => {
+  const pending = deferred<[]>()
+  const api = useCases({ projects: vi.fn(() => pending.promise) })
+  const store = createProjectBoardStore(api)
+  const catalogue = store.getState().showCatalogue()
+  await store.getState().showBoard('project')
+  if (finish === 'resolve') pending.resolve([])
+  else pending.reject(new Error('old catalogue failed'))
+  await catalogue
+  expect(store.getState().workspace).toEqual({ kind: 'board', board })
+})
+
+it('ignores a pending board after returning to the catalogue', async () => {
+  const pending = deferred<typeof board | undefined>()
+  const api = useCases({ board: vi.fn(() => pending.promise) })
+  const store = createProjectBoardStore(api)
+  const loading = store.getState().showBoard('project', true)
+  await store.getState().showCatalogue()
+  await store.getState().clearLastProject()
+  pending.resolve(board)
+  await loading
+  expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: [] })
+  expect(api.setLastProject).toHaveBeenCalledExactlyOnceWith(undefined)
+})
+
+it.each(['board', 'catalogue'] as const)('orders an in-flight preference write before the latest %s preference', async destination => {
+  const pending = deferred<void>()
+  let saved: string | undefined
+  const api = useCases({
+    board: vi.fn(async id => ({ ...board, id })),
+    setLastProject: vi.fn(async id => {
+      if (id === 'project') await pending.promise
+      saved = id
+    }),
+  })
+  const store = createProjectBoardStore(api)
+  const first = store.getState().showBoard('project', true)
+  await vi.waitFor(() => expect(api.setLastProject).toHaveBeenCalledWith('project'))
+  const latest = destination === 'board'
+    ? store.getState().showBoard('next', true)
+    : Promise.all([store.getState().showCatalogue(), store.getState().clearLastProject()])
+  pending.resolve()
+  await Promise.all([first, latest])
+  expect(saved).toBe(destination === 'board' ? 'next' : undefined)
+  expect(store.getState().workspace.kind).toBe(destination)
+})
+
+it('orders a pending preference clear before a newly opened board', async () => {
+  const pending = deferred<void>()
+  let saved: string | undefined
+  const api = useCases({ setLastProject: vi.fn(async id => { if (!id) await pending.promise; saved = id }) })
+  const store = createProjectBoardStore(api)
+  const clearing = store.getState().clearLastProject()
+  await vi.waitFor(() => expect(api.setLastProject).toHaveBeenCalledWith(undefined))
+  const opening = store.getState().showBoard('project', true)
+  pending.resolve()
+  await Promise.all([clearing, opening])
+  expect(saved).toBe('project')
+})
+
+it('does not reopen a board when a mutation completes after navigating away', async () => {
+  const pending = deferred<void>()
+  const api = useCases({ updateCard: vi.fn(() => pending.promise) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showBoard('project')
+  const saving = store.getState().updateCard('project', 'card', { name: 'Saved', important: false, urgent: false })
+  await store.getState().showCatalogue()
+  vi.mocked(api.board).mockClear()
+  pending.resolve()
+  expect(await saving).toBe(true)
+  expect(api.board).not.toHaveBeenCalled()
+  expect(store.getState().workspace.kind).toBe('catalogue')
+})
+
+it('refreshes both writes when concurrent mutations finish on the same board', async () => {
+  const first = deferred<void>()
+  const second = deferred<void>()
+  const api = useCases({ updateCard: vi.fn().mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showBoard('project')
+  vi.mocked(api.board).mockClear()
+  const input = { name: 'Saved', important: false, urgent: false }
+  const savingFirst = store.getState().updateCard('project', 'first', input)
+  const savingSecond = store.getState().updateCard('project', 'second', input)
+  first.resolve()
+  await savingFirst
+  second.resolve()
+  await savingSecond
+  expect(api.board).toHaveBeenCalledTimes(2)
+})

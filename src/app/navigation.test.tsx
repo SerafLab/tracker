@@ -103,3 +103,33 @@ it('opens the catalogue for a malformed encoded project route', async () => {
   await screen.findByRole('button', { name: project.name })
   expect(repo.board).not.toHaveBeenCalled()
 })
+
+
+it('keeps a new hash set before the previous missing-board continuation runs', async () => {
+  const pending = deferred<undefined>()
+  history.replaceState(null, '', '/#project/missing')
+  const repo = repository({ board: vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(board) })
+  render(<App repository={repo} />)
+  await waitFor(() => expect(repo.board).toHaveBeenCalledWith('missing'))
+  await act(async () => {
+    location.hash = '#project/a'
+    pending.resolve(undefined)
+  })
+  await screen.findByRole('heading', { name: project.name })
+  expect(location.hash).toBe('#project/a')
+  expect(repo.projects).not.toHaveBeenCalled()
+})
+
+it('keeps a new hash set before the previous preference continuation runs', async () => {
+  const pending = deferred<{ id: 'workspace'; lastProjectId: string }>()
+  const repo = repository({ preference: vi.fn(() => pending.promise) })
+  render(<App repository={repo} />)
+  await waitFor(() => expect(repo.preference).toHaveBeenCalledOnce())
+  await act(async () => {
+    location.hash = '#project/a'
+    pending.resolve({ id: 'workspace', lastProjectId: 'old' })
+  })
+  await screen.findByRole('heading', { name: project.name })
+  expect(location.hash).toBe('#project/a')
+  expect(repo.board).toHaveBeenCalledExactlyOnceWith('a')
+})

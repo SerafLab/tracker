@@ -31,7 +31,8 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     const storageReady = runtime.store.getState().openStorage()
     const showRoute = async (restoreLastProject = false) => {
       const startedAt = ++request
-      const isCurrent = () => active && request === startedAt
+      let expectedHash = location.hash
+      const isCurrent = () => active && request === startedAt && location.hash === expectedHash
       if (!await storageReady || !isCurrent()) return
       let id = projectIdFromHash()
       if (!id && restoreLastProject) {
@@ -41,7 +42,10 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
           // A failed preference read should still allow opening the catalogue.
         }
         if (!isCurrent()) return
-        if (id) history.replaceState(null, '', routeFor(id))
+        if (id) {
+          history.replaceState(null, '', routeFor(id))
+          expectedHash = location.hash
+        }
       }
       if (id) {
         const shown = await runtime.store.getState().showBoard(id, true)

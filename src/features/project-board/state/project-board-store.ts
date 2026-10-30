@@ -33,14 +33,27 @@ export type ProjectBoardState = {
 
 export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutate = () => true) {
   return createStore<ProjectBoardState>((set, get) => {
+    let request = 0
+    let navigation = 0
+    let currentProjectId: Id | undefined
+    let preferenceWrite = Promise.resolve()
+    const rememberProject = (id?: Id) => {
+      const write = preferenceWrite.then(() => useCases.setLastProject(id))
+      preferenceWrite = write.catch(() => {})
+      return write
+    }
+    const refreshBoard = async (id: Id, startedAt: number) => {
+      if (navigation === startedAt && currentProjectId === id) await get().showBoard(id)
+    }
     const preserveConfirmedState = async (operation: () => Promise<unknown>) => {
       if (!canMutate()) return false
+      const startedAt = navigation
       try {
         await operation()
-        set({ saveError: false })
+        if (startedAt === navigation) set({ saveError: false })
         return true
       } catch {
-        set({ saveError: true })
+        if (startedAt === navigation) set({ saveError: true })
         return false
       }
     }
@@ -58,24 +71,32 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         }
       },
       async clearLastProject() {
-        return preserveConfirmedState(() => useCases.setLastProject())
+        return preserveConfirmedState(() => rememberProject())
       },
       async showCatalogue() {
+        ++navigation
+        const startedAt = ++request
+        currentProjectId = undefined
         try {
-          set({ workspace: { kind: 'catalogue', projects: await useCases.projects() } })
+          const projects = await useCases.projects()
+          if (request === startedAt) set({ workspace: { kind: 'catalogue', projects } })
         } catch {
-          set({ workspace: { kind: 'unavailable' } })
+          if (request === startedAt) set({ workspace: { kind: 'unavailable' } })
         }
       },
       async showBoard(id, remember = false) {
+        if (remember || currentProjectId !== id) ++navigation
+        const startedAt = ++request
+        currentProjectId = id
         try {
           const board = await useCases.board(id)
-          if (!board) return false
-          if (remember && canMutate()) await useCases.setLastProject(id)
+          if (request !== startedAt || !board) return false
+          if (remember && canMutate()) await rememberProject(id)
+          if (request !== startedAt) return false
           set({ workspace: { kind: 'board', board } })
           return true
         } catch {
-          set({ workspace: { kind: 'unavailable' } })
+          if (request === startedAt) set({ workspace: { kind: 'unavailable' } })
           return false
         }
       },
@@ -91,60 +112,71 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         }
       },
       async renameProject(id, name) {
+        const startedAt = navigation
         const workspace = get().workspace
         const wasOpen = workspace.kind === 'board' && workspace.board.id === id
         if (await preserveConfirmedState(() => useCases.renameProject(id, name))) {
-          if (wasOpen) await get().showBoard(id)
-          else await get().showCatalogue()
+          if (navigation === startedAt) {
+            if (wasOpen) await refreshBoard(id, startedAt)
+            else await get().showCatalogue()
+          }
           return true
         }
         return false
       },
       async createStatus(projectId, name) {
+        const startedAt = navigation
         if (!await preserveConfirmedState(() => useCases.createStatus(projectId, name))) return false
-        await get().showBoard(projectId)
+        await refreshBoard(projectId, startedAt)
         return true
       },
       async renameStatus(projectId, statusId, name) {
+        const startedAt = navigation
         if (!await preserveConfirmedState(() => useCases.renameStatus(statusId, name))) return false
-        await get().showBoard(projectId)
+        await refreshBoard(projectId, startedAt)
         return true
       },
       async deleteStatus(projectId, statusId) {
+        const startedAt = navigation
         if (!canMutate()) return 'failed'
         try {
           const result = await useCases.deleteStatus(statusId)
-          if (result === 'deleted') await get().showBoard(projectId)
-          set({ saveError: false })
+          if (navigation === startedAt) set({ saveError: false })
+          if (result === 'deleted') await refreshBoard(projectId, startedAt)
           return result
         } catch {
-          set({ saveError: true })
+          if (navigation === startedAt) set({ saveError: true })
           return 'failed'
         }
       },
       async moveStatus(projectId, statusId, direction) {
+        const startedAt = navigation
         if (!await preserveConfirmedState(() => useCases.moveStatus(statusId, direction))) return false
-        await get().showBoard(projectId)
+        await refreshBoard(projectId, startedAt)
         return true
       },
       async createCard(projectId, statusId, input) {
+        const startedAt = navigation
         if (!await preserveConfirmedState(() => useCases.createCard(statusId, input))) return false
-        await get().showBoard(projectId)
+        await refreshBoard(projectId, startedAt)
         return true
       },
       async updateCard(projectId, cardId, input) {
+        const startedAt = navigation
         if (!await preserveConfirmedState(() => useCases.updateCard(cardId, input))) return false
-        await get().showBoard(projectId)
+        await refreshBoard(projectId, startedAt)
         return true
       },
       async deleteCard(projectId, cardId) {
+        const startedAt = navigation
         if (!await preserveConfirmedState(() => useCases.deleteCard(cardId))) return false
-        await get().showBoard(projectId)
+        await refreshBoard(projectId, startedAt)
         return true
       },
       async moveCard(projectId, cardId, statusId) {
+        const startedAt = navigation
         if (!await preserveConfirmedState(() => useCases.moveCard(cardId, statusId))) return false
-        await get().showBoard(projectId)
+        await refreshBoard(projectId, startedAt)
         return true
       },
     }

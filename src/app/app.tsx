@@ -9,7 +9,8 @@ import { RestartRequired } from './pwa/restart-required'
 const routeFor = (id: Id) => `#project/${encodeURIComponent(id)}`
 const projectIdFromHash = (): Id | undefined => {
   const match = location.hash.match(/^#project\/([^/]+)$/)
-  return match ? decodeURIComponent(match[1]) : undefined
+  try { return match ? decodeURIComponent(match[1]) : undefined }
+  catch { return undefined }
 }
 
 function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp = () => location.reload() }: { repository?: ProjectBoardRepository; databaseName?: string; reloadApp?: () => void }) {
@@ -26,43 +27,42 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
 
   useEffect(() => {
     let active = true
-    const showRoute = async () => {
-      const id = projectIdFromHash()
+    let request = 0
+    const storageReady = runtime.store.getState().openStorage()
+    const showRoute = async (restoreLastProject = false) => {
+      const startedAt = ++request
+      const isCurrent = () => active && request === startedAt
+      if (!await storageReady || !isCurrent()) return
+      let id = projectIdFromHash()
+      if (!id && restoreLastProject) {
+        try {
+          id = (await runtime.useCases.preference())?.lastProjectId
+        } catch {
+          // A failed preference read should still allow opening the catalogue.
+        }
+        if (!isCurrent()) return
+        if (id) history.replaceState(null, '', routeFor(id))
+      }
       if (id) {
         const shown = await runtime.store.getState().showBoard(id, true)
-        if (!shown && active) {
-          location.hash = ''
-          await runtime.store.getState().showCatalogue()
-        }
-        return
+        if (shown || !isCurrent()) return
+        history.replaceState(null, '', location.pathname + location.search)
       }
-      const lastProjectId = (await runtime.useCases.preference())?.lastProjectId
-      if (lastProjectId && await runtime.useCases.board(lastProjectId)) {
-        location.hash = routeFor(lastProjectId)
-        return
-      }
-      await runtime.store.getState().showCatalogue()
+      const catalogue = runtime.store.getState().showCatalogue()
+      await runtime.store.getState().clearLastProject()
+      await catalogue
     }
-    const start = async () => {
-      if (await runtime.store.getState().openStorage()) {
-        try { await showRoute() }
-        catch { await runtime.store.getState().showCatalogue() }
-      }
-    }
-    const onHashChange = () => { void showRoute().catch(() => runtime.store.getState().showCatalogue()) }
-    void start()
+    const onHashChange = () => { void showRoute() }
+    void showRoute(true)
     addEventListener('hashchange', onHashChange)
-    return () => { active = false; removeEventListener('hashchange', onHashChange) }
+    return () => { active = false; ++request; removeEventListener('hashchange', onHashChange) }
   }, [runtime])
 
   const navigateToProject = async (id: Id) => {
     location.hash = routeFor(id)
-    if (projectIdFromHash() === id) await runtime.store.getState().showBoard(id, true)
   }
   const navigateToCatalogue = async () => {
-    if (!await runtime.store.getState().clearLastProject()) return
     location.hash = ''
-    await runtime.store.getState().showCatalogue()
   }
   if (restartRequired) return <RestartRequired onRestart={reloadApp} />
   return <><ProjectBoardApp store={runtime.store} navigateToProject={navigateToProject} navigateToCatalogue={navigateToCatalogue} onMutationSaved={requestPersistentStorage} /><InstallGuidance /><PwaUpdateRegistration /></>

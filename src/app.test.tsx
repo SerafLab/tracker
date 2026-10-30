@@ -10,7 +10,14 @@ import { ActionMenu } from './features/project-board/presentation/controls'
 const databases: ProjectBoardDatabase[] = []
 function repository() { const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`); databases.push(database); return new DexieProjectBoardRepository(database) }
 async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string, button: string) { if (label === 'Новый проект') { await user.click(await screen.findByRole('button', { name: 'Создать проект' })); label = 'Название проекта' }; const input = await screen.findByLabelText(label); await user.clear(input); await user.type(input, value); await user.click(within(input.closest('form')!).getByRole('button', { name: button })) }
-async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string) { await user.click((await screen.findAllByRole('button', { name: 'Добавить статус' }))[0]); await fill(user, 'Название статуса', name, 'Создать статус'); await screen.findAllByRole('heading', { name }); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
+async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string) {
+  const trigger = (await screen.findAllByRole('button', { name: 'Добавить статус' }))[0]
+  await user.click(trigger)
+  await fill(user, 'Название статуса', name, 'Создать статус')
+  await screen.findAllByRole('heading', { name })
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() => expect(trigger).toHaveFocus())
+}
 async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(within(column).getByRole('button', { name: /Добавить карточку/ })); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
 function setViewport(width: number) { Object.defineProperty(window, 'innerWidth', { configurable: true, value: width }); window.dispatchEvent(new Event('resize')) }
 
@@ -185,9 +192,15 @@ describe('project board', () => {
     expect(screen.queryByRole('menuitem', { name: 'Переместить в…' })).not.toBeInTheDocument()
     await user.keyboard('{Escape}')
     await addStatus(user, 'Другой'); await addStatus(user, 'Одинаковый')
-    within(card()).getByRole('button', { name: 'Действия карточки Карточка' }).focus(); await user.keyboard('{Enter}')
-    await user.keyboard('{Tab}{Enter}')
-    const dialog = screen.getByRole('dialog')
+    const menuTrigger = within(card()).getByRole('button', { name: 'Действия карточки Карточка' })
+    menuTrigger.focus()
+    expect(menuTrigger).toHaveFocus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Редактировать' })).toHaveFocus())
+    await user.tab()
+    expect(screen.getByRole('menuitem', { name: 'Переместить в…' })).toHaveFocus()
+    await user.keyboard('{Enter}')
+    const dialog = await screen.findByRole('dialog')
     const moveSelect = within(dialog).getByRole('combobox', { name: /Переместить/ })
     expect(within(moveSelect).getAllByRole('option')).toHaveLength(2)
     const duplicate = within(moveSelect).getByRole('option', { name: 'Одинаковый' }) as HTMLOptionElement

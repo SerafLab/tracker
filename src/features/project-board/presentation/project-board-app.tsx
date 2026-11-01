@@ -31,7 +31,14 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   if (workspace.kind === 'loading') return <><AppBar key="loading" title={t('loading')} /><main className="app-shell" aria-busy="true"><div className="loading-shell"><div className="skeleton skeleton-title" /><div className="skeleton-columns"><div className="skeleton skeleton-column" /><div className="skeleton skeleton-column" /></div></div></main></>
   if (workspace.kind === 'unavailable') return <><AppBar key="unavailable" title={t('unavailable')} /><main className="app-shell"><section className="unavailable-state surface-card"><p role="alert">{t('unavailableHelp')}</p></section></main></>
   if (workspace.kind === 'catalogue') return <ProjectCatalogueView projects={workspace.projects} saveError={saveError}
-    onCreate={async name => { const id = await createProject(name); if (id) { onMutationSaved?.(); setCreatedProjectId(id); await navigateToProject(id) } }}
+    onCreate={async input => {
+      const id = await createProject(input)
+      if (!id) return false
+      setCreatedProjectId(id)
+      // Persistence already succeeded: a navigation error must not offer another creation.
+      try { onMutationSaved?.(); await navigateToProject(id) } catch { await store.getState().showCatalogue() }
+      return true
+    }}
     onOpen={navigateToProject}
     onRename={async (id, name) => { if (await renameProject(id, name)) onMutationSaved?.() }}
   />

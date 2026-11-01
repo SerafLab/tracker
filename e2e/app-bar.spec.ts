@@ -15,8 +15,8 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await create.focus(); await page.keyboard.press('Enter')
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('textbox')).toBeFocused()
-    await expect(dialog.getByRole('combobox')).toHaveCount(0)
-    await expect(page.getByRole('combobox')).toHaveCount(0)
+    await expect(dialog.getByRole('combobox', { name: en ? 'Status set' : 'Набор статусов' })).toHaveValue('simple')
+    await expect(page.getByRole('combobox', { name: en ? 'Application language' : 'Язык приложения' })).toHaveCount(0)
     for (let count = 0; count < 7; count++) {
       await page.keyboard.press(count % 2 ? 'Shift+Tab' : 'Tab')
       expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
@@ -25,6 +25,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await create.click()
     const name = 'ОченьДлинноеИмяПроектаБезПробелов'.repeat(3)
     await dialog.getByRole('textbox').fill(name)
+    await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await dialog.getByRole('button', { name: createName, exact: true }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(name)
     const add = page.getByRole('button', { name: addName, exact: true })

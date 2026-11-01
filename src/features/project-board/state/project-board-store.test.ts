@@ -223,3 +223,25 @@ it('refreshes both writes when concurrent mutations finish on the same board', a
   await savingSecond
   expect(api.board).toHaveBeenCalledTimes(2)
 })
+
+it('forwards explicit initial statuses and reports a saved project only after commit', async () => {
+  const pending = deferred<typeof board>()
+  const api = useCases({ createProject: vi.fn(() => pending.promise) })
+  const store = createProjectBoardStore(api)
+  const input = { name: 'Project', initialStatusNames: ['One', 'Two'] }
+  const saving = store.getState().createProject(input)
+  expect(api.createProject).toHaveBeenCalledExactlyOnceWith(input)
+  expect(store.getState().workspace.kind).toBe('loading')
+  pending.resolve(board)
+  expect(await saving).toBe('project')
+  expect(store.getState().saveError).toBe(false)
+})
+it('reports failed initialization without opening a partial board', async () => {
+  const api = useCases({ createProject: vi.fn().mockRejectedValue(Error('quota')) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showCatalogue()
+  expect(await store.getState().createProject({ name: 'Project', initialStatusNames: ['One'] })).toBeUndefined()
+  expect(store.getState().saveError).toBe(true)
+  expect(api.board).not.toHaveBeenCalled()
+  expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: [] })
+})

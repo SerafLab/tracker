@@ -9,7 +9,7 @@ import { ActionMenu } from './features/project-board/presentation/controls'
 
 const databases: ProjectBoardDatabase[] = []
 function repository() { const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`); databases.push(database); return new DexieProjectBoardRepository(database) }
-async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string, button: string) { if (label === 'Новый проект') { await user.click(await screen.findByRole('button', { name: 'Создать проект' })); label = 'Название проекта' }; const input = await screen.findByLabelText(label); await user.clear(input); await user.type(input, value); await user.click(within(input.closest('form')!).getByRole('button', { name: button })) }
+async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string, button: string) { if (label === 'Новый проект') { await user.click(await screen.findByRole('button', { name: 'Создать проект' })); label = 'Название проекта' }; const input = await screen.findByLabelText(label); if (label === 'Название проекта') await user.selectOptions(screen.getByRole('combobox', { name: 'Набор статусов' }), 'empty'); await user.clear(input); await user.type(input, value); await user.click(within(input.closest('form')!).getByRole('button', { name: button })) }
 async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string) {
   const trigger = (await screen.findAllByRole('button', { name: 'Добавить статус' }))[0]
   await user.click(trigger)

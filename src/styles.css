@@ -266,3 +266,7 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+.project-preset-field { margin-top: 1rem; }
+.preset-preview { color: var(--text-secondary); line-height: 1.6; overflow-wrap: anywhere; }
+.preset-preview ol { padding-left: 1.5rem; margin-block: .75rem 0; }

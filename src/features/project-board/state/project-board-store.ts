@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla'
-import type { CardInput, Id, Project, ProjectBoard } from '../domain/model'
+import type { CardInput, CreateProjectInput, Id, Project, ProjectBoard } from '../domain/model'
 import type { DeleteStatusResult } from '../application/repository'
 import type { ProjectBoardUseCases } from '../application/use-cases'
 
@@ -18,7 +18,7 @@ export type ProjectBoardState = {
   clearLastProject(): Promise<boolean>
   showCatalogue(): Promise<void>
   showBoard(id: Id, remember?: boolean): Promise<boolean>
-  createProject(name: string): Promise<Id | undefined>
+  createProject(input: CreateProjectInput): Promise<Id | undefined>
   renameProject(id: Id, name: string): Promise<boolean>
   createStatus(projectId: Id, name: string): Promise<boolean>
   renameStatus(projectId: Id, statusId: Id, name: string): Promise<boolean>
@@ -100,10 +100,10 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
           return false
         }
       },
-      async createProject(name) {
+      async createProject(input) {
         if (!canMutate()) return undefined
         try {
-          const project = await useCases.createProject(name)
+          const project = await useCases.createProject(input)
           set({ saveError: false })
           return project.id
         } catch {

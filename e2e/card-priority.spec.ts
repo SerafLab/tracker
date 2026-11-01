@@ -19,7 +19,7 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
     }
     const first = page.locator('.status-column').nth(0)
     for (const [name, important, urgent] of [['None', false, false], ['Urgent', false, true], ['Important', true, false], ['Both', true, true], ['Peer', true, true]] as const) {
-      const create = first.getByRole('button', { name: label.addCard, exact: true })
+      const create = first.locator('.add-card')
       await create.click()
       const dialog = page.getByRole('dialog')
       await expect(dialog.getByLabel(label.name)).toBeFocused()

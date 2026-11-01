@@ -12,7 +12,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await page.getByRole('dialog').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await expect(page.getByRole('heading', { name: en ? 'Add your first status' : 'Добавьте первый статус' })).toBeVisible()
-    for (const name of ['Найдено', 'Связаться', 'Просмотр', 'Решение']) {
+    for (const name of ['Найдено — длинное название для переноса', 'Связаться', 'Просмотр', 'Решение — длинное название для переноса']) {
       await page.getByRole('button', { name: en ? 'Add status' : 'Добавить статус', exact: true }).click()
       await page.getByRole('dialog').getByRole('textbox').fill(name)
       await page.getByRole('dialog').getByRole('button', { name: en ? 'Create status' : 'Создать статус', exact: true }).click()
@@ -21,7 +21,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     const first = page.locator('.status-column').first()
     const names = ['Квартира у парка', 'Уточнить документы', 'Назначить просмотр', 'Сравнить варианты']
     for (let index = 0; index < names.length; index++) {
-      await first.getByRole('button', { name: en ? 'Add card' : 'Добавить карточку', exact: true }).click()
+      await first.locator(index % 2 === 0 ? '.add-card-header' : '.add-card').click()
       const dialog = page.getByRole('dialog')
       await expect(dialog.getByRole('textbox')).toBeFocused()
       await dialog.getByRole('textbox').fill(names[index])
@@ -29,8 +29,32 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
       if (index === 0 || index === 2) await dialog.getByRole('checkbox', { name: en ? 'Urgent' : 'Срочная' }).check()
       await dialog.getByRole('button', { name: en ? 'Create card' : 'Создать карточку', exact: true }).click()
       await expect(dialog).toBeHidden()
-      await expect(first.getByRole('button', { name: en ? 'Add card' : 'Добавить карточку', exact: true })).toBeFocused()
+      await expect(first.locator(index % 2 === 0 ? '.add-card-header' : '.add-card')).toBeFocused()
     }
+    for (const column of [first, page.locator('.status-column').last()]) {
+      const header = column.locator('.add-card-header')
+      await header.hover()
+      await expect(header).toHaveAccessibleName(en ? 'Add card' : 'Добавить карточку')
+      const tooltip = await header.evaluate(element => {
+        const hint = getComputedStyle(element, '::after')
+        const button = element.getBoundingClientRect()
+        const scroller = element.closest('.status-columns')!.getBoundingClientRect()
+        const width = parseFloat(hint.width)
+        const height = parseFloat(hint.height)
+        const right = button.right - parseFloat(hint.right)
+        const top = button.top + parseFloat(hint.top)
+        return { visible: hint.visibility, content: hint.content, unclipped: right - width >= Math.max(0, scroller.left) && right <= Math.min(innerWidth, scroller.right) && top >= scroller.top && top + height <= scroller.bottom }
+      })
+      expect(tooltip.visible).toBe('visible')
+      expect(tooltip.content).toContain(en ? 'Add card' : 'Добавить карточку')
+      expect(tooltip.unclipped).toBe(true)
+      await header.focus()
+      await page.mouse.move(0, 0)
+      expect(await header.evaluate(element => getComputedStyle(element, '::after').visibility)).toBe('visible')
+      await page.screenshot({ path: testInfo.outputPath(`creation-tooltip-${column === first ? 'first' : 'last'}-${language}-${width}.png`), fullPage: false })
+      await header.blur()
+    }
+    await first.locator('.add-card-header').scrollIntoViewIfNeeded()
     await page.evaluate(() => window.scrollTo(0, 0))
     const geometry = await page.locator('.status-columns').evaluate(element => {
       const columns = Array.from(element.querySelectorAll('.status-column'))
@@ -43,9 +67,28 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
         widths: columns.map(column => column.getBoundingClientRect().width),
         openColumns: columns.every(column => getComputedStyle(column).backgroundColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(column).borderTopWidth === '0px'),
         createAfterCards: create.getBoundingClientRect().top >= cards.at(-1)!.getBoundingClientRect().bottom,
+        headingsClear: columns.every(column => {
+          const title = column.querySelector('.column-heading')!.getBoundingClientRect()
+          const plus = column.querySelector('.add-card-header')!.getBoundingClientRect()
+          const menu = column.querySelector('.column-header .menu')!.getBoundingClientRect()
+          return title.right <= plus.left && plus.right <= menu.left
+        }),
+        headerBeforeMenu: first.querySelector('.add-card-header')!.nextElementSibling?.classList.contains('menu'),
+        plusStyles: [document.querySelector('.app-bar .button-primary')!, first.querySelector('.add-card-header')!, first.querySelector('.add-card-symbol')!].map(element => {
+          const style = getComputedStyle(element), box = element.getBoundingClientRect()
+          return { width: box.width, height: box.height, background: style.backgroundColor, radius: style.borderRadius, svg: element.querySelector('path')!.getAttribute('d') }
+        }),
+        footerStops: first.querySelector('.add-card')!.querySelectorAll('button, a, [tabindex]').length,
         targets: Array.from(first.querySelectorAll('button')).map(button => ({ width: button.getBoundingClientRect().width, height: button.getBoundingClientRect().height })),
       }
     })
+    expect(geometry.headingsClear).toBe(true)
+    expect(geometry.headerBeforeMenu).toBe(true)
+    expect(geometry.footerStops).toBe(0)
+    expect(geometry.plusStyles[0]).toEqual(geometry.plusStyles[1])
+    expect(geometry.plusStyles[0]).toEqual(geometry.plusStyles[2])
+    expect(geometry.plusStyles[0].width).toBe(44)
+    expect(geometry.plusStyles[0].height).toBe(44)
     expect(geometry.pageOverflow).toBe(false)
     expect(geometry.boardOverflow).toBe(width < 1280)
     expect(geometry.widths).toHaveLength(4)
@@ -63,6 +106,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
       expect(await page.locator('.install-help').evaluate(element => getComputedStyle(element).position)).toBe('static')
       expect(await page.locator('.install-help').evaluate(element => element.getBoundingClientRect().top >= document.querySelector('main')!.getBoundingClientRect().bottom)).toBe(true)
     }
+    await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur() })
     await page.screenshot({ path: testInfo.outputPath(`calm-${language}-${width}.png`), fullPage: true })
 
     // A lower card menu must escape the horizontal scroller, remain inside the
@@ -81,7 +125,8 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
 
     // The last column's empty list still has a creation entry below it.
     const last = page.locator('.status-column').last()
-    await last.getByRole('button', { name: en ? 'Add card' : 'Добавить карточку', exact: true }).click()
+    await last.locator('.add-card-header').focus()
+    await page.keyboard.press('Enter')
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('textbox')).toBeFocused()
     expect(await dialog.evaluate(element => {
@@ -90,7 +135,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     })).toBe(true)
     await page.screenshot({ path: testInfo.outputPath(`calm-form-${language}-${width}.png`), fullPage: false })
     await page.keyboard.press('Escape')
-    await expect(last.getByRole('button', { name: en ? 'Add card' : 'Добавить карточку', exact: true })).toBeFocused()
+    await expect(last.locator('.add-card-header')).toBeFocused()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 
     const longStatus = 'ДлинноеНазваниеСтатусаБезПробелов'.repeat(4)
@@ -99,6 +144,10 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await page.getByRole('dialog').getByRole('button', { name: en ? 'Create status' : 'Создать статус', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeHidden()
     const fifth = page.locator('.status-column').last()
+    await fifth.locator('.add-card-header').scrollIntoViewIfNeeded()
+    await page.mouse.move(0, 0)
+    await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur() })
+    await page.screenshot({ path: testInfo.outputPath(`creation-long-status-${language}-${width}.png`), fullPage: false })
     await fifth.getByRole('button', { name: en ? `Status actions for ${longStatus}` : `Действия статуса ${longStatus}`, exact: true }).click()
     await expect(page.getByRole('menu')).toBeVisible()
     await page.keyboard.press('Escape')
@@ -121,5 +170,48 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
       await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
       await page.keyboard.press('Escape')
     }
+  })
+}
+
+for (const language of ['ru', 'en'] as const) {
+  test(`creation entries preserve keyboard focus at the end of a long list in ${language}`, async ({ page }, testInfo) => {
+    const en = language === 'en'
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto('/tracker/')
+    if (en) { await page.getByRole('button', { name: 'Настройки' }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+    await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
+    await page.getByRole('dialog').getByRole('textbox').fill('Long list')
+    await page.getByRole('dialog').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
+    await page.getByRole('button', { name: en ? 'Add status' : 'Добавить статус', exact: true }).click()
+    await page.getByRole('dialog').getByRole('textbox').fill('Todo')
+    await page.getByRole('dialog').getByRole('button', { name: en ? 'Create status' : 'Создать статус', exact: true }).click()
+    const column = page.locator('.status-column')
+    for (let index = 0; index < 14; index++) {
+      await column.locator('.add-card').click()
+      await page.getByRole('dialog').getByRole('textbox').fill(`Card ${index + 1}`)
+      await page.getByRole('dialog').getByRole('button', { name: en ? 'Create card' : 'Создать карточку', exact: true }).click()
+      await expect(page.getByRole('dialog')).toBeHidden()
+    }
+    for (const entry of ['.add-card-header', '.add-card']) for (const key of ['Enter', 'Space']) {
+      const trigger = column.locator(entry)
+      await trigger.scrollIntoViewIfNeeded()
+      await trigger.focus()
+      const before = await page.evaluate(() => window.scrollY)
+      await page.keyboard.press(key)
+      await expect(page.getByRole('dialog').getByRole('textbox')).toBeFocused()
+      if (entry === '.add-card' && key === 'Enter') {
+        await page.getByRole('dialog').getByRole('textbox').fill('Created after reviewing the list')
+        await page.getByRole('dialog').getByRole('button', { name: en ? 'Create card' : 'Создать карточку', exact: true }).click()
+      } else if (key === 'Enter') await page.getByRole('dialog').getByRole('button', { name: en ? 'Cancel' : 'Отмена' }).click()
+      else await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog')).toBeHidden()
+      await expect(trigger).toBeFocused()
+      expect(Math.abs(await page.evaluate(() => window.scrollY) - before)).toBeLessThan(180)
+      if (entry === '.add-card') {
+        expect(await column.locator('.add-card-header').evaluate(element => element.getBoundingClientRect().bottom)).toBeLessThan(0)
+        await page.screenshot({ path: testInfo.outputPath(`creation-long-list-${language}-${key}.png`), fullPage: false })
+      }
+    }
+    await expect(column.locator('.work-card')).toHaveCount(15)
   })
 }

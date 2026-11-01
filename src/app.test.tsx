@@ -18,7 +18,7 @@ async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string)
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await waitFor(() => expect(trigger).toHaveFocus())
 }
-async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(within(column).getByRole('button', { name: /Добавить карточку/ })); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
+async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(column.querySelector<HTMLButtonElement>('.add-card')!); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
 function setViewport(width: number) { Object.defineProperty(window, 'innerWidth', { configurable: true, value: width }); window.dispatchEvent(new Event('resize')) }
 
 beforeEach(() => { location.hash = ''; setViewport(1280) })
@@ -248,7 +248,7 @@ describe('project board', () => {
     for (const name of ['Идеи', 'В работе', 'Завершено']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: `Действия статуса ${name}` })).toBeEnabled()
-      expect(within(screen.getByRole('heading', { name }).closest('article')!).getByRole('button', { name: /Добавить карточку/ })).toBeEnabled()
+      expect(screen.getByRole('heading', { name }).closest('article')!.querySelector('.add-card')).toBeEnabled()
     }
     expect(await screen.findByRole('button', { name: 'Действия карточки Позвонить арендодателю' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Действия статуса Идеи' }))
@@ -285,11 +285,11 @@ describe('project board', () => {
   })
 })
 
-it('retains the card creation draft on validation and storage errors and retries the whole form', async () => {
+it.each(['.add-card-header', '.add-card'])('retains the %s creation draft on validation and storage errors and retries the whole form', async source => {
   const user = userEvent.setup(); const repo = repository(); render(<App repository={repo} />)
   await fill(user, 'Новый проект', 'Priority', 'Создать проект'); await addStatus(user, 'Todo')
   const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
-  const trigger = within(column).getByRole('button', { name: /Добавить карточку/ })
+  const trigger = column.querySelector<HTMLButtonElement>(source)!
   await user.click(trigger)
   const dialog = screen.getByRole('dialog')
   expect(within(dialog).getByLabelText('Важная')).not.toBeChecked()
@@ -339,4 +339,45 @@ it('edits flags atomically, keeps failed drafts, reorders after success and tran
   expect(screen.getByText('Important')).toBeInTheDocument()
   expect(screen.queryByText('Urgent')).not.toBeInTheDocument()
   expect(await repo.board(before!.id)).toEqual(before)
+})
+
+
+it.each(['.add-card-header', '.add-card'])('returns creation focus to %s after save, cancel and Escape in empty and populated statuses', async source => {
+  const user = userEvent.setup(); render(<App repository={repository()} />)
+  await fill(user, 'Новый проект', 'Creation entries', 'Создать проект'); await addStatus(user, 'Todo')
+  const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
+  const trigger = column.querySelector<HTMLButtonElement>(source)!
+  expect(within(column).getAllByRole('button', { name: 'Добавить карточку' })).toHaveLength(2)
+  for (const populated of [false, true]) {
+    for (const dismissal of ['cancel', 'escape']) {
+      await user.click(trigger)
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
+      expect(screen.getByLabelText('Название карточки')).toHaveFocus()
+      if (dismissal === 'cancel') await user.click(screen.getByRole('button', { name: 'Отмена' }))
+      else await user.keyboard('{Escape}')
+      await waitFor(() => expect(trigger).toHaveFocus())
+      expect(column.querySelectorAll('.work-card')).toHaveLength(populated ? 1 : 0)
+    }
+    if (!populated) {
+      await user.click(trigger)
+      await fill(user, 'Название карточки', 'Saved from selected entry', 'Создать карточку')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(trigger).toHaveFocus()
+    }
+  }
+})
+
+it.each(['.add-card-header', '.add-card'])('closes a failed %s creation without losing the opener focus', async source => {
+  const user = userEvent.setup(); const repo = repository(); render(<App repository={repo} />)
+  await fill(user, 'Новый проект', 'Creation failure', 'Создать проект'); await addStatus(user, 'Todo')
+  const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
+  const trigger = column.querySelector<HTMLButtonElement>(source)!
+  vi.spyOn(repo, 'createCard').mockRejectedValueOnce(new Error('quota'))
+  await user.click(trigger)
+  await fill(user, 'Название карточки', 'Retained draft', 'Создать карточку')
+  expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent('Не удалось сохранить')
+  expect(screen.getByLabelText('Название карточки')).toHaveValue('Retained draft')
+  expect(column.querySelectorAll('.work-card')).toHaveLength(0)
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(trigger).toHaveFocus())
 })

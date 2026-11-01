@@ -64,7 +64,7 @@ it('isolates board dialogs, column dialogs and a card move dialog from unchanged
   for (const action of ['rename', 'create']) {
     menuRenders.mockClear()
     if (action === 'rename') await openAction('Действия статуса A', 'Переименовать')
-    else await user.click(screen.getAllByRole('button', { name: 'Добавить карточку' })[0])
+    else await user.click(screen.getByRole('heading', { name: 'A' }).closest('article')!.querySelector<HTMLButtonElement>('.add-card')!)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     await user.keyboard('{Escape}')
     expect(renders('Действия статуса A')).toBeGreaterThan(0)

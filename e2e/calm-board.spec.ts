@@ -181,11 +181,13 @@ for (const language of ['ru', 'en'] as const) {
     if (en) { await page.getByRole('button', { name: 'Настройки' }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
     await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await page.getByRole('dialog').getByRole('textbox').fill('Long list')
+    await page.getByRole('dialog').getByRole('combobox', { name: en ? 'Status set' : 'Набор статусов' }).selectOption('empty')
     await page.getByRole('dialog').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await page.getByRole('button', { name: en ? 'Add status' : 'Добавить статус', exact: true }).click()
     await page.getByRole('dialog').getByRole('textbox').fill('Todo')
     await page.getByRole('dialog').getByRole('button', { name: en ? 'Create status' : 'Создать статус', exact: true }).click()
-    const column = page.locator('.status-column')
+    await expect(page.getByRole('heading', { name: 'Todo', exact: true })).toBeVisible()
+    const column = page.locator('.status-column').filter({ has: page.getByRole('heading', { name: 'Todo', exact: true }) })
     for (let index = 0; index < 14; index++) {
       await column.locator('.add-card').click()
       await page.getByRole('dialog').getByRole('textbox').fill(`Card ${index + 1}`)

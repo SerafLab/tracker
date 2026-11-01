@@ -146,7 +146,13 @@ const StatusColumn = memo(function StatusColumn({ status, index, total, statuses
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const menuTrigger = useRef<HTMLButtonElement>(null)
-  const createTrigger = useRef<HTMLButtonElement>(null)
+  const headerCreateTrigger = useRef<HTMLButtonElement>(null)
+  const footerCreateTrigger = useRef<HTMLButtonElement>(null)
+  const createTrigger = useRef<HTMLButtonElement | null>(null)
+  const openCreation = (trigger: React.RefObject<HTMLButtonElement | null>) => {
+    createTrigger.current = trigger.current
+    setCreatingCard(true)
+  }
   const [creatingCard, setCreatingCard] = useState(false)
   return <article className="status-column" data-status-id={status.id}>
     <header className="column-header">
@@ -154,6 +160,7 @@ const StatusColumn = memo(function StatusColumn({ status, index, total, statuses
         <h2 className="column-title">{status.name}</h2>
         <span className="card-count"><span aria-hidden="true">{status.cards.length}</span><span className="sr-only">{t('cardCount', { count: status.cards.length })}</span></span>
       </div>
+      <button ref={headerCreateTrigger} className="button button-primary button-icon bar-hint add-card-header" aria-label={t('addCard')} data-hint={t('addCard')} onClick={() => openCreation(headerCreateTrigger)}><BoardIcon name="plus" /></button>
       <ActionMenu triggerRef={menuTrigger} label={t('statusActions', { name: status.name })} actions={[
         { label: t('rename'), onSelect: () => setRenaming(true) },
         { label: t('moveLeft'), disabled: index === 0, onSelect: () => void onMove(status.id, -1) },
@@ -173,7 +180,7 @@ const StatusColumn = memo(function StatusColumn({ status, index, total, statuses
       onUpdate={onUpdateCard}
       onMove={onMoveCard}
     />)}</ul>
-    <button ref={createTrigger} className="button button-quiet add-card" onClick={() => setCreatingCard(true)}><BoardIcon name="plus" />{t('addCard')}</button>
+    <button ref={footerCreateTrigger} className="button button-quiet add-card" onClick={() => openCreation(footerCreateTrigger)}><span className="button button-primary button-icon add-card-symbol" aria-hidden="true"><BoardIcon name="plus" /></span>{t('addCard')}</button>
     {renaming ? <NameDialog title={t('renameStatus')} label={t('newName')} button={t('save')} initialName={status.name} onSubmit={name => onRename(status.id, name)} onClose={() => setRenaming(false)} /> : null}
     {creatingCard ? <CardDialog title={t('newCard')} returnFocus={createTrigger} button={t('createCard')} onSubmit={input => onCreateCard(status.id, input)} onClose={() => setCreatingCard(false)} /> : null}
   </article>

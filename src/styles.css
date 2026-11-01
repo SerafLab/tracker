@@ -183,8 +183,9 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .card-name { min-width: 0; font-size: .9375rem; font-weight: 530; line-height: 1.5; overflow-wrap: anywhere; }
 .card-controls { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-inline: -.3125rem; border-top: 1px solid #efeee7; padding-top: .25rem; }
 .card-move-arrows { display: flex; gap: .125rem; }
-.add-card { justify-content: flex-start; width: 100%; margin: .75rem 0 0; padding-left: .6875rem; font-weight: 450; }
-.add-card .ui-icon { width: .9375rem; }
+.add-card { justify-content: flex-start; width: 100%; margin: .75rem 0 0; padding: 0; border: 0; gap: .75rem; font-weight: 450; }
+.add-card-symbol { height: 2.75rem; }
+.add-card:hover .add-card-symbol, .add-card:active .add-card-symbol { background: var(--accent-hover); }
 .card-flags, .card-badges { display: flex; flex-wrap: wrap; gap: .375rem; }
 .card-flags { margin-block: 1rem; gap: 1.5rem; }
 .card-badges:empty { display: none; }

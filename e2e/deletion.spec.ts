@@ -15,7 +15,7 @@ for (const width of [320, 1280]) {
       await expect(page.getByRole('dialog')).toBeHidden()
     }
     const first = page.locator('.status-column').filter({ has: page.getByRole('heading', { name: 'Первый', exact: true }) })
-    await first.getByRole('button', { name: /Добавить карточку/ }).click()
+    await first.locator('.add-card').click()
     await page.getByLabel('Название карточки').fill('Карточка')
     await page.getByRole('button', { name: 'Создать карточку' }).click()
     await expect(page.getByRole('dialog')).toBeHidden()

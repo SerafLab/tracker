@@ -1,0 +1,9 @@
+# Production-origin transport experiment
+
+This temporary experiment resolves the first gate of `add-agent-mcp-integration` before implementing MCP. It exposes no task operations and uses a separate `easytrack-transport-experiment` IndexedDB database with one synthetic marker. It does not read the application's project database.
+
+Run `node scripts/mcp-transport-probe.mjs /private/tmp/easytrack-probe.json`. Use a new file path: existing files and symlinks are rejected. Metadata and evidence are created with owner-only permissions. The key file is removed on normal stop/expiry; the synthetic evidence remains. The private file contains a short-lived connection URL. Open that URL in Codex's internal browser and choose **Test connection**. The fragment is immediately removed from the URL. The local process accepts only loopback requests from the exact production HTTPS origin, checks Host/path, authenticates the first message, and permits one executor. A wrong origin, invalid handshake, duplicate executor or unknown message is rejected. A 15-minute expiry or closing the process ends the experiment's access.
+
+After **Handshake confirmed**, hide the internal browser, type a synthetic marker into the relay's terminal, and inspect the private `.evidence.json` record for the response and visibility state. Close/reopen the experiment page with the connection URL, connect, and verify `previousMarker` is preserved. Record actual engine/version, any permission prompt, background behavior and storage continuity in `docs/agents/mcp-browser-qa.md`. An origin on localhost is useful for automated regression only and does not satisfy the production gate.
+
+The test page can be removed after the gate; its separate synthetic database contains no user task data. No browser protection should be disabled. Do not put private connection URLs in documentation or logs.

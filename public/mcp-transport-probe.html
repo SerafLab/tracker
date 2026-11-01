@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>EasyTrack connection experiment</title>
+<style>body{font:16px system-ui;max-width:42rem;margin:2rem auto;padding:1rem;overflow-wrap:anywhere}button{font:inherit;padding:.75rem}pre{white-space:pre-wrap}label{display:block;margin-block:1rem}</style>
+<h1>EasyTrack connection experiment</h1>
+<p>Checks a temporary local connection and a disposable browser-storage marker. Close the local process to end access.</p>
+<button id="connect">Test connection</button><p id="status" role="status">Ready to test</p><pre id="evidence"></pre>
+<script type="module">
+const params = new URLSearchParams(location.hash.slice(1));
+const port = params.get('port'); const token = params.get('token');
+history.replaceState(null, '', location.pathname);
+const status = document.querySelector('#status'); const evidence = document.querySelector('#evidence'); const button = document.querySelector('#connect');
+let database; let socket;
+const report = value => { evidence.textContent += JSON.stringify(value) + '\n'; };
+report({ userAgent: navigator.userAgent, origin: location.origin, secure: isSecureContext });
+const valid = /^\d{1,5}$/.test(port ?? '') && Number(port) > 0 && Number(port) < 65536 && /^[a-f0-9]{64}$/.test(token ?? '');
+if (!valid) { button.disabled = true; status.textContent = 'Open the temporary experiment URL from the local probe process.'; }
+const open = () => new Promise((resolve, reject) => {
+  const request = indexedDB.open('easytrack-transport-experiment', 1);
+  request.onupgradeneeded = () => request.result.createObjectStore('markers');
+  request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+});
+const read = () => new Promise((resolve, reject) => { const transaction = database.transaction('markers'); const request = transaction.objectStore('markers').get('marker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+const write = value => new Promise((resolve, reject) => { const transaction = database.transaction('markers', 'readwrite'); transaction.objectStore('markers').put(value, 'marker'); transaction.oncomplete = resolve; transaction.onerror = () => reject(transaction.error); });
+button.addEventListener('click', async () => {
+ button.disabled = true; status.textContent = 'Opening local connection…';
+ try {
+  database = await open(); const previousMarker = await read();
+  report({ storage: 'ready', previousMarker: previousMarker ?? null });
+  socket = new WebSocket(`ws://127.0.0.1:${port}/probe`);
+  const timeout = setTimeout(() => { status.textContent = 'Connection timed out; handshake not confirmed'; socket.close(); }, 10000);
+  socket.onopen = () => socket.send(JSON.stringify({ type: 'hello', version: 1, token }));
+  socket.onmessage = async event => {
+   try {
+    const message = JSON.parse(event.data);
+    if (message.type === 'ready') { clearTimeout(timeout); status.textContent = 'Handshake confirmed'; report({ handshake: true, visibility: document.visibilityState }); return; }
+    if (message.type === 'marker' && typeof message.value === 'string' && message.value.length <= 100) {
+     await write(message.value); const marker = await read();
+     socket.send(JSON.stringify({ type: 'result', id: message.id, marker, previousMarker: previousMarker ?? null, visibility: document.visibilityState }));
+     status.textContent = 'Background command saved'; report({ command: message.id, marker, visibility: document.visibilityState });
+    }
+   } catch (error) { status.textContent = `Experiment failed: ${error.name}`; }
+  };
+  socket.onerror = () => { clearTimeout(timeout); status.textContent = 'Local connection failed; handshake not confirmed'; report({ handshake: false }); };
+  socket.onclose = event => { clearTimeout(timeout); report({ disconnected: true, code: event.code }); database?.close(); };
+ } catch (error) { status.textContent = `Experiment failed: ${error.name}`; }
+});
+</script></html>

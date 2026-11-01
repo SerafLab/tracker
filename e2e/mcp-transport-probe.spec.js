@@ -5,6 +5,12 @@ test('isolated transport probe authenticates, executes a background marker comma
   const evidence = []
   const relay = await createProbeRelay({ origin: new URL(baseURL).origin, appURL: `${baseURL}mcp-transport-probe.html`, onEvidence: entry => evidence.push(entry) })
   try {
+    // Exercise the existing installed context, whose navigation fallback must
+    // not turn this concrete diagnostic document into the application shell.
+    await page.goto(baseURL)
+    await page.evaluate(() => navigator.serviceWorker.ready)
+    await page.reload()
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null)
     await page.goto(relay.url)
     expect(page.url()).not.toContain('token')
     await page.getByRole('button', { name: 'Test connection' }).click()

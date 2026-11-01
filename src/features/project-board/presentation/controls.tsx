@@ -119,11 +119,11 @@ export function NameDialog({ title, label, button, initialName, onSubmit, onClos
 }
 
 
-export function CardDialog({ title, button, initialValue, onSubmit, onClose, returnFocus }: {
-  title: string; button: string; initialValue?: CardInput; onSubmit: (input: CardInput) => Promise<boolean>; onClose: () => void; returnFocus: React.RefObject<HTMLButtonElement | null>
+export function CardDialog({ title, button, onSubmit, onClose, returnFocus }: {
+  title: string; button: string; onSubmit: (input: CardInput) => Promise<boolean>; onClose: () => void; returnFocus: React.RefObject<HTMLButtonElement | null>
 }) {
   const { t } = useTranslation()
-  const [input, setInput] = useState<CardInput>(() => ({ name: initialValue?.name ?? '', important: initialValue?.important ?? false, urgent: initialValue?.urgent ?? false }))
+  const [input, setInput] = useState<CardInput>(() => ({ name: '', description: '', important: false, urgent: false }))
   const [invalid, setInvalid] = useState(false)
   const [failed, setFailed] = useState(false)
   const [saving, setSaving] = useState(false)

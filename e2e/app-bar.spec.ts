@@ -105,7 +105,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     if (state === 'restart') {
       await expect(page.getByRole('button', {name: en ? 'Create project' : 'Создать проект'})).toBeVisible()
       await page.evaluate(() => new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open('personal-project-tracker', 30)
+        const request = indexedDB.open('personal-project-tracker', 40)
         request.onsuccess = () => { request.result.close(); resolve() }
         request.onerror = () => reject(request.error)
       }))

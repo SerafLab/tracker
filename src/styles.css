@@ -271,3 +271,29 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .project-preset-field { margin-top: 1rem; }
 .preset-preview { color: var(--text-secondary); line-height: 1.6; overflow-wrap: anywhere; }
 .preset-preview ol { padding-left: 1.5rem; margin-block: .75rem 0; }
+/* The card link covers its free surface; independent controls stay above it. */
+.work-card { position: relative; }
+.card-detail-link { color: inherit; text-decoration: none; }
+.card-detail-link::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius-card); }
+.card-detail-link:focus-visible { outline: none; }
+.card-detail-link:focus-visible::after { outline: 2px solid var(--focus); outline-offset: 3px; }
+.card-controls { position: relative; pointer-events: none; }
+.card-controls button, .card-controls .menu { position: relative; z-index: 1; pointer-events: auto; }
+.card-detail { max-width: 56rem; }
+.card-detail:focus { outline: none; }
+.detail-context { margin-block: 1rem; overflow-wrap: anywhere; }
+.detail-fields { display: grid; gap: 1.25rem; padding: 1.25rem; }
+textarea { resize: vertical; font: inherit; }
+textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.detail-fields .card-flags { margin: 0; }
+.detail-fields .form-actions { margin: 0; }
+.saved-description { padding: 1.25rem; margin-block: 1.5rem; }
+.saved-description h2, .note-history h2 { font-size: 1.125rem; margin-top: 0; }
+.detail-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
+.detail-text a { color: var(--accent); }
+.note-history { margin-block: 2rem; }
+.note-list { display: grid; gap: 1rem; list-style: none; padding: 0; }
+.note { padding: 1.25rem; min-width: 0; }
+.note-date { color: var(--text-secondary); font-size: .8125rem; line-height: 1.5; }
+.note-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
+.note-editor { margin-block: 1rem; }

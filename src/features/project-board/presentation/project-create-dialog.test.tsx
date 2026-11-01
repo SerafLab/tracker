@@ -96,7 +96,7 @@ it('closes a committed creation after navigation fails without offering another 
     const store = createProjectBoardStore(api)
     await store.getState().showCatalogue()
     const saved = vi.fn(), navigate = vi.fn().mockRejectedValue(Error('navigation failed'))
-    render(<LocaleProvider><ProjectBoardApp store={store} navigateToProject={navigate} navigateToCatalogue={vi.fn()} onMutationSaved={saved} /></LocaleProvider>)
+    render(<LocaleProvider><ProjectBoardApp navigateToCard={async () => {}} registerDraftGuard={() => {}} requestLeave={action => void action()} store={store} navigateToProject={navigate} navigateToCatalogue={vi.fn()} onMutationSaved={saved} /></LocaleProvider>)
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'Создать проект' }))
     await user.type(screen.getByRole('textbox'), 'Saved project')

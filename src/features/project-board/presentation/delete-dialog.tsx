@@ -36,6 +36,7 @@ export function DeleteDialog({ kind, name, blocked, returnFocus, onDelete, onClo
   }
   return <ActionDialog title={t(kind === 'card' ? 'deleteCard' : 'deleteStatus')} onClose={onClose} returnFocus={returnFocus}>
     <p>{t(kind === 'card' ? 'deleteCardConfirmation' : 'deleteStatusConfirmation', { name })}</p>
+    {kind === 'card' ? <p>{t('cardContentsLost')}</p> : null}
     <p>{t('deletionIrreversible')}</p>
     {cannotDelete || failed ? <p id={messageId} className="save-error" role="alert">{t(cannotDelete ? 'statusNotEmpty' : 'saveError')}</p> : null}
     <div className="form-actions"><button ref={cancel} type="button" className="button button-secondary" onClick={onClose}>{t('cancel')}</button><button type="button" className="button button-primary" disabled={saving || cannotDelete} aria-describedby={cannotDelete || failed ? messageId : undefined} onClick={() => void submit()}>{t('delete')}</button></div>

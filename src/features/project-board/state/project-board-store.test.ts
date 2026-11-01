@@ -5,6 +5,7 @@ import type { ProjectBoardUseCases } from '../application/use-cases'
 const board = { id: 'project', name: 'Поиск квартиры', createdAt: 'now', statuses: [] }
 function useCases(overrides: Partial<ProjectBoardUseCases> = {}): ProjectBoardUseCases {
   return {
+    cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
     open: vi.fn(), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(), board: vi.fn().mockResolvedValue(board),
     createProject: vi.fn(), renameProject: vi.fn(), createStatus: vi.fn(), renameStatus: vi.fn(), moveStatus: vi.fn(),
     createCard: vi.fn(), updateCard: vi.fn(), moveCard: vi.fn(), deleteCard: vi.fn(), deleteStatus: vi.fn().mockResolvedValue('deleted'), ...overrides,
@@ -25,7 +26,7 @@ describe('project-board store', () => {
     const api = useCases({ updateCard: vi.fn().mockRejectedValue(new Error('quota')) })
     const store = createProjectBoardStore(api)
     await store.getState().showBoard('project')
-    await store.getState().updateCard('project', 'card', { name: 'Новое имя', important: false, urgent: true })
+    await store.getState().updateCard('project', 'card', { name: 'Новое имя', description: '', important: false, urgent: true })
     expect(store.getState().workspace).toEqual({ kind: 'board', board })
     expect(store.getState().saveError).toBe(true)
   })
@@ -37,7 +38,7 @@ it.each(['createCard', 'updateCard', 'moveCard'] as const)('preserves confirmed 
   const store = createProjectBoardStore(api); await store.getState().showBoard('project')
   vi.mocked(api.board).mockClear()
   const state = store.getState()
-  const input = { name: 'N', important: true, urgent: true }
+  const input = { name: 'N', description: '', important: true, urgent: true }
   const result = operation === 'createCard' ? await state.createCard('project', 's', input) : operation === 'updateCard' ? await state.updateCard('project', 'c', input) : await state.moveCard('project', 'c', 's')
   expect(result).toBe(false)
   expect(api.board).not.toHaveBeenCalled()
@@ -47,7 +48,7 @@ it('reloads the board only after a successful write', async () => {
   let finish!: () => void
   const api = useCases({ updateCard: vi.fn(() => new Promise<void>(resolve => { finish = resolve })) })
   const store = createProjectBoardStore(api); await store.getState().showBoard('project'); vi.mocked(api.board).mockClear()
-  const saving = store.getState().updateCard('project', 'c', { name: 'N', important: true, urgent: false })
+  const saving = store.getState().updateCard('project', 'c', { name: 'N', description: '', important: true, urgent: false })
   expect(api.board).not.toHaveBeenCalled(); finish(); expect(await saving).toBe(true)
   expect(api.board).toHaveBeenCalledOnce()
 })
@@ -198,7 +199,7 @@ it('does not reopen a board when a mutation completes after navigating away', as
   const api = useCases({ updateCard: vi.fn(() => pending.promise) })
   const store = createProjectBoardStore(api)
   await store.getState().showBoard('project')
-  const saving = store.getState().updateCard('project', 'card', { name: 'Saved', important: false, urgent: false })
+  const saving = store.getState().updateCard('project', 'card', { name: 'Saved', description: '', important: false, urgent: false })
   await store.getState().showCatalogue()
   vi.mocked(api.board).mockClear()
   pending.resolve()
@@ -214,7 +215,7 @@ it('refreshes both writes when concurrent mutations finish on the same board', a
   const store = createProjectBoardStore(api)
   await store.getState().showBoard('project')
   vi.mocked(api.board).mockClear()
-  const input = { name: 'Saved', important: false, urgent: false }
+  const input = { name: 'Saved', description: '', important: false, urgent: false }
   const savingFirst = store.getState().updateCard('project', 'first', input)
   const savingSecond = store.getState().updateCard('project', 'second', input)
   first.resolve()
@@ -244,4 +245,44 @@ it('reports failed initialization without opening a partial board', async () => 
   expect(store.getState().saveError).toBe(true)
   expect(api.board).not.toHaveBeenCalled()
   expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: [] })
+})
+
+it('keeps the detail context and confirmed fields when saving fields and notes, including note failure', async () => {
+  const card = { id: 'c', statusId: 's', name: 'Card', description: '', important: false, urgent: false, position: 0 }
+  const details = { project: board, status: { id: 's', projectId: board.id, name: 'S', position: 0 }, card, notes: [] }
+  const note = { id: 'n', cardId: 'c', text: 'Note', createdAt: 'now' }
+  const api = useCases({ cardDetails: vi.fn().mockResolvedValue(details), createNote: vi.fn().mockResolvedValue(note) })
+  const store = createProjectBoardStore(api); await store.getState().showCard(board.id, 'c', true)
+  expect(await store.getState().updateCard(board.id, 'c', { ...card, name: 'Saved', description: 'Details' })).toBe(true)
+  expect(store.getState().workspace).toMatchObject({ kind: 'card', details: { card: { name: 'Saved', description: 'Details' } } })
+  await store.getState().createNote(board.id, 'c', 'Note')
+  const confirmed = store.getState().workspace
+  expect(confirmed).toMatchObject({ kind: 'card', details: { notes: [note] } })
+  vi.mocked(api.updateNote).mockRejectedValueOnce(new Error('quota'))
+  expect(await store.getState().updateNote(board.id, 'c', 'n', 'New')).toBeUndefined()
+  expect(store.getState().workspace).toEqual(confirmed)
+  expect(api.board).not.toHaveBeenCalled()
+})
+
+it.each(['resolve', 'reject'] as const)('ignores a stale detail %s after the user opens a board', async finish => {
+  const details = { project: board, status: { id: 's', projectId: board.id, name: 'S', position: 0 }, card: { id: 'c', statusId: 's', name: 'C', description: '', important: false, urgent: false, position: 0 }, notes: [] }
+  const pending = deferred<typeof details>()
+  const api = useCases({ cardDetails: vi.fn(() => pending.promise) })
+  const store = createProjectBoardStore(api)
+  const first = store.getState().showCard(board.id, 'c', true)
+  await store.getState().showBoard('project', true)
+  if (finish === 'resolve') pending.resolve(details)
+  else pending.reject(new Error('old read failed'))
+  expect(await first).toBe('superseded')
+  expect(store.getState().workspace).toEqual({ kind: 'board', board })
+  expect(api.setLastProject).toHaveBeenCalledExactlyOnceWith('project')
+})
+
+it('refuses detail writes through a stale storage connection', async () => {
+  const api = useCases(), store = createProjectBoardStore(api, () => false)
+  expect(await store.getState().createNote('project', 'c', 'New')).toBeUndefined()
+  expect(await store.getState().updateNote('project', 'c', 'n', 'Changed')).toBeUndefined()
+  expect(await store.getState().deleteNote('project', 'c', 'n')).toBe(false)
+  expect(await store.getState().updateCard('project', 'c', { name: 'Changed', description: 'Draft', important: false, urgent: false })).toBe(false)
+  for (const mutation of [api.createNote, api.updateNote, api.deleteNote, api.updateCard]) expect(mutation).not.toHaveBeenCalled()
 })

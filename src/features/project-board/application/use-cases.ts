@@ -30,13 +30,23 @@ export function createProjectBoardUseCases(dependencies: {
       const project = { id: createId(), name: projectName, createdAt: now() }
       return repository.createProject(project, statusNames.map((statusName, position) => ({ id: createId(), projectId: project.id, name: statusName, position })))
     },
+    cardDetails: (projectId: Id, cardId: Id) => repository.cardDetails(projectId, cardId),
+    createNote: (cardId: Id, text: string) => {
+      if (!text.trim()) throw new Error('Текст заметки обязателен')
+      return repository.createNote({ id: createId(), cardId, text: text.trim(), createdAt: now() })
+    },
+    updateNote: (cardId: Id, noteId: Id, text: string) => {
+      if (!text.trim()) throw new Error('Текст заметки обязателен')
+      return repository.updateNote(cardId, noteId, text.trim(), now())
+    },
+    deleteNote: (cardId: Id, noteId: Id) => repository.deleteNote(cardId, noteId),
     renameProject: (id: Id, input: string) => repository.renameProject(id, name(input)),
     createStatus: (projectId: Id, input: string) => repository.createStatus({ id: createId(), projectId, name: name(input) }),
     renameStatus: (id: Id, input: string) => repository.renameStatus(id, name(input)),
     deleteStatus: (id: Id) => repository.deleteStatus(id),
     moveStatus: (id: Id, direction: -1 | 1) => repository.moveStatus(id, direction),
-    createCard: (statusId: Id, input: CardInput) => repository.createCard({ id: createId(), statusId, name: name(input.name), important: input.important, urgent: input.urgent }),
-    updateCard: (id: Id, input: CardInput) => repository.updateCard(id, { name: name(input.name), important: input.important, urgent: input.urgent }),
+    createCard: (statusId: Id, input: CardInput) => repository.createCard({ id: createId(), statusId, name: name(input.name), description: input.description, important: input.important, urgent: input.urgent }),
+    updateCard: (id: Id, input: CardInput) => repository.updateCard(id, { name: name(input.name), description: input.description, important: input.important, urgent: input.urgent }),
     deleteCard: (id: Id) => repository.deleteCard(id),
     moveCard: (id: Id, statusId: Id) => repository.moveCard(id, statusId),
   }

@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Contextual navigation and primary action
-The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. Service states SHALL omit creation, project-renaming, and project-deletion actions.
+The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The card-detail page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming, or project-deletion actions. Card-page navigation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming, and project-deletion actions.
 
 #### Scenario: User works in the catalogue
 - **WHEN** the catalogue is displayed, whether empty or populated
@@ -20,6 +20,10 @@ The application bar SHALL show an icon-only plus for project creation in the cat
 #### Scenario: User encounters a service state
 - **WHEN** the application is loading, its storage is unavailable, or a restart is required
 - **THEN** the application bar has no creation, project-renaming, or project-deletion action, its settings panel provides language selection, and the state message retains its relevant guidance or recovery action
+
+#### Scenario: User navigates from a card page
+- **WHEN** пользователь открывает страницу карточки
+- **THEN** доступен возврат к её доске, бренд ведёт в каталог через защиту черновиков, настройки содержат выбор языка, а создание статуса, переименование и удаление проекта отсутствуют
 
 ### Requirement: Settings panel interaction
 The settings gear SHALL open and close one non-modal panel. The panel SHALL support keyboard access to its controls, close on Escape or outside interaction, and restore focus to the gear on Escape. Starting project renaming or deletion SHALL close the panel before opening its dialog. Cancelling either dialog SHALL return focus to the gear; successful renaming SHALL also return focus to the gear, while successful deletion SHALL follow project-deletion navigation and focus rules.

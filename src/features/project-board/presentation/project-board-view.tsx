@@ -20,13 +20,13 @@ type BoardProps = {
   onRenameStatus: (statusId: Id, name: string) => Promise<void>
   onMoveStatus: (statusId: Id, direction: -1 | 1) => Promise<void>
   onCreateCard: (statusId: Id, input: CardInput) => Promise<boolean>
-  onUpdateCard: (cardId: Id, input: CardInput) => Promise<boolean>
+  onOpenCard: (cardId: Id) => Promise<void>
   onDeleteCard: (cardId: Id) => Promise<boolean>
   onDeleteStatus: (statusId: Id) => Promise<DeleteStatusStateResult>
   onMoveCard: (cardId: Id, statusId: Id) => Promise<boolean>
 }
 
-export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, onReturn, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onUpdateCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
+export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, onReturn, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
   const { t } = useTranslation()
   const [moveDialogCardId, setMoveDialogCardId] = useState<Id | null>(null)
   const root = useRef<HTMLElement>(null)
@@ -115,7 +115,8 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
           onRename={onRenameStatus}
           onMove={onMoveStatus}
           onCreateCard={onCreateCard}
-          onUpdateCard={onUpdateCard}
+          projectId={board.id}
+          onOpenCard={onOpenCard}
           onMoveCard={moveCard}
         />)}
       </section>
@@ -138,11 +139,12 @@ type StatusColumnProps = {
   onRename: (statusId: Id, name: string) => Promise<void>
   onMove: (statusId: Id, direction: -1 | 1) => Promise<void>
   onCreateCard: (statusId: Id, input: CardInput) => Promise<boolean>
-  onUpdateCard: (cardId: Id, input: CardInput) => Promise<boolean>
+  projectId: Id
+  onOpenCard: (cardId: Id) => Promise<void>
   onMoveCard: (cardId: Id, statusId: Id, focus?: CardMoveFocus) => Promise<boolean>
 }
 
-const StatusColumn = memo(function StatusColumn({ status, index, total, statuses, saveError, onMoveDialogChange, onRename, onMove, onCreateCard, onUpdateCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
+const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, saveError, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const menuTrigger = useRef<HTMLButtonElement>(null)
@@ -170,7 +172,8 @@ const StatusColumn = memo(function StatusColumn({ status, index, total, statuses
       onMoveDialogChange={onMoveDialogChange}
       previousStatus={statuses[index - 1]}
       nextStatus={statuses[index + 1]}
-      onUpdate={onUpdateCard}
+      projectId={projectId}
+      onOpen={onOpenCard}
       onMove={onMoveCard}
     />)}</ul>
     <button ref={createTrigger} className="button button-quiet add-card" onClick={() => setCreatingCard(true)}><BoardIcon name="plus" />{t('addCard')}</button>

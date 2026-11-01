@@ -1,5 +1,5 @@
 import { moveByOffset, placeCardInGroup } from '../../domain/order'
-import type { Card, CardInput, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../../domain/model'
+import type { Card, CardDetails, CardInput, Note, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../../domain/model'
 import type { DeleteStatusResult, NewCard, NewStatus, ProjectBoardRepository } from '../../application/repository'
 import { ProjectBoardDatabase } from './database'
 
@@ -32,6 +32,47 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
         cards: await this.db.cards.where('statusId').equals(status.id).sortBy('position'),
       }))),
     }
+  }
+
+  async cardDetails(projectId: Id, cardId: Id): Promise<CardDetails | undefined> {
+    return this.db.transaction('r', this.db.projects, this.db.statuses, this.db.cards, this.db.notes, async () => {
+      const [project, card] = await Promise.all([this.db.projects.get(projectId), this.db.cards.get(cardId)])
+      if (!project || !card) return undefined
+      const status = await this.db.statuses.get(card.statusId)
+      if (!status || status.projectId !== projectId) return undefined
+      const notes = await this.db.notes.where('cardId').equals(cardId).toArray()
+      notes.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+      return { project, status, card, notes }
+    })
+  }
+
+  async createNote(note: Note): Promise<Note> {
+    return this.db.transaction('rw', this.db.cards, this.db.notes, async () => {
+      if (!note.text.trim()) throw new Error('Текст заметки обязателен')
+      if (!await this.db.cards.get(note.cardId)) throw new Error('Карточка не найдена')
+      await this.db.notes.add(note)
+      return note
+    })
+  }
+
+  async updateNote(cardId: Id, noteId: Id, text: string, updatedAt: string): Promise<Note> {
+    return this.db.transaction('rw', this.db.cards, this.db.notes, async () => {
+      if (!text.trim()) throw new Error('Текст заметки обязателен')
+      const [card, note] = await Promise.all([this.db.cards.get(cardId), this.db.notes.get(noteId)])
+      if (!card || !note || note.cardId !== cardId) throw new Error('Заметка не найдена')
+      if (note.text === text) return note
+      const saved = { ...note, text, updatedAt }
+      await this.db.notes.put(saved)
+      return saved
+    })
+  }
+
+  async deleteNote(cardId: Id, noteId: Id): Promise<void> {
+    await this.db.transaction('rw', this.db.cards, this.db.notes, async () => {
+      const [card, note] = await Promise.all([this.db.cards.get(cardId), this.db.notes.get(noteId)])
+      if (!card || !note || note.cardId !== cardId) throw new Error('Заметка не найдена')
+      await this.db.notes.delete(noteId)
+    })
   }
 
   async createStatus(status: NewStatus): Promise<Status> {
@@ -81,7 +122,7 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
     await this.db.transaction('rw', this.db.cards, async () => {
       const card = await this.db.cards.get(id)
       if (!card) throw new Error('Карточка не найдена')
-      const updated = { ...card, name: input.name, important: input.important, urgent: input.urgent }
+      const updated = { ...card, name: input.name, description: input.description, important: input.important, urgent: input.urgent }
       if (card.important === input.important && card.urgent === input.urgent) {
         await this.db.cards.put(updated)
         return
@@ -92,10 +133,11 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
   }
 
   async deleteCard(id: Id) {
-    await this.db.transaction('rw', this.db.cards, async () => {
+    await this.db.transaction('rw', this.db.cards, this.db.notes, async () => {
       const card = await this.db.cards.get(id)
       if (!card) throw new Error('Карточка не найдена')
       const cards = await this.db.cards.where('statusId').equals(card.statusId).sortBy('position')
+      await this.db.notes.where('cardId').equals(id).delete()
       await this.db.cards.delete(id)
       await this.db.cards.bulkPut(cards.filter(item => item.id !== id).map((item, position) => ({ ...item, position })))
     })

@@ -1,4 +1,4 @@
-export type { Id, ProjectBoard } from './domain/model'
+export type { Id, ProjectBoard, CardDetails, DraftGuard, RegisterDraftGuard } from './domain/model'
 export type { ProjectBoardRepository } from './application/repository'
 export { createProjectBoardUseCases } from './application/use-cases'
 export { ProjectBoardDatabase } from './infrastructure/indexeddb/database'

@@ -13,7 +13,7 @@ async function setup(cards = true) {
   const repo = new DexieProjectBoardRepository(db)
   await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' })
   await repo.createStatus({ id: 's', projectId: 'p', name: 'Status' })
-  if (cards) for (const id of ['a', 'b']) await repo.createCard({ id, statusId: 's', name: 'Same', important: false, urgent: false })
+  if (cards) for (const id of ['a', 'b']) await repo.createCard({ id, statusId: 's', name: 'Same', description: '', important: false, urgent: false })
   location.hash = '#project/p'
   render(<App repository={repo} />)
   await screen.findByRole('heading', { name: 'Project' })
@@ -49,7 +49,7 @@ it('explains nonempty status refusal and rechecks cards added while confirmation
   const { repo, user } = await setup(false)
   const trigger = screen.getByRole('button', { name: 'Действия статуса Status' })
   let dialog = await openDelete(user, trigger)
-  await repo.createCard({ id: 'late', statusId: 's', name: 'Late', important: false, urgent: false })
+  await repo.createCard({ id: 'late', statusId: 's', name: 'Late', description: '', important: false, urgent: false })
   await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
   expect(await within(dialog).findByRole('alert')).toHaveTextContent('Сначала переместите или удалите их')
   expect(within(dialog).getByRole('button', { name: 'Удалить' })).toBeDisabled()

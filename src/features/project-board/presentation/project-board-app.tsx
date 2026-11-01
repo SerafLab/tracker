@@ -2,15 +2,19 @@ import { useState } from 'react'
 import { AppBar } from '../../../ui/app-bar'
 import { useTranslation } from 'react-i18next'
 import { useStore } from 'zustand'
-import type { Id } from '../domain/model'
+import type { Id, RegisterDraftGuard } from '../domain/model'
 import type { ProjectBoardStore } from '../state/project-board-store'
 import { ProjectBoardView } from './project-board-view'
 import { ProjectCatalogueView } from './project-catalogue-view'
+import { CardDetailView } from './card-detail-view'
 
-export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue, onMutationSaved }: {
+export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue, navigateToCard, registerDraftGuard, requestLeave, onMutationSaved }: {
   store: ProjectBoardStore
   navigateToProject: (id: Id) => Promise<void>
   navigateToCatalogue: () => Promise<void>
+  navigateToCard: (projectId: Id, cardId: Id) => Promise<void>
+  registerDraftGuard: RegisterDraftGuard
+  requestLeave: (action: () => void | Promise<void>) => void
   onMutationSaved?: () => void
 }) {
   const { t } = useTranslation()
@@ -36,6 +40,18 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
     onRename={async (id, name) => { if (await renameProject(id, name)) onMutationSaved?.() }}
   />
 
+  if (workspace.kind === 'card-missing') return <><AppBar title={t('cardMissing')} onReturn={() => void navigateToCatalogue()} /><main className="app-shell"><p role="alert">{t('cardMissingHelp')}</p><button className="button button-secondary" onClick={() => void navigateToProject(workspace.project.id)}>{t('backToBoard')}</button></main></>
+  if (workspace.kind === 'card') {
+    const { details } = workspace
+    return <CardDetailView key={details.card.id} details={details} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave}
+      onReturn={() => navigateToProject(details.project.id)} onCatalogue={navigateToCatalogue}
+      onSave={async input => { const saved = await updateCard(details.project.id, details.card.id, input); if (saved) onMutationSaved?.(); return saved }}
+      onCreateNote={async text => { const saved = await store.getState().createNote(details.project.id, details.card.id, text); if (saved) onMutationSaved?.(); return saved }}
+      onUpdateNote={async (id, text) => { const saved = await store.getState().updateNote(details.project.id, details.card.id, id, text); if (saved) onMutationSaved?.(); return saved }}
+      onDeleteNote={async id => { const saved = await store.getState().deleteNote(details.project.id, details.card.id, id); if (saved) onMutationSaved?.(); return saved }}
+    />
+  }
+
   const { board } = workspace
   return <ProjectBoardView key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError}
     onReturn={navigateToCatalogue}
@@ -44,7 +60,7 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
     onRenameStatus={async (statusId, name) => { if (await renameStatus(board.id, statusId, name)) onMutationSaved?.() }}
     onMoveStatus={async (statusId, direction) => { if (await moveStatus(board.id, statusId, direction)) onMutationSaved?.() }}
     onCreateCard={async (statusId, name) => { const saved = await createCard(board.id, statusId, name); if (saved) onMutationSaved?.(); return saved }}
-    onUpdateCard={async (cardId, name) => { const saved = await updateCard(board.id, cardId, name); if (saved) onMutationSaved?.(); return saved }}
+    onOpenCard={cardId => navigateToCard(board.id, cardId)}
     onDeleteCard={async cardId => { const saved = await deleteCard(board.id, cardId); if (saved) onMutationSaved?.(); return saved }}
     onDeleteStatus={async statusId => { const result = await deleteStatus(board.id, statusId); if (result === 'deleted') onMutationSaved?.(); return result }}
     onMoveCard={async (cardId, statusId) => { const saved = await moveCard(board.id, cardId, statusId); if (saved) onMutationSaved?.(); return saved }}

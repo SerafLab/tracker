@@ -6,6 +6,7 @@ test('keeps the selected project consistent through history and reloads', async 
     await page.getByRole('button', { name: 'Создать проект', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('textbox').fill(name)
+    await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await dialog.getByRole('button', { name: 'Создать проект', exact: true }).click()
     await expect(page.getByRole('heading', { level: 1, name, exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'EasyTrack — Все проекты', exact: true }).click()

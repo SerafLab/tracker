@@ -16,10 +16,10 @@ describe('project-board use cases', () => {
   it('creates trimmed project, status, and card records through the repository port', async () => {
     const port = repository()
     const useCases = createProjectBoardUseCases({ repository: port, createId: vi.fn().mockReturnValueOnce('project').mockReturnValueOnce('status').mockReturnValueOnce('card'), now: () => '2026-10-07T00:00:00.000Z' })
-    await useCases.createProject('  Поиск квартиры  ')
+    await useCases.createProject({ name: '  Поиск квартиры  ', initialStatusNames: [] })
     await useCases.createStatus('project', 'Найдено')
     await useCases.createCard('status', { name: 'Квартира у парка', important: false, urgent: true })
-    expect(port.createProject).toHaveBeenCalledWith({ id: 'project', name: 'Поиск квартиры', createdAt: '2026-10-07T00:00:00.000Z' })
+    expect(port.createProject).toHaveBeenCalledWith({ id: 'project', name: 'Поиск квартиры', createdAt: '2026-10-07T00:00:00.000Z' }, [])
     expect(port.createStatus).toHaveBeenCalledWith({ id: 'status', projectId: 'project', name: 'Найдено' })
     expect(port.createCard).toHaveBeenCalledWith({ id: 'card', statusId: 'status', name: 'Квартира у парка', important: false, urgent: true })
   })
@@ -43,7 +43,7 @@ describe('project-board use cases', () => {
     const port = repository()
     vi.mocked(port.moveCard).mockRejectedValueOnce(new Error('Нельзя перенести карточку в другой проект'))
     const useCases = createProjectBoardUseCases({ repository: port, createId: () => 'id', now: () => 'now' })
-    expect(() => useCases.createProject(' ')).toThrow('Название обязательно')
+    expect(() => useCases.createProject({ name: ' ', initialStatusNames: [] })).toThrow('Название обязательно')
     expect(port.createProject).not.toHaveBeenCalled()
     await expect(useCases.moveCard('card', 'foreign-status')).rejects.toThrow('другой проект')
   })
@@ -77,4 +77,20 @@ it('deletes by selected ID and distinguishes nonempty status refusal from storag
   await expect(api.deleteStatus('selected-status')).rejects.toThrow('quota')
   vi.mocked(port.deleteCard).mockRejectedValueOnce(new Error('quota'))
   await expect(api.deleteCard('selected-card')).rejects.toThrow('quota')
+})
+
+it('validates all initial names before generating independent ordered records', async () => {
+  const port = repository()
+  let next = 0
+  const createId = vi.fn(() => `id-${++next}`)
+  const api = createProjectBoardUseCases({ repository: port, createId, now: () => 'now' })
+  expect(() => api.createProject({ name: 'Project', initialStatusNames: ['Good', '  '] })).toThrow('Название обязательно')
+  expect(createId).not.toHaveBeenCalled()
+  expect(port.createProject).not.toHaveBeenCalled()
+  await api.createProject({ name: '  Project ', initialStatusNames: [' First ', 'Second', 'Third'] })
+  expect(port.createProject).toHaveBeenCalledExactlyOnceWith({ id: 'id-1', name: 'Project', createdAt: 'now' }, [
+    { id: 'id-2', projectId: 'id-1', name: 'First', position: 0 },
+    { id: 'id-3', projectId: 'id-1', name: 'Second', position: 1 },
+    { id: 'id-4', projectId: 'id-1', name: 'Third', position: 2 },
+  ])
 })

@@ -9,6 +9,7 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
     const label = { project: en ? 'Project name' : 'Название проекта', createProject: en ? 'Create project' : 'Создать проект', addStatus: en ? 'Add status' : 'Добавить статус', status: en ? 'Status name' : 'Название статуса', createStatus: en ? 'Create status' : 'Создать статус', addCard: en ? 'Add card' : 'Добавить карточку', name: en ? 'Card name' : 'Название карточки', create: en ? 'Create card' : 'Создать карточку', important: en ? 'Important' : 'Важная', urgent: en ? 'Urgent' : 'Срочная', edit: en ? 'Edit' : 'Редактировать', save: en ? 'Save' : 'Сохранить' }
     await page.getByRole('button', { name: label.createProject, exact: true }).click()
     await page.getByLabel(label.project, { exact: true }).fill('Priority')
+    await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await page.getByRole('button', { name: label.createProject, exact: true }).click()
     for (const name of ['Todo', 'Doing', 'Done']) {
       await page.getByRole('button', { name: label.addStatus, exact: true }).first().click()

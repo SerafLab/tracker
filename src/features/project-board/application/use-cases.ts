@@ -1,4 +1,4 @@
-import { requiredName, type CardInput, type Id } from '../domain/model'
+import { requiredName, type CardInput, type CreateProjectInput, type Id } from '../domain/model'
 import type { ProjectBoardRepository } from './repository'
 
 export type IdGenerator = () => Id
@@ -24,7 +24,12 @@ export function createProjectBoardUseCases(dependencies: {
     preference: () => repository.preference(),
     setLastProject: (id?: Id) => repository.setLastProject(id),
     board: (projectId: Id) => repository.board(projectId),
-    createProject: (input: string) => repository.createProject({ id: createId(), name: name(input), createdAt: now() }),
+    createProject: (input: CreateProjectInput) => {
+      const projectName = name(input.name)
+      const statusNames = input.initialStatusNames.map(name)
+      const project = { id: createId(), name: projectName, createdAt: now() }
+      return repository.createProject(project, statusNames.map((statusName, position) => ({ id: createId(), projectId: project.id, name: statusName, position })))
+    },
     renameProject: (id: Id, input: string) => repository.renameProject(id, name(input)),
     createStatus: (projectId: Id, input: string) => repository.createStatus({ id: createId(), projectId, name: name(input) }),
     renameStatus: (id: Id, input: string) => repository.renameStatus(id, name(input)),

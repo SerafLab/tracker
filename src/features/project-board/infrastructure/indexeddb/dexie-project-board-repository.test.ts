@@ -30,9 +30,9 @@ describe('DexieProjectBoardRepository', () => {
     const { database, repository: repo } = repository()
     await repo.open()
     vi.spyOn(database.projects, 'add').mockRejectedValueOnce(new Error('quota'))
-    await expect(repo.createProject({ id: 'broken', name: 'Паспорт', createdAt: 'now' })).rejects.toThrow('quota')
-    await repo.createProject({ id: 'first', name: 'Поиск квартиры', createdAt: '1' })
-    await repo.createProject({ id: 'second', name: 'Паспорт', createdAt: '2' })
+    await expect(repo.createProject({ id: 'broken', name: 'Паспорт', createdAt: 'now' }, [])).rejects.toThrow('quota')
+    await repo.createProject({ id: 'first', name: 'Поиск квартиры', createdAt: '1' }, [])
+    await repo.createProject({ id: 'second', name: 'Паспорт', createdAt: '2' }, [])
     await repo.createStatus({ id: 'status', projectId: 'first', name: 'Найдено' })
     expect((await repo.board('second'))?.statuses).toEqual([])
   })
@@ -41,8 +41,8 @@ describe('DexieProjectBoardRepository', () => {
 
 async function populated() {
   const fixture = repository(); const { repository: repo } = fixture
-  await repo.createProject({ id: 'p', name: 'P', createdAt: 'now' })
-  await repo.createProject({ id: 'q', name: 'Q', createdAt: 'later' })
+  await repo.createProject({ id: 'p', name: 'P', createdAt: 'now' }, [])
+  await repo.createProject({ id: 'q', name: 'Q', createdAt: 'later' }, [])
   for (const [id, projectId] of [['s', 'p'], ['t', 'p'], ['foreign', 'q']]) await repo.createStatus({ id, projectId, name: id })
   const add = (id: string, important = false, urgent = false, statusId = 's') => repo.createCard({ id, statusId, name: id, important, urgent })
   return { ...fixture, add }
@@ -162,4 +162,29 @@ it('rolls back status deletion and compaction together when writing fails', asyn
   vi.spyOn(database.statuses, 'bulkPut').mockImplementationOnce((...args: Parameters<typeof bulkPut>) => bulkPut(...args).then(() => { throw new Error('quota') }))
   await expect(repo.deleteStatus('s')).rejects.toThrow('quota')
   expect(await repo.board('p')).toEqual(before)
+})
+
+it('creates initial statuses and preference atomically, including an empty set', async () => {
+  const { database: db, repository: repo } = repository()
+  await repo.createProject({ id: 'previous', name: 'Old', createdAt: '1' }, [])
+  const statuses = ['To do', 'In progress', 'Done'].map((name, position) => ({ id: `s${position}`, projectId: 'new', name, position }))
+  await repo.createProject({ id: 'new', name: 'New', createdAt: '2' }, statuses)
+  expect((await repo.board('new'))?.statuses).toEqual(statuses.map(status => ({ ...status, cards: [] })))
+  expect(await repo.preference()).toEqual({ id: 'workspace', lastProjectId: 'new' })
+  expect((await repo.board('previous'))?.statuses).toEqual([])
+  expect(await db.cards.count()).toBe(0)
+})
+
+it.each(['statuses', 'workspace'] as const)('rolls back the project, statuses and preference after %s failure', async failure => {
+  const { database: db, repository: repo } = repository()
+  await repo.createProject({ id: 'old', name: 'Old', createdAt: '1' }, [])
+  const statuses = [0, 1, 2].map(position => ({ id: `s${position}`, projectId: 'new', name: `Status ${position}`, position }))
+  if (failure === 'statuses') {
+    // A duplicate in the batch makes IndexedDB reject after its first valid insert.
+    statuses[1].id = statuses[0].id
+  } else vi.spyOn(db.workspace, 'put').mockRejectedValueOnce(Error('quota'))
+  await expect(repo.createProject({ id: 'new', name: 'New', createdAt: '2' }, statuses)).rejects.toThrow()
+  expect(await repo.projects()).toEqual([{ id: 'old', name: 'Old', createdAt: '1' }])
+  expect(await db.statuses.toArray()).toEqual([])
+  expect(await repo.preference()).toEqual({ id: 'workspace', lastProjectId: 'old' })
 })

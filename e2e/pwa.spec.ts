@@ -31,6 +31,7 @@ test('delivers the manifest and keeps local projects usable offline', async ({ p
 
   await page.getByRole('button', { name: 'Создать проект' }).click()
   await page.getByLabel('Название проекта').fill('Поиск квартиры')
+  await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
   await page.getByRole('button', { name: 'Создать проект' }).click()
   await expect(page.getByRole('heading', { name: 'Поиск квартиры' })).toBeVisible()
   await context.setOffline(true)
@@ -108,6 +109,7 @@ for (const width of [1280, 320]) {
     await page.goto(app)
     await page.getByRole('button', { name: 'Создать проект' }).click()
     await page.getByLabel('Название проекта').fill('Мой проект')
+    await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await page.getByRole('button', { name: 'Создать проект' }).click()
     await expect(page.getByRole('heading', { name: 'Мой проект' })).toBeVisible()
     await page.getByRole('button', { name: 'Добавить статус' }).first().click()

@@ -11,9 +11,10 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
   async preference(): Promise<WorkspacePreference | undefined> { return this.db.workspace.get('workspace') }
   async setLastProject(id?: Id) { await this.db.workspace.put({ id: 'workspace', lastProjectId: id }) }
 
-  async createProject(project: Project) {
-    await this.db.transaction('rw', this.db.projects, this.db.workspace, async () => {
+  async createProject(project: Project, initialStatuses: Status[]) {
+    await this.db.transaction('rw', this.db.projects, this.db.statuses, this.db.workspace, async () => {
       await this.db.projects.add(project)
+      await this.db.statuses.bulkAdd(initialStatuses)
       await this.setLastProject(project.id)
     })
     return project

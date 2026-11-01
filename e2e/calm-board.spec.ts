@@ -9,6 +9,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(page.getByRole('heading', { name: en ? 'Start with your first project' : 'Начните с первого проекта' })).toBeVisible()
     await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await page.getByRole('dialog').getByRole('textbox').fill('Поиск квартиры')
+    await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await page.getByRole('dialog').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await expect(page.getByRole('heading', { name: en ? 'Add your first status' : 'Добавьте первый статус' })).toBeVisible()
     for (const name of ['Найдено', 'Связаться', 'Просмотр', 'Решение']) {

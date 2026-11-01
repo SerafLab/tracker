@@ -13,6 +13,7 @@ export default defineConfig({
       includeAssets: ['manifest.*.webmanifest', 'icons/*.png'],
       workbox: {
         runtimeCaching: [],
+        navigateFallbackDenylist: [/^\/tracker\/mcp-transport-probe\.html(?:\?|$)/],
       },
     }),
   ],

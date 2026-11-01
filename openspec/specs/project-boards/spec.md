@@ -7,7 +7,7 @@
 ## Requirements
 
 ### Requirement: Project catalogue and board navigation
-The system SHALL present a distinct project catalogue and one open project board at a time. It SHALL let the user view locally stored projects, create a project with a non-empty name through a primary creation control, rename an existing project, and open a project. Duplicate project names SHALL be permitted. Creating a project SHALL open its board, and the board SHALL provide a clear control to return to the catalogue.
+The system SHALL present a distinct project catalogue and one open project board at a time. It SHALL let the user view locally stored projects, create a project with a non-empty name through a primary creation control, rename an existing project, and open a project. Duplicate project names SHALL be permitted. Creating a project SHALL initialize its statuses from the selected status set and open its board, and the board SHALL provide a clear control to return to the catalogue.
 
 #### Scenario: User creates and opens projects
 - **WHEN** the user creates projects named "Поиск квартиры" and "Паспорт" and chooses one from the catalogue
@@ -19,7 +19,7 @@ The system SHALL present a distinct project catalogue and one open project board
 
 #### Scenario: User starts creating a project from a populated catalogue
 - **WHEN** the user activates the catalogue's primary project-creation control
-- **THEN** the interface exposes a focused form for the name without obscuring the creation action's purpose
+- **THEN** the interface exposes a focused form for the name and status-set selection without obscuring the creation action's purpose
 
 ### Requirement: Configurable ordered statuses
 The system SHALL allow the user to create and rename statuses within the open project and change a status's position with explicit accessible controls. A newly created status SHALL be appended after the project's existing statuses. Duplicate status names SHALL be permitted. Secondary status operations MAY be progressively disclosed, provided their purpose remains reachable through semantic controls.
@@ -329,8 +329,116 @@ The system SHALL fit all four status columns of a four-status board at viewport 
 - **THEN** the user can horizontally scroll the board to every status while the page width remains within the viewport and controls remain operable
 
 ### Requirement: Card creation follows its status list
-The system SHALL place each status's card-creation entry after its card list, including when the list is empty. The entry SHALL open the existing focused form and retain its established return-focus behavior.
+Система SHALL показывать два входа создания карточки в каждом статусе: в заголовке перед меню действий и после списка, включая пустой. Верхний вход SHALL быть зелёным квадратным плюсом без видимой подписи, как добавление статуса; нижний SHALL сочетать такой же плюс с подписью в одной кнопке. Оба SHALL открывать одну форму в своём статусе и возвращать фокус к нажатому входу после закрытия без принудительной прокрутки к другому входу.
 
 #### Scenario: User creates a card after reviewing a status
-- **WHEN** a user reaches the end of a status's cards and activates its creation entry
-- **THEN** the card form opens and closing the form returns focus to that entry without changing existing cards
+- **WHEN** пользователь достигает конца списка карточек статуса и активирует нижний вход создания
+- **THEN** открывается существующая форма создания в этом статусе; закрытие формы возвращает фокус к нижней кнопке без изменения существующих карточек
+
+#### Scenario: User creates a card from the status header
+- **WHEN** пользователь активирует плюс в заголовке выбранного статуса
+- **THEN** открывается та же форма создания карточки в этом статусе, что и с нижней кнопки, а закрытие возвращает фокус к верхнему плюсу
+
+#### Scenario: User sees both creation entries
+- **WHEN** на доске показан пустой или заполненный статус
+- **THEN** перед меню в заголовке виден зелёный квадратный плюс с теми же размером, символом и оформлением, что у добавления статуса; после списка виден такой же плюс с подписью «Добавить карточку» или «Add card» на выбранном языке, образующие одну кнопку и одну остановку Tab
+
+#### Scenario: User identifies the header action
+- **WHEN** пользователь наводит указатель на верхний плюс или переводит на него фокус клавиатурой
+- **THEN** доступна читаемая подсказка «Добавить карточку» или «Add card» на выбранном языке; верхняя кнопка также имеет соответствующее доступное имя для вспомогательных технологий
+
+#### Scenario: User adds from the end of a long list
+- **WHEN** пользователь прокручивает длинный список до нижней кнопки, открывает форму и закрывает её после создания или отмены
+- **THEN** пользователю не требуется прокручивать к заголовку для добавления, фокус возвращается на нижнюю кнопку, а интерфейс не прокручивает доску к верхнему плюсу
+
+#### Scenario: User creates a card using the keyboard
+- **WHEN** пользователь переводит фокус на любой из двух входов и нажимает Enter или Space
+- **THEN** форма получает фокус; после успешного сохранения, отмены или Escape фокус возвращается на конкретную кнопку, открывшую форму
+
+#### Scenario: User sees long status names on different screens
+- **WHEN** доска с длинными названиями статусов показана на ширине 320, 390, 1280 или 1440 px
+- **THEN** названия переносятся, не перекрывая плюс, счётчик и меню; оба входа остаются доступны, зона верхней кнопки и квадратного плюса нижней кнопки составляет не менее 44 на 44 px, страница не получает горизонтальную прокрутку, а четыре статуса на 1280 и 1440 px помещаются без горизонтальной прокрутки доски
+
+#### Scenario: Saving from either entry fails
+- **WHEN** пользователь открывает форму любым из двух входов, вводит данные, а сохранение не удаётся
+- **THEN** карточка не появляется, форма остаётся открытой с введёнными данными и сообщением об ошибке; после последующего закрытия фокус возвращается к исходному входу
+
+### Requirement: Initial status-set selection
+Система SHALL предлагать при создании проекта пять наборов статусов и вариант «Без статусов». В каждой новой форме SHALL быть выбран «Простой». До создания пользователь SHALL видеть упорядоченные названия статусов выбранного набора. Выбор SHALL быть доступен с клавиатуры и на узком экране.
+
+#### Scenario: User accepts the default
+- **WHEN** пользователь открывает создание проекта и сохраняет непустое название без смены набора
+- **THEN** открывается проект со статусами «Простой» в заданном порядке и без карточек
+
+#### Scenario: User previews a different set
+- **WHEN** пользователь выбирает другой набор
+- **THEN** форма показывает его названия в порядке будущих статусов и сохраняет введённое название проекта
+
+#### Scenario: User chooses no statuses
+- **WHEN** пользователь создаёт проект с вариантом «Без статусов»
+- **THEN** открывается доска без статусов с существующим пояснением и действием добавления статуса
+
+#### Scenario: A new form resets the selection
+- **WHEN** пользователь закрывает форму с другим выбранным набором и открывает создание проекта снова
+- **THEN** выбран «Простой» независимо от предыдущего выбора
+
+#### Scenario: User selects a set on a narrow screen
+- **WHEN** пользователь создаёт проект при ширине 320 или 390 px либо использует только клавиатуру
+- **THEN** название, выбор набора, просмотр его статусов и действия формы доступны без горизонтального переполнения страницы
+
+### Requirement: Built-in status-set contents
+Система SHALL создавать статусы каждого встроенного набора в точном порядке, указанном в сценариях ниже. «На паузе» SHALL находиться непосредственно перед «В разработке». Названия на английском SHALL соответствовать спецификации языка интерфейса.
+
+#### Scenario: Simple set
+- **WHEN** пользователь создаёт проект с набором «Простой» на русском языке
+- **THEN** статусы: «Нужно сделать», «В процессе», «Готово»
+
+#### Scenario: Search and selection set
+- **WHEN** пользователь создаёт проект с набором «Поиск и выбор» на русском языке
+- **THEN** статусы: «Найдено», «На рассмотрении», «В избранном», «Не подходит»
+
+#### Scenario: Applications and documents set
+- **WHEN** пользователь создаёт проект с набором «Заявки и документы» на русском языке
+- **THEN** статусы: «Подготовить», «Отправлено», «Ожидаю ответа», «Завершено»
+
+#### Scenario: Development set
+- **WHEN** пользователь создаёт проект с набором «Разработка» на русском языке
+- **THEN** статусы: «Запланировано», «На паузе», «В разработке», «На проверке», «Готово»
+
+#### Scenario: Job search set
+- **WHEN** пользователь создаёт проект с набором «Поиск работы» на русском языке
+- **THEN** статусы: «Интересно», «Отклик отправлен», «Собеседования», «Предложение», «Отказ»
+
+### Requirement: Status sets initialize independent editable statuses
+Созданные из набора статусы SHALL быть обычными статусами проекта: пользователь SHALL иметь возможность переименовывать, добавлять, переставлять и удалять их по существующим правилам. Набор SHALL не задавать обязательных переходов, автоматического завершения или связи между проектами. Существующие проекты SHALL не получать статусы автоматически.
+
+#### Scenario: User customizes one project
+- **WHEN** пользователь меняет названия, порядок или состав статусов проекта, созданного из набора
+- **THEN** изменения сохраняются после перезагрузки и не меняют другие проекты или встроенные наборы
+
+#### Scenario: User moves a card to an alternative outcome
+- **WHEN** пользователь переносит карточку из «Собеседования» напрямую в «Отказ» либо из «На проверке» в «На паузе»
+- **THEN** работают существующие средства перемещения без обязательного прохождения промежуточных статусов и автоматического изменения признаков
+
+#### Scenario: Existing project is reopened
+- **WHEN** пользователь открывает ранее созданный проект, включая проект без статусов
+- **THEN** его сохранённые статусы и карточки остаются прежними
+
+### Requirement: Atomic project initialization
+Система SHALL сохранять новый проект, его начальные статусы с порядком и выбор последнего открытого проекта как одно целое. При отказе записи SHALL не оставаться частичного проекта или новых статусов, прежний последний проект SHALL сохраняться, а форма SHALL оставаться открытой с названием, набором и сообщением об ошибке. Пока сохранение выполняется, повторная отправка SHALL не создавать дубликат.
+
+#### Scenario: Status initialization cannot be saved
+- **WHEN** сохранение одного из начальных статусов завершается ошибкой
+- **THEN** новый проект и все его статусы отсутствуют, прежние данные и последний проект сохранены, форма позволяет повторить попытку с теми же значениями
+
+#### Scenario: User retries after failure
+- **WHEN** пользователь повторяет сохранение после устранения ошибки
+- **THEN** создаётся один проект с полным выбранным набором и открывается его доска
+
+#### Scenario: User submits twice while saving
+- **WHEN** пользователь повторно активирует создание до завершения первой отправки
+- **THEN** выполняется только одно создание проекта
+
+#### Scenario: Initialization survives reload
+- **WHEN** проект с выбранным набором успешно создан и приложение перезагружено
+- **THEN** открывается этот проект с полным сохранённым набором в исходном порядке

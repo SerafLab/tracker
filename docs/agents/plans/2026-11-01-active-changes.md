@@ -62,3 +62,12 @@ Integration: `codex/all-active-changes`, `/private/tmp/tracker-all-active-change
 | add-agent-mcp-integration | parent transport gate, runner after acceptance | pending | pending | final accepted integration |
 
 User agreed to test the DnD prototype on physical target devices. Evidence still required before final integration. Requested role-specific models are unavailable; inherited model is used. `gh` is unavailable; GitHub connector will handle remote review and delivery. Original worktree remains dirty and untouched.
+
+## Accepted integration checkpoints
+
+- Presets `33cfc8a`: independent reviewer found no issues; 140 unit/UI +78 browser checks. Merged first.
+- Header creation `a0598e8`: independent reviewer found no issues; 124 unit/UI +59 browser checks. Merged second.
+- Integration regression explicitly selects the empty set for the long-list fixture (`6f9dde7`). Combined 145 unit/UI +80 browser checks passed.
+- Both accepted deltas synced with scenario preservation and archived at `2026-11-01-*` (`e8a2006`); strict main-spec validation passed.
+- MCP isolated production prerequisite PR20 merged as `5159b6b`, deploy+smoke succeeded. Existing SW navigation fallback initially hid the concrete experiment page; PR21 fixes only that URL, with a regression in a controlled browser context. Core MCP remains gated pending actual handshake.
+- Details runner was interrupted by a usage limit; parent preserved/completed its work, then batch_analysis resumed as runner. Independent review identified whole-card lower-gap click, note-deletion focus while composing, and read-failure route preservation defects; all fixed with regressions. Final feature check143 unit/UI +65 browser passed; awaiting final review/merge.

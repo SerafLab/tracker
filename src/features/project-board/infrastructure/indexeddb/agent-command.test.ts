@@ -66,6 +66,7 @@ it('distinguishes missing targets and nonempty deletion and rolls back failed co
     { kind: 'delete_status' as const, statusId: 'missing' },
     { kind: 'update_card' as const, cardId: 'missing', name: 'N', important: false, urgent: false },
     { kind: 'delete_card' as const, cardId: 'missing' },
+    { kind: 'move_card' as const, cardId: 'missing', statusId: statuses[0].id, expected: { statusId: statuses[0].id, important: false, urgent: false } },
   ]) await expect(api.executeAgentCommand(command)).rejects.toMatchObject({ code: 'not_found' })
   const result = await api.executeAgentCommand({ kind: 'create_card', statusId: statuses[0].id, name: 'N', important: false, urgent: false })
   expect(result.data).toMatchObject({ saved: true, card: { description: '', important: false, urgent: false } })

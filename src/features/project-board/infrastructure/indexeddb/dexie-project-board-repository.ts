@@ -90,11 +90,13 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
   }
 
   async createStatus(status: NewStatus): Promise<Status> {
-    if (!await this.db.projects.get(status.projectId)) throw new Error('Проект не найден')
-    const position = await this.db.statuses.where('projectId').equals(status.projectId).count()
-    const saved = { ...status, position }
-    await this.db.statuses.add(saved)
-    return saved
+    return this.db.transaction('rw', this.db.projects, this.db.statuses, async () => {
+      if (!await this.db.projects.get(status.projectId)) throw new Error('Проект не найден')
+      const position = await this.db.statuses.where('projectId').equals(status.projectId).count()
+      const saved = { ...status, position }
+      await this.db.statuses.add(saved)
+      return saved
+    })
   }
 
   async renameStatus(id: Id, name: string) { await this.db.statuses.update(id, { name }) }

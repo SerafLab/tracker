@@ -4,13 +4,13 @@ Verified on 2026-11-02 in `codex/project-deletion`, from base `51aeffe16a141b798
 
 ## Automated checks
 
-`E2E_PORT=4182 npm run check` passed: architecture boundaries, 189 unit/UI tests, three existing Node transport tests, TypeScript/production build and 98 Chromium browser tests. Node 24.21.0 and Playwright 1.64.0 served the production build at `http://127.0.0.1:4182/tracker/`. The versioned pre-push hook remains configured. No hook or required check was bypassed.
+`E2E_PORT=4182 npm run check` passed: architecture boundaries, 192 unit/UI tests, three existing Node transport tests, TypeScript/production build and 98 Chromium browser tests. Node 24.21.0 and Playwright 1.64.0 served the production build at `http://127.0.0.1:4182/tracker/`. The versioned pre-push hook remains configured. No hook or required check was bypassed.
 
 The eight new browser tests exercise both entry points in RU/EN at 320, 390 and 1280 px, plus a real IndexedDB transaction failure and explicit retry in both languages. Existing detail-page, creation, priority, navigation, localization and offline tests continue to pass.
 
 ## Data and error handling
 
-Repository tests cover empty/populated projects, identical names with distinct IDs, unchanged foreign projects and notes, conditional cleanup of the last-opened project, repeat deletion and reopening. A single transaction reads current relationships and removes project/status/card/note records. Faults after notes are deleted and after the project is deleted restore every table and preference, then a retry succeeds. A late status/card/note added after the UI summary is also removed.
+Repository tests cover empty/populated projects, identical names with distinct IDs, unchanged foreign projects and notes, conditional cleanup of the last-opened project, repeat deletion and reopening. A single transaction reads current relationships and removes project/status/card/note records. Faults after notes are deleted and after the project is deleted restore every table and preference, then a retry succeeds. A late status/card/note added after the UI summary is also removed. Status creation now checks the parent, counts positions and inserts in one read-write transaction over projects/statuses. Regression tests start creation/deletion in both orders and reopen the database without orphan statuses; five simultaneous creations receive distinct dense positions preserved after reopening.
 
 Store/UI tests confirm there is no optimistic hiding, stale connections cannot delete, pending confirmation dispatches once, and failed transactions retain the project, preference, route and dialog for retry. Catalogue summaries read without opening or remembering a board; loading/failed summaries cannot confirm deletion, and retry/cancellation/stale results are covered.
 

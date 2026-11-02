@@ -311,3 +311,35 @@ it('reads the current children inside deletion rather than relying on a previous
   expect(await db.notes.get('late-note')).toBeUndefined()
   expect((await repo.preference())?.lastProjectId).toBe('other')
 })
+
+it.each(['creation', 'deletion'] as const)('serializes concurrent status creation and project deletion when %s starts first', async first => {
+  const { repository: repo, database: db } = repository()
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [])
+  const create = () => repo.createStatus({ id: 'concurrent', projectId: 'p', name: 'Concurrent' })
+  let creation: ReturnType<typeof create>, deletion: Promise<void>
+  if (first === 'creation') { creation = create(); deletion = repo.deleteProject('p') }
+  else { deletion = repo.deleteProject('p'); creation = create() }
+  const [created, deleted] = await Promise.allSettled([creation, deletion])
+  expect(deleted.status).toBe('fulfilled')
+  expect(created.status).toBe(first === 'creation' ? 'fulfilled' : 'rejected')
+  if (created.status === 'rejected') expect(created.reason).toHaveProperty('message', 'Проект не найден')
+  expect(await repo.board('p')).toBeUndefined()
+  expect(await db.statuses.where('projectId').equals('p').count()).toBe(0)
+  db.close(); await db.open()
+  expect(await repo.board('p')).toBeUndefined()
+  expect(await db.statuses.toArray()).toEqual([])
+  expect(await db.cards.toArray()).toEqual([])
+  expect(await db.notes.toArray()).toEqual([])
+})
+
+it('assigns distinct dense positions to concurrently created statuses and preserves them after reopening', async () => {
+  const { repository: repo, database: db } = repository()
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [])
+  const created = await Promise.all(Array.from({ length: 5 }, (_, index) => repo.createStatus({ id: `s-${index}`, projectId: 'p', name: `Status ${index}` })))
+  expect(created.map(status => status.position)).toEqual([0, 1, 2, 3, 4])
+  const statuses = (await repo.board('p'))!.statuses
+  expect(statuses.map(status => status.id)).toEqual(['s-0', 's-1', 's-2', 's-3', 's-4'])
+  expect(statuses.map(status => status.position)).toEqual([0, 1, 2, 3, 4])
+  db.close(); await db.open()
+  expect((await repo.board('p'))!.statuses).toEqual(statuses)
+})

@@ -11,7 +11,7 @@ async function setup(locale = 'ru') {
   localStorage.setItem('easytrack.locale', locale)
   const db = new ProjectBoardDatabase(`placement-${crypto.randomUUID()}`); databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
-  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [])
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [], true)
   await repo.createStatus({ id: 's', projectId: 'p', name: 'Only status' })
   for (const [id, important, urgent] of [['Both', true, true], ['First', true, false], ['Middle', true, false], ['Last', true, false], ['None', false, false]] as const) await repo.createCard({ id, statusId: 's', name: id, description: '', important, urgent })
   history.replaceState(null, '', '/#project/p')

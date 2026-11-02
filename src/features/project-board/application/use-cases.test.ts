@@ -4,7 +4,7 @@ import type { ProjectBoardRepository } from './repository'
 
 function repository(): ProjectBoardRepository {
   return {
-    cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
+    executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
     open: vi.fn(), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(),
     createProject: vi.fn().mockImplementation(project => Promise.resolve(project)), deleteProject: vi.fn(), renameProject: vi.fn(),
     board: vi.fn(), createStatus: vi.fn().mockImplementation(status => Promise.resolve({ ...status, position: 0 })),
@@ -20,7 +20,7 @@ describe('project-board use cases', () => {
     await useCases.createProject({ name: '  Поиск квартиры  ', initialStatusNames: [] })
     await useCases.createStatus('project', 'Найдено')
     await useCases.createCard('status', { name: 'Квартира у парка', description: '', important: false, urgent: true })
-    expect(port.createProject).toHaveBeenCalledWith({ id: 'project', name: 'Поиск квартиры', createdAt: '2026-10-07T00:00:00.000Z' }, [])
+    expect(port.createProject).toHaveBeenCalledWith({ id: 'project', name: 'Поиск квартиры', createdAt: '2026-10-07T00:00:00.000Z' }, [], true)
     expect(port.createStatus).toHaveBeenCalledWith({ id: 'status', projectId: 'project', name: 'Найдено' })
     expect(port.createCard).toHaveBeenCalledWith({ id: 'card', statusId: 'status', name: 'Квартира у парка', description: '', important: false, urgent: true })
   })
@@ -93,7 +93,7 @@ it('validates all initial names before generating independent ordered records', 
     { id: 'id-2', projectId: 'id-1', name: 'First', position: 0 },
     { id: 'id-3', projectId: 'id-1', name: 'Second', position: 1 },
     { id: 'id-4', projectId: 'id-1', name: 'Third', position: 2 },
-  ])
+  ], true)
 })
 
 it('validates notes, gives new notes injected identifiers/dates and leaves edit metadata to the repository', async () => {

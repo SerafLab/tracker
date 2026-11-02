@@ -1,3 +1,4 @@
+import { CommandError, type CardAttributes, type RepositoryAgentCommand, type AgentCommandResult, type AgentSavedData } from '../../application/agent-command'
 import { moveByOffset, placeCardInGroup, placeCard } from '../../domain/order'
 import type { Card, CardPlacement, CardPlacementResult, CardDetails, CardInput, Note, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../../domain/model'
 import type { DeleteStatusResult, NewCard, NewStatus, ProjectBoardRepository } from '../../application/repository'
@@ -6,16 +7,103 @@ import { ProjectBoardDatabase } from './database'
 export class DexieProjectBoardRepository implements ProjectBoardRepository {
   constructor(private readonly db: ProjectBoardDatabase) {}
 
+  async executeAgentCommand(command: RepositoryAgentCommand): Promise<AgentCommandResult> {
+    return this.db.transaction('rw', [this.db.projects, this.db.statuses, this.db.cards, this.db.notes, this.db.workspace], async () => {
+      const project = async (id: Id) => {
+        const value = await this.db.projects.get(id)
+        if (!value) throw new CommandError('not_found')
+        return value
+      }
+      const status = async (id: Id) => {
+        const value = await this.db.statuses.get(id)
+        if (!value) throw new CommandError('not_found')
+        await project(value.projectId)
+        return value
+      }
+      const card = async (id: Id) => {
+        const value = await this.db.cards.get(id)
+        if (!value) throw new CommandError('not_found')
+        await status(value.statusId)
+        return value
+      }
+      let projectId: Id
+      let data: AgentSavedData
+      switch (command.kind) {
+        case 'create_project':
+          projectId = command.project.id
+          data = { saved: true, project: await this.createProject(command.project, [], false) }
+          break
+        case 'rename_project':
+          projectId = (await project(command.projectId)).id
+          await this.renameProject(projectId, command.name)
+          data = { saved: true, project: await project(projectId) }
+          break
+        case 'create_status':
+          projectId = (await project(command.status.projectId)).id
+          data = { saved: true, status: await this.createStatus(command.status) }
+          break
+        case 'rename_status':
+          projectId = (await status(command.statusId)).projectId
+          await this.renameStatus(command.statusId, command.name)
+          data = { saved: true, status: await status(command.statusId) }
+          break
+        case 'move_status': {
+          const current = await status(command.statusId)
+          projectId = current.projectId
+          const count = await this.db.statuses.where('projectId').equals(projectId).count()
+          const direction = command.direction === 'left' ? -1 : 1
+          const outcome = current.position + direction < 0 || current.position + direction >= count ? 'unchanged' : 'saved'
+          if (outcome === 'saved') await this.moveStatus(current.id, direction)
+          data = { saved: true, board: (await this.board(projectId))!, outcome }
+          break
+        }
+        case 'delete_status':
+          projectId = (await status(command.statusId)).projectId
+          if (await this.deleteStatus(command.statusId) === 'not-empty') throw new CommandError('status_not_empty')
+          data = { saved: true, deletedId: command.statusId }
+          break
+        case 'create_card':
+          projectId = (await status(command.card.statusId)).projectId
+          data = { saved: true, card: await this.createCard(command.card) }
+          break
+        case 'update_card': {
+          const current = await card(command.cardId)
+          projectId = (await status(current.statusId)).projectId
+          data = { saved: true, card: await this.updateCardAttributes(command.cardId, { name: command.name, important: command.important, urgent: command.urgent }) }
+          break
+        }
+        case 'move_card': {
+          const current = await card(command.cardId)
+          projectId = (await status(current.statusId)).projectId
+          const destination = await status(command.statusId)
+          if (destination.projectId !== projectId) throw new CommandError('conflict')
+          if (current.statusId !== command.expected.statusId || current.important !== command.expected.important || current.urgent !== command.expected.urgent) throw new CommandError('conflict')
+          const outcome = await this.moveCard(current.id, { statusId: destination.id, beforeCardId: null, expected: command.expected })
+          data = { saved: true, card: await card(current.id), outcome }
+          break
+        }
+        case 'delete_card': {
+          const current = await card(command.cardId)
+          projectId = (await status(current.statusId)).projectId
+          await this.deleteCard(current.id)
+          data = { saved: true, deletedId: current.id }
+          break
+        }
+      }
+      return { projectId, data }
+    })
+  }
+
   async open() { await this.db.open() }
   async projects() { return this.db.projects.orderBy('createdAt').toArray() }
   async preference(): Promise<WorkspacePreference | undefined> { return this.db.workspace.get('workspace') }
   async setLastProject(id?: Id) { await this.db.workspace.put({ id: 'workspace', lastProjectId: id }) }
 
-  async createProject(project: Project, initialStatuses: Status[]) {
+  async createProject(project: Project, initialStatuses: Status[], remember: boolean) {
     await this.db.transaction('rw', this.db.projects, this.db.statuses, this.db.workspace, async () => {
       await this.db.projects.add(project)
       await this.db.statuses.bulkAdd(initialStatuses)
-      await this.setLastProject(project.id)
+      if (remember) await this.setLastProject(project.id)
     })
     return project
   }
@@ -33,7 +121,7 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
     })
   }
 
-  async renameProject(id: Id, name: string) { await this.db.projects.update(id, { name }) }
+  async renameProject(id: Id, name: string) { if (!await this.db.projects.update(id, { name })) throw new CommandError('not_found') }
 
   async board(projectId: Id): Promise<ProjectBoard | undefined> {
     const project = await this.db.projects.get(projectId)
@@ -99,7 +187,7 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
     })
   }
 
-  async renameStatus(id: Id, name: string) { await this.db.statuses.update(id, { name }) }
+  async renameStatus(id: Id, name: string) { if (!await this.db.statuses.update(id, { name })) throw new CommandError('not_found') }
 
   async deleteStatus(id: Id): Promise<DeleteStatusResult> {
     return this.db.transaction('rw', this.db.statuses, this.db.cards, async () => {
@@ -116,7 +204,7 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
   async moveStatus(id: Id, direction: -1 | 1) {
     await this.db.transaction('rw', this.db.statuses, async () => {
       const current = await this.db.statuses.get(id)
-      if (!current) return
+      if (!current) throw new CommandError('not_found')
       const statuses = await this.db.statuses.where('projectId').equals(current.projectId).sortBy('position')
       const reordered = moveByOffset(statuses, id, direction)
       await this.db.statuses.bulkPut(reordered)
@@ -134,17 +222,33 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
     })
   }
 
+  private async writeCard(card: Card, input: CardInput): Promise<Card> {
+    const updated = { ...card, name: input.name, description: input.description, important: input.important, urgent: input.urgent }
+    if (card.important === input.important && card.urgent === input.urgent) {
+      if (JSON.stringify(card) !== JSON.stringify(updated)) await this.db.cards.put(updated)
+      return updated
+    }
+    const cards = await this.db.cards.where('statusId').equals(card.statusId).sortBy('position')
+    const ordered = placeCardInGroup(cards, updated)
+    await this.db.cards.bulkPut(ordered)
+    return ordered.find(item => item.id === card.id)!
+  }
+
   async updateCard(id: Id, input: CardInput) {
     await this.db.transaction('rw', this.db.cards, async () => {
       const card = await this.db.cards.get(id)
-      if (!card) throw new Error('Карточка не найдена')
-      const updated = { ...card, name: input.name, description: input.description, important: input.important, urgent: input.urgent }
-      if (card.important === input.important && card.urgent === input.urgent) {
-        await this.db.cards.put(updated)
-        return
-      }
-      const cards = await this.db.cards.where('statusId').equals(card.statusId).sortBy('position')
-      await this.db.cards.bulkPut(placeCardInGroup(cards, updated))
+      if (!card) throw new CommandError('not_found', 'Карточка не найдена')
+      await this.writeCard(card, input)
+    })
+  }
+
+  async updateCardAttributes(id: Id, attributes: CardAttributes): Promise<Card> {
+    return this.db.transaction('rw', this.db.projects, this.db.statuses, this.db.cards, async () => {
+      const card = await this.db.cards.get(id)
+      if (!card) throw new CommandError('not_found')
+      const status = await this.db.statuses.get(card.statusId)
+      if (!status || !await this.db.projects.get(status.projectId)) throw new CommandError('not_found')
+      return this.writeCard(card, { ...attributes, description: card.description })
     })
   }
 

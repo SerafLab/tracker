@@ -5,7 +5,7 @@ import type { ProjectBoardUseCases } from '../application/use-cases'
 const board = { id: 'project', name: 'Поиск квартиры', createdAt: 'now', statuses: [] }
 function useCases(overrides: Partial<ProjectBoardUseCases> = {}): ProjectBoardUseCases {
   return {
-    cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
+    executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
     open: vi.fn(), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(), board: vi.fn().mockResolvedValue(board),
     createProject: vi.fn(), deleteProject: vi.fn(), renameProject: vi.fn(), createStatus: vi.fn(), renameStatus: vi.fn(), moveStatus: vi.fn(),
     createCard: vi.fn(), updateCard: vi.fn(), moveCard: vi.fn(), deleteCard: vi.fn(), deleteStatus: vi.fn().mockResolvedValue('deleted'), ...overrides,

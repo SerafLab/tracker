@@ -9,6 +9,7 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
     const label = { project: en ? 'Project name' : 'Название проекта', createProject: en ? 'Create project' : 'Создать проект', addStatus: en ? 'Add status' : 'Добавить статус', status: en ? 'Status name' : 'Название статуса', createStatus: en ? 'Create status' : 'Создать статус', addCard: en ? 'Add card' : 'Добавить карточку', name: en ? 'Card name' : 'Название карточки', create: en ? 'Create card' : 'Создать карточку', important: en ? 'Important' : 'Важная', urgent: en ? 'Urgent' : 'Срочная', edit: en ? 'Edit' : 'Редактировать', save: en ? 'Save' : 'Сохранить' }
     await page.getByRole('button', { name: label.createProject, exact: true }).click()
     await page.getByLabel(label.project, { exact: true }).fill('Priority')
+    await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await page.getByRole('button', { name: label.createProject, exact: true }).click()
     for (const name of ['Todo', 'Doing', 'Done']) {
       await page.getByRole('button', { name: label.addStatus, exact: true }).first().click()
@@ -18,7 +19,7 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
     }
     const first = page.locator('.status-column').nth(0)
     for (const [name, important, urgent] of [['None', false, false], ['Urgent', false, true], ['Important', true, false], ['Both', true, true], ['Peer', true, true]] as const) {
-      const create = first.getByRole('button', { name: label.addCard, exact: true })
+      const create = first.locator('.add-card')
       await create.click()
       const dialog = page.getByRole('dialog')
       await expect(dialog.getByLabel(label.name)).toBeFocused()
@@ -40,13 +41,14 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
     const edit = async (name: string, nextName: string, toggle = false) => {
       await findCard(name).getByRole('button', { name: en ? `Card actions for ${name}` : `Действия карточки ${name}`, exact: true }).click()
       await page.getByRole('menuitem', { name: label.edit, exact: true }).click()
-      const dialog = page.getByRole('dialog')
-      await expect(dialog.getByLabel(label.name)).toBeFocused()
-      await dialog.getByLabel(label.name).fill(nextName)
-      if (toggle) await dialog.getByLabel(label.urgent, { exact: true }).uncheck()
-      await dialog.getByRole('button', { name: label.save, exact: true }).click()
-      await expect(dialog).toBeHidden()
-      await expect(findCard(nextName).getByRole('button', { name: en ? `Card actions for ${nextName}` : `Действия карточки ${nextName}`, exact: true })).toBeFocused()
+      const form = page.getByRole('form', { name: en ? 'Card fields' : 'Поля карточки' })
+      await expect(form.getByLabel(label.name)).toHaveValue(name)
+      await form.getByLabel(label.name).fill(nextName)
+      if (toggle) await form.getByLabel(label.urgent, { exact: true }).uncheck()
+      await form.getByRole('button', { name: label.save, exact: true }).click()
+      await expect(page.getByRole('heading', { name: nextName, level: 1, exact: true })).toBeVisible()
+      await page.getByRole('button', { name: en ? 'Back to board' : 'Назад к доске', exact: true }).click()
+      await expect(page.getByRole('heading', { name: 'Priority', exact: true })).toBeVisible()
     }
     await edit('Both', 'Changed', true)
     await expect(names).toHaveText(['Peer', 'Important', 'Changed', 'Urgent', 'None'])

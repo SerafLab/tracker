@@ -7,7 +7,7 @@
 ## Requirements
 
 ### Requirement: Project catalogue and board navigation
-The system SHALL present a distinct project catalogue and one open project board at a time. It SHALL let the user view locally stored projects, create a project with a non-empty name through a primary creation control, rename an existing project, and open a project. Duplicate project names SHALL be permitted. Creating a project SHALL open its board, and the board SHALL provide a clear control to return to the catalogue.
+The system SHALL present a distinct project catalogue and one open project board at a time. It SHALL let the user view locally stored projects, create a project with a non-empty name through a primary creation control, rename an existing project, and open a project. Duplicate project names SHALL be permitted. Creating a project SHALL initialize its statuses from the selected status set and open its board, and the board SHALL provide a clear control to return to the catalogue.
 
 #### Scenario: User creates and opens projects
 - **WHEN** the user creates projects named "Поиск квартиры" and "Паспорт" and chooses one from the catalogue
@@ -19,7 +19,7 @@ The system SHALL present a distinct project catalogue and one open project board
 
 #### Scenario: User starts creating a project from a populated catalogue
 - **WHEN** the user activates the catalogue's primary project-creation control
-- **THEN** the interface exposes a focused form for the name without obscuring the creation action's purpose
+- **THEN** the interface exposes a focused form for the name and status-set selection without obscuring the creation action's purpose
 
 ### Requirement: Configurable ordered statuses
 The system SHALL allow the user to create and rename statuses within the open project and change a status's position with explicit accessible controls. A newly created status SHALL be appended after the project's existing statuses. Duplicate status names SHALL be permitted. Secondary status operations MAY be progressively disclosed, provided their purpose remains reachable through semantic controls.
@@ -72,18 +72,22 @@ The system SHALL allow the user to create and rename statuses within the open pr
 - **THEN** карточка остаётся в исходном статусе на прежнем месте с прежними признаками, а интерфейс сообщает об ошибке
 
 ### Requirement: Persistent local board state
-Система SHALL сохранять проекты, статусы, карточки, их названия, связи, оба признака карточек и явный порядок в локальном хранилище браузера между перезагрузками. При обновлении существующих данных система SHALL назначать старым карточкам оба выключенных признака и сохранять их прежний относительный порядок внутри статуса. После перезагрузки система SHALL открывать последний открытый проект, если он существует, иначе каталог проектов или его пустое состояние.
+Система SHALL сохранять проекты, статусы, карточки, их названия, связи, описание, оба признака карточек, заметки с датами и явный порядок в локальном хранилище браузера между перезагрузками. При обновлении существующих данных система SHALL назначать оба выключенных признака только карточкам, у которых эти поля отсутствуют, сохраняя имеющиеся значения признаков и прежний относительный порядок внутри статуса. После перезагрузки система SHALL открывать карточку при её корректном адресе, иначе последний открытый проект, если он существует, либо каталог проектов или его пустое состояние.
 
 #### Scenario: User returns after reloading
-- **WHEN** пользователь создаёт проекты и статусы, создаёт или переносит карточки, меняет их признаки и перезагружает приложение
+- **WHEN** пользователь создаёт проекты и статусы, создаёт или переносит карточки, меняет их признаки и перезагружает приложение с адресом доски
 - **THEN** данные, признаки, порядок групп и порядок внутри групп сохраняются, а доска последнего открытого проекта отображается снова
 
 #### Scenario: Existing cards receive default flags
 - **WHEN** пользователь впервые открывает обновлённое приложение с ранее сохранёнными карточками без признаков важности и срочности
 - **THEN** каждая существующая карточка получает оба выключенных признака, а проекты, названия, связи и прежний порядок карточек внутри каждого статуса сохраняются
 
+#### Scenario: Existing cards receive empty descriptions
+- **WHEN** пользователь открывает обновлённое приложение с сохранёнными карточками без описания и заметок
+- **THEN** каждой карточке назначается пустое описание и пустая история, сохраняя проекты, связи, имена, имеющиеся признаки и порядок
+
 ### Requirement: Accessible, mobile-usable board controls
-The system SHALL expose primary project, status, and card operations through semantic controls usable without drag-and-drop. Card move arrows SHALL remain visible and usable by touch and keyboard on narrow screens. After a keyboard-initiated card move succeeds, focus SHALL return to a control on the moved card without an additional programmatic scroll of the board. The system SHALL provide compact contextual forms in a dialog on wider screens and a mobile-appropriate sheet or equivalent focus-managed surface on narrow screens. On a narrow viewport, all status columns and their primary controls SHALL remain reachable, including through horizontal scrolling when necessary.
+The system SHALL expose primary project, status, and card operations through semantic controls usable without drag-and-drop. Card move arrows SHALL remain visible and usable by touch and keyboard on narrow screens. After a keyboard-initiated card move succeeds, focus SHALL return to a control on the moved card without an additional programmatic scroll of the board. The system SHALL provide compact creation, rename, and move forms in a dialog on wider screens and a mobile-appropriate sheet or equivalent focus-managed surface on narrow screens; card editing SHALL instead use its accessible detail page. On a narrow viewport, all status columns and their primary controls SHALL remain reachable, including through horizontal scrolling when necessary.
 
 #### Scenario: User works on a narrow viewport
 - **WHEN** the board is displayed in a narrow mobile viewport with several statuses
@@ -100,6 +104,10 @@ The system SHALL expose primary project, status, and card operations through sem
 #### Scenario: User moves a card on a narrow viewport
 - **WHEN** a user activates an available card arrow on a narrow viewport
 - **THEN** the card moves to the adjacent status without requiring a menu or form
+
+#### Scenario: User opens card editing on mobile
+- **WHEN** пользователь выбирает редактирование карточки на узком экране
+- **THEN** открывается доступная страница карточки вместо диалога, а возврат на доску сохраняет доступ к карточкам
 
 ### Requirement: Clear workspace interface states
 The system SHALL distinguish loading, empty, error, and inactive controls with accessible text and visually distinct presentation. It SHALL not infer that a card is completed from a status name or assign completion semantics to a status.
@@ -121,15 +129,15 @@ The system SHALL distinguish loading, empty, error, and inactive controls with a
 - **THEN** the system continues to treat it as a user-defined status without adding a completed field or automatic completion behavior to its cards
 
 ### Requirement: Local-storage failure is explicit
-Система SHALL явно показывать ошибку локального хранилища и не сообщать об успешном сохранении мутации, которую не удалось записать. Название, признаки и связанный с ними порядок карточки SHALL сохраняться как одно целое: при отказе записи подтверждённые данные и порядок остаются прежними.
+Система SHALL явно показывать ошибку локального хранилища и не сообщать об успешном сохранении мутации, которую не удалось записать. Название, описание, признаки и связанный с ними порядок карточки SHALL сохраняться как одно целое: при отказе записи подтверждённые данные и порядок остаются прежними.
 
 #### Scenario: Browser storage is unavailable
 - **WHEN** приложение не может открыть локальное хранилище или записать в него данные
 - **THEN** интерфейс сообщает о недоступности рабочей доски вместо представления несохранённых данных как постоянных
 
 #### Scenario: Card editing cannot be saved
-- **WHEN** пользователь сохраняет новое название и признаки карточки, но запись завершается ошибкой
-- **THEN** доска сохраняет прежние название, метки и порядок карточек, форма остаётся открытой с введёнными значениями и сообщением об ошибке для повторной попытки
+- **WHEN** пользователь сохраняет новое название, описание и признаки карточки, но запись завершается ошибкой
+- **THEN** доска сохраняет прежние название, описание, метки и порядок карточек, редактор остаётся открытым с введёнными значениями и сообщением об ошибке для повторной попытки
 
 #### Scenario: Card creation cannot be saved
 - **WHEN** пользователь создаёт карточку с выбранными признаками, но запись завершается ошибкой
@@ -178,27 +186,27 @@ The system SHALL dismiss an open project, status, or card action menu when the u
 - **THEN** значения обоих признаков остаются прежними без явного изменения пользователем
 
 ### Requirement: Unified card creation and editing form
-Система SHALL предоставлять при создании и редактировании карточки одну форму с обязательным названием и двумя подписанными переключателями признаков. Редактирование SHALL начинаться с сохранённых значений и сохранять все три поля одним действием. Форма SHALL быть доступна с клавиатуры и на узком экране; её подписи, ошибки и действия SHALL соответствовать выбранному русскому или английскому языку.
+Система SHALL создавать карточку через компактную форму с обязательным названием и двумя подписанными переключателями признаков, назначая пустое описание. Редактирование SHALL открывать страницу карточки с сохранёнными названием, описанием и признаками и сохранять четыре поля одним действием. Обе формы SHALL быть доступны с клавиатуры и на узком экране, с подписями, ошибками и действиями на выбранном русском или английском языке.
 
 #### Scenario: User opens card creation
 - **WHEN** пользователь открывает создание карточки в выбранном статусе
-- **THEN** форма содержит пустое название и выключенные переключатели «Важная» и «Срочная»
+- **THEN** форма содержит пустое название и выключенные переключатели «Важная» и «Срочная», а создаваемое описание пусто
 
 #### Scenario: User edits name and flags together
 - **WHEN** пользователь открывает редактирование из меню карточки, меняет название и оба признака и сохраняет
-- **THEN** форма первоначально показывает сохранённые значения, а успешное сохранение применяет новое название и признаки вместе
+- **THEN** страница первоначально показывает сохранённые значения, а успешное сохранение применяет название, описание и признаки вместе
 
 #### Scenario: User submits an empty card name
 - **WHEN** пользователь отправляет форму создания или редактирования с названием только из пробелов
-- **THEN** система показывает ошибку обязательного названия и не сохраняет ни название, ни признаки, ни изменение порядка
+- **THEN** система показывает ошибку обязательного названия и не сохраняет ни название, ни описание, ни признаки, ни изменение порядка
 
 #### Scenario: User cancels card editing
-- **WHEN** пользователь меняет поля формы и закрывает её без сохранения
-- **THEN** название, признаки и порядок карточки остаются прежними
+- **WHEN** пользователь меняет поля страницы и подтверждает выход без сохранения
+- **THEN** название, описание, признаки и порядок карточки остаются прежними
 
 #### Scenario: User edits on a narrow screen with a keyboard
 - **WHEN** пользователь открывает форму карточки на узком экране и работает с клавиатуры
-- **THEN** название и оба подписанных переключателя читаемы, доступны с клавиатуры, форма получает фокус и после закрытия возвращает его к действию вызвавшей карточки или создания
+- **THEN** название, описание при редактировании и оба подписанных переключателя читаемы и доступны с клавиатуры; форма создания получает фокус и возвращает его к созданию после закрытия, а страница редактирования поддерживает возврат на доску
 
 #### Scenario: User uses the English interface
 - **WHEN** пользователь открывает форму карточки при выбранном английском языке
@@ -262,11 +270,11 @@ The system SHALL offer one primary creation entry in the application bar for the
 - **THEN** the same application-bar creation entry remains available and opens the corresponding form
 
 ### Requirement: Confirmed card deletion
-The system SHALL offer deletion in each card's action menu. It SHALL identify the selected card and the irreversible effect in a confirmation dialog, and SHALL delete only that card after explicit confirmation. Cancelling SHALL leave the board unchanged.
+The system SHALL offer deletion in each card's action menu. It SHALL identify the selected card and the irreversible effect in a confirmation dialog, and SHALL delete only that card and all of its notes atomically after explicit confirmation. The confirmation SHALL explain that its description and notes will also be lost. Cancelling SHALL leave the board unchanged.
 
 #### Scenario: User deletes a card
 - **WHEN** the user confirms deletion of a named card
-- **THEN** that card disappears from its status, the remaining cards retain their relative order, and the deletion persists after reload
+- **THEN** that card and all of its notes disappear, the remaining cards retain their relative order, and the deletion persists after reload
 
 #### Scenario: User cancels card deletion
 - **WHEN** the user opens a card's deletion dialog and cancels it
@@ -275,6 +283,10 @@ The system SHALL offer deletion in each card's action menu. It SHALL identify th
 #### Scenario: Cards share a name
 - **WHEN** two cards share a name and the user confirms deletion for one of them
 - **THEN** only the selected card is deleted
+
+#### Scenario: Cascading deletion fails
+- **WHEN** запись удаления карточки или любой её заметки завершается ошибкой
+- **THEN** карточка и все её заметки остаются без изменений, частичное удаление не происходит
 
 ### Requirement: Empty-status deletion with protection for cards
 The system SHALL offer deletion in each status's action menu. It SHALL identify the selected status and the irreversible effect in a confirmation dialog. It SHALL delete the status only while it contains no cards, including when it is the project's last status. If it contains cards, the system SHALL keep it and explain that the cards must first be moved or deleted.
@@ -300,7 +312,7 @@ The system SHALL offer deletion in each status's action menu. It SHALL identify 
 - **THEN** the status and its cards remain unchanged
 
 ### Requirement: Deletion reflects persisted state
-The system SHALL report deletion as successful only after it has been saved in local storage. If saving fails, the card or status SHALL remain visible and the interface SHALL report the failure.
+The system SHALL report deletion as successful only after it has been saved in local storage. If saving fails, the card, status, or project and its contents SHALL remain visible and unchanged, and the interface SHALL report the failure. A failed project deletion SHALL leave its confirmation open for retry without navigating away or changing the last-opened project.
 
 #### Scenario: Card deletion cannot be saved
 - **WHEN** the user confirms card deletion and storage rejects the change
@@ -309,6 +321,10 @@ The system SHALL report deletion as successful only after it has been saved in l
 #### Scenario: Status deletion cannot be saved
 - **WHEN** the user confirms deletion of an empty status and storage rejects the change
 - **THEN** the status remains on the board and the interface reports the failure
+
+#### Scenario: Project deletion cannot be saved
+- **WHEN** пользователь подтверждает удаление проекта, но запись любой части удаления завершается ошибкой
+- **THEN** весь проект, статусы, карточки, последний открытый проект и маршрут остаются прежними, диалог показывает ошибку и позволяет повторить попытку
 
 ### Requirement: Calm board and card presentation
 The system SHALL present statuses as open columns on a warm neutral workspace, with individually bounded light cards and restrained green actions. Status headers SHALL show a compact card count. Priority flags SHALL remain readable text with distinct symbols or shapes, without assigning completion meaning to statuses. Existing visible move arrows and secondary controls SHALL remain available.
@@ -329,8 +345,180 @@ The system SHALL fit all four status columns of a four-status board at viewport 
 - **THEN** the user can horizontally scroll the board to every status while the page width remains within the viewport and controls remain operable
 
 ### Requirement: Card creation follows its status list
-The system SHALL place each status's card-creation entry after its card list, including when the list is empty. The entry SHALL open the existing focused form and retain its established return-focus behavior.
+Система SHALL показывать два входа создания карточки в каждом статусе: в заголовке перед меню действий и после списка, включая пустой. Верхний вход SHALL быть зелёным квадратным плюсом без видимой подписи, как добавление статуса; нижний SHALL сочетать такой же плюс с подписью в одной кнопке. Оба SHALL открывать одну форму в своём статусе и возвращать фокус к нажатому входу после закрытия без принудительной прокрутки к другому входу.
 
 #### Scenario: User creates a card after reviewing a status
-- **WHEN** a user reaches the end of a status's cards and activates its creation entry
-- **THEN** the card form opens and closing the form returns focus to that entry without changing existing cards
+- **WHEN** пользователь достигает конца списка карточек статуса и активирует нижний вход создания
+- **THEN** открывается существующая форма создания в этом статусе; закрытие формы возвращает фокус к нижней кнопке без изменения существующих карточек
+
+#### Scenario: User creates a card from the status header
+- **WHEN** пользователь активирует плюс в заголовке выбранного статуса
+- **THEN** открывается та же форма создания карточки в этом статусе, что и с нижней кнопки, а закрытие возвращает фокус к верхнему плюсу
+
+#### Scenario: User sees both creation entries
+- **WHEN** на доске показан пустой или заполненный статус
+- **THEN** перед меню в заголовке виден зелёный квадратный плюс с теми же размером, символом и оформлением, что у добавления статуса; после списка виден такой же плюс с подписью «Добавить карточку» или «Add card» на выбранном языке, образующие одну кнопку и одну остановку Tab
+
+#### Scenario: User identifies the header action
+- **WHEN** пользователь наводит указатель на верхний плюс или переводит на него фокус клавиатурой
+- **THEN** доступна читаемая подсказка «Добавить карточку» или «Add card» на выбранном языке; верхняя кнопка также имеет соответствующее доступное имя для вспомогательных технологий
+
+#### Scenario: User adds from the end of a long list
+- **WHEN** пользователь прокручивает длинный список до нижней кнопки, открывает форму и закрывает её после создания или отмены
+- **THEN** пользователю не требуется прокручивать к заголовку для добавления, фокус возвращается на нижнюю кнопку, а интерфейс не прокручивает доску к верхнему плюсу
+
+#### Scenario: User creates a card using the keyboard
+- **WHEN** пользователь переводит фокус на любой из двух входов и нажимает Enter или Space
+- **THEN** форма получает фокус; после успешного сохранения, отмены или Escape фокус возвращается на конкретную кнопку, открывшую форму
+
+#### Scenario: User sees long status names on different screens
+- **WHEN** доска с длинными названиями статусов показана на ширине 320, 390, 1280 или 1440 px
+- **THEN** названия переносятся, не перекрывая плюс, счётчик и меню; оба входа остаются доступны, зона верхней кнопки и квадратного плюса нижней кнопки составляет не менее 44 на 44 px, страница не получает горизонтальную прокрутку, а четыре статуса на 1280 и 1440 px помещаются без горизонтальной прокрутки доски
+
+#### Scenario: Saving from either entry fails
+- **WHEN** пользователь открывает форму любым из двух входов, вводит данные, а сохранение не удаётся
+- **THEN** карточка не появляется, форма остаётся открытой с введёнными данными и сообщением об ошибке; после последующего закрытия фокус возвращается к исходному входу
+
+### Requirement: Initial status-set selection
+Система SHALL предлагать при создании проекта пять наборов статусов и вариант «Без статусов». В каждой новой форме SHALL быть выбран «Простой». До создания пользователь SHALL видеть упорядоченные названия статусов выбранного набора. Выбор SHALL быть доступен с клавиатуры и на узком экране.
+
+#### Scenario: User accepts the default
+- **WHEN** пользователь открывает создание проекта и сохраняет непустое название без смены набора
+- **THEN** открывается проект со статусами «Простой» в заданном порядке и без карточек
+
+#### Scenario: User previews a different set
+- **WHEN** пользователь выбирает другой набор
+- **THEN** форма показывает его названия в порядке будущих статусов и сохраняет введённое название проекта
+
+#### Scenario: User chooses no statuses
+- **WHEN** пользователь создаёт проект с вариантом «Без статусов»
+- **THEN** открывается доска без статусов с существующим пояснением и действием добавления статуса
+
+#### Scenario: A new form resets the selection
+- **WHEN** пользователь закрывает форму с другим выбранным набором и открывает создание проекта снова
+- **THEN** выбран «Простой» независимо от предыдущего выбора
+
+#### Scenario: User selects a set on a narrow screen
+- **WHEN** пользователь создаёт проект при ширине 320 или 390 px либо использует только клавиатуру
+- **THEN** название, выбор набора, просмотр его статусов и действия формы доступны без горизонтального переполнения страницы
+
+### Requirement: Built-in status-set contents
+Система SHALL создавать статусы каждого встроенного набора в точном порядке, указанном в сценариях ниже. «На паузе» SHALL находиться непосредственно перед «В разработке». Названия на английском SHALL соответствовать спецификации языка интерфейса.
+
+#### Scenario: Simple set
+- **WHEN** пользователь создаёт проект с набором «Простой» на русском языке
+- **THEN** статусы: «Нужно сделать», «В процессе», «Готово»
+
+#### Scenario: Search and selection set
+- **WHEN** пользователь создаёт проект с набором «Поиск и выбор» на русском языке
+- **THEN** статусы: «Найдено», «На рассмотрении», «В избранном», «Не подходит»
+
+#### Scenario: Applications and documents set
+- **WHEN** пользователь создаёт проект с набором «Заявки и документы» на русском языке
+- **THEN** статусы: «Подготовить», «Отправлено», «Ожидаю ответа», «Завершено»
+
+#### Scenario: Development set
+- **WHEN** пользователь создаёт проект с набором «Разработка» на русском языке
+- **THEN** статусы: «Запланировано», «На паузе», «В разработке», «На проверке», «Готово»
+
+#### Scenario: Job search set
+- **WHEN** пользователь создаёт проект с набором «Поиск работы» на русском языке
+- **THEN** статусы: «Интересно», «Отклик отправлен», «Собеседования», «Предложение», «Отказ»
+
+### Requirement: Status sets initialize independent editable statuses
+Созданные из набора статусы SHALL быть обычными статусами проекта: пользователь SHALL иметь возможность переименовывать, добавлять, переставлять и удалять их по существующим правилам. Набор SHALL не задавать обязательных переходов, автоматического завершения или связи между проектами. Существующие проекты SHALL не получать статусы автоматически.
+
+#### Scenario: User customizes one project
+- **WHEN** пользователь меняет названия, порядок или состав статусов проекта, созданного из набора
+- **THEN** изменения сохраняются после перезагрузки и не меняют другие проекты или встроенные наборы
+
+#### Scenario: User moves a card to an alternative outcome
+- **WHEN** пользователь переносит карточку из «Собеседования» напрямую в «Отказ» либо из «На проверке» в «На паузе»
+- **THEN** работают существующие средства перемещения без обязательного прохождения промежуточных статусов и автоматического изменения признаков
+
+#### Scenario: Existing project is reopened
+- **WHEN** пользователь открывает ранее созданный проект, включая проект без статусов
+- **THEN** его сохранённые статусы и карточки остаются прежними
+
+### Requirement: Atomic project initialization
+Система SHALL сохранять новый проект, его начальные статусы с порядком и выбор последнего открытого проекта как одно целое. При отказе записи SHALL не оставаться частичного проекта или новых статусов, прежний последний проект SHALL сохраняться, а форма SHALL оставаться открытой с названием, набором и сообщением об ошибке. Пока сохранение выполняется, повторная отправка SHALL не создавать дубликат.
+
+#### Scenario: Status initialization cannot be saved
+- **WHEN** сохранение одного из начальных статусов завершается ошибкой
+- **THEN** новый проект и все его статусы отсутствуют, прежние данные и последний проект сохранены, форма позволяет повторить попытку с теми же значениями
+
+#### Scenario: User retries after failure
+- **WHEN** пользователь повторяет сохранение после устранения ошибки
+- **THEN** создаётся один проект с полным выбранным набором и открывается его доска
+
+#### Scenario: User submits twice while saving
+- **WHEN** пользователь повторно активирует создание до завершения первой отправки
+- **THEN** выполняется только одно создание проекта
+
+#### Scenario: Initialization survives reload
+- **WHEN** проект с выбранным набором успешно создан и приложение перезагружено
+- **THEN** открывается этот проект с полным сохранённым набором в исходном порядке
+
+### Requirement: Confirmed project deletion
+Система SHALL предлагать «Удалить проект» в меню каждого проекта каталога и настройках его доски. Диалог SHALL показывать название, количество статусов и карточек, предупреждение об окончательном удалении всего содержимого без восстановления и кнопки «Отмена» / «Удалить проект». Ввод названия SHALL не требоваться. Удаление SHALL выполняться только после явного подтверждения.
+
+#### Scenario: User starts deletion from catalogue
+- **WHEN** пользователь выбирает удаление проекта из его меню в каталоге
+- **THEN** открывается подтверждение выбранного проекта с количеством его статусов и карточек, включая нулевые значения
+
+#### Scenario: User starts deletion from board
+- **WHEN** пользователь выбирает «Удалить проект» в настройках открытой доски
+- **THEN** открывается такое же подтверждение для текущего проекта
+
+#### Scenario: User cancels deletion
+- **WHEN** пользователь выбирает «Отмена» или закрывает подтверждение без удаления
+- **THEN** проект, его содержимое и текущий экран остаются неизменными
+
+### Requirement: Atomic project cascade deletion
+Система SHALL окончательно удалять выбранный по идентификатору проект, все принадлежащие ему статусы, карточки и заметки карточек как одно целое, независимо от заполненности. Остальные проекты, их содержимое и порядок SHALL сохраняться. Удаление SHALL сохраняться после перезагрузки и работать офлайн.
+
+#### Scenario: User deletes a populated project
+- **WHEN** пользователь подтверждает удаление проекта с несколькими статусами и карточками
+- **THEN** проект, все его статусы, карточки и их заметки удаляются без необходимости предварительно очищать статусы и не появляются после перезагрузки
+
+#### Scenario: User deletes an empty project
+- **WHEN** пользователь подтверждает удаление проекта без статусов или с пустыми статусами
+- **THEN** проект и его статусы удаляются
+
+#### Scenario: Projects share a name
+- **WHEN** два проекта имеют одинаковое название и пользователь подтверждает удаление одного
+- **THEN** удаляется только выбранный проект с его содержимым, второй проект остаётся неизменным
+
+### Requirement: Project deletion navigation and focus
+После удаления открытого проекта система SHALL показывать каталог и исключать автоматическое открытие удалённого проекта. После удаления из каталога система SHALL оставаться в каталоге. При отсутствии проектов SHALL показываться его пустое состояние. Фокус SHALL переходить к следующему проекту, предыдущему при отсутствии следующего, либо созданию проекта при пустом каталоге; после удаления с доски — к созданию проекта.
+
+#### Scenario: User deletes the open project
+- **WHEN** удаление открытого проекта успешно сохранено
+- **THEN** открывается каталог, маршрут и последний открытый проект больше не ссылаются на удалённый проект, фокус находится на создании проекта
+
+#### Scenario: User deletes from catalogue
+- **WHEN** пользователь удаляет проект из каталога, где есть другие проекты
+- **THEN** каталог обновляется, остальные проекты сохраняют порядок, фокус переходит к следующему проекту или предыдущему, если следующего нет
+
+#### Scenario: User deletes the last project
+- **WHEN** пользователь удаляет единственный проект
+- **THEN** каталог показывает пустое состояние и доступное создание проекта, которое получает фокус
+
+#### Scenario: User follows an old project link
+- **WHEN** пользователь перезагружает приложение или возвращается по истории к ссылке удалённого проекта
+- **THEN** приложение показывает каталог, а не доску удалённого проекта
+
+### Requirement: Accessible project deletion confirmation
+Подтверждение удаления проекта SHALL работать с клавиатуры и на узком экране, соответствовать языку интерфейса RU/EN и первоначально фокусировать «Отмена». Закрытие без удаления SHALL возвращать фокус к вызвавшему действию. Во время сохранения SHALL исключаться повторная отправка удаления.
+
+#### Scenario: Keyboard user cancels
+- **WHEN** пользователь открывает подтверждение клавиатурой и нажимает Escape
+- **THEN** начальный фокус был на «Отмена», диалог закрывается и фокус возвращается к меню выбранного проекта или шестерёнке доски
+
+#### Scenario: User deletes on mobile in English
+- **WHEN** пользователь открывает подтверждение в английском интерфейсе при ширине 320 или 390 px
+- **THEN** название, количества, предупреждение и кнопки читаемы и доступны, тексты локализованы, пользовательское название не переводится
+
+#### Scenario: User confirms repeatedly
+- **WHEN** пользователь повторно активирует подтверждение, пока удаление сохраняется
+- **THEN** повторная операция удаления не запускается

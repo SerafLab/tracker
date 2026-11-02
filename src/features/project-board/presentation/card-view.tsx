@@ -1,12 +1,12 @@
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Card, CardInput, Id, Status } from '../domain/model'
-import { ActionDialog, ActionMenu, CardDialog } from './controls'
+import type { Card, Id, Status } from '../domain/model'
+import { ActionDialog, ActionMenu } from './controls'
 import { BoardIcon } from './board-icon'
 
 export type CardMoveFocus = 'left' | 'right' | 'menu'
 
-export const CardView = memo(function CardView({ card, statuses, previousStatus, nextStatus, saveError, onMoveDialogChange, onUpdate, onMove, onDelete }: {
+export const CardView = memo(function CardView({ card, statuses, previousStatus, nextStatus, saveError, onMoveDialogChange, projectId, onOpen, onMove, onDelete }: {
   card: Card
   statuses: Status[]
   previousStatus?: Status
@@ -14,12 +14,12 @@ export const CardView = memo(function CardView({ card, statuses, previousStatus,
   saveError: boolean
   onMoveDialogChange: (cardId: Id | null) => void
   onDelete: (card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => void
-  onUpdate: (cardId: Id, input: CardInput) => Promise<boolean>
+  projectId: Id
+  onOpen: (cardId: Id) => Promise<void>
   onMove: (cardId: Id, statusId: Id, focus?: CardMoveFocus) => Promise<boolean>
 }) {
   const { t } = useTranslation()
   const menuTrigger = useRef<HTMLButtonElement>(null)
-  const [renaming, setRenaming] = useState(false)
   const [moving, setMoving] = useState(false)
   const [saving, setSaving] = useState(false)
   const otherStatuses = statuses.filter(status => status.id !== card.statusId)
@@ -55,16 +55,15 @@ export const CardView = memo(function CardView({ card, statuses, previousStatus,
   }
 
   return <li className="work-card surface-card" data-card-id={card.id}>
-    <span className="card-name">{card.name}</span>
+    <a className="card-name card-detail-link" href={`#project/${encodeURIComponent(projectId)}/card/${encodeURIComponent(card.id)}`} onClick={event => { if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); void onOpen(card.id) } }}>{card.name}</a>
     <div className="card-badges">{card.important ? <span className="card-badge card-badge-important"><BoardIcon name="important" />{t('important')}</span> : null}{card.urgent ? <span className="card-badge card-badge-urgent"><BoardIcon name="urgent" />{t('urgent')}</span> : null}</div>
     <div className="card-controls">
       <div className="card-move-arrows" role="group" aria-label={t('moveCardActions', { name: card.name })}>
         <button className="button button-quiet button-icon" data-card-move="left" aria-label={previousStatus ? t('moveAdjacentLeft', { name: previousStatus.name }) : t('moveLeft')} disabled={!previousStatus || saving} onClick={event => { if (previousStatus) void move(previousStatus.id, event.detail === 0 ? 'left' : undefined) }}><BoardIcon name="left" /></button>
         <button className="button button-quiet button-icon" data-card-move="right" aria-label={nextStatus ? t('moveAdjacentRight', { name: nextStatus.name }) : t('moveRight')} disabled={!nextStatus || saving} onClick={event => { if (nextStatus) void move(nextStatus.id, event.detail === 0 ? 'right' : undefined) }}><BoardIcon name="right" /></button>
       </div>
-      <ActionMenu triggerRef={menuTrigger} label={t('cardActions', { name: card.name })} actions={[{ label: t('edit'), onSelect: () => setRenaming(true) }, ...(otherStatuses.length ? [{ label: t('moveToOther'), onSelect: () => { setDestination(otherStatuses[0].id); setMoving(true) } }] : []), { label: t('delete'), onSelect: () => onDelete(card, menuTrigger) }]} />
+      <ActionMenu triggerRef={menuTrigger} label={t('cardActions', { name: card.name })} actions={[{ label: t('edit'), onSelect: () => void onOpen(card.id) }, ...(otherStatuses.length ? [{ label: t('moveToOther'), onSelect: () => { setDestination(otherStatuses[0].id); setMoving(true) } }] : []), { label: t('delete'), onSelect: () => onDelete(card, menuTrigger) }]} />
     </div>
-    {renaming ? <CardDialog title={t('editCard')} button={t('save')} initialValue={card} returnFocus={menuTrigger} onSubmit={input => onUpdate(card.id, input)} onClose={() => setRenaming(false)} /> : null}
     {moving ? <ActionDialog title={t('moveCard')} onClose={closeMoving}><form onKeyDown={() => { keyboard.current = true }} onPointerDown={() => { keyboard.current = false }} onSubmit={event => { event.preventDefault(); void move(destination, keyboard.current ? 'menu' : undefined) }}><label className="field"><span className="field-label">{t('moveTo', { name: card.name })}</span><select className="select-input" value={destination} disabled={saving} aria-describedby={saveError ? errorId : undefined} onChange={event => setDestination(event.target.value)}>{otherStatuses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>{saveError ? <p id={errorId} className="save-error" role="alert">{t('saveError')}</p> : null}<div className="form-actions"><button type="button" className="button button-secondary" onClick={closeMoving}>{t('cancel')}</button><button className="button button-primary" disabled={saving} aria-describedby={saveError ? errorId : undefined}>{t('move')}</button></div></form></ActionDialog> : null}
   </li>
 })

@@ -7,6 +7,7 @@ for (const width of [320, 1280]) {
     const projectName = page.getByRole('textbox', { name: /^(Новый проект|Название проекта)$/ })
     if (await projectName.count() === 0) await page.getByRole('button', { name: 'Создать проект' }).click()
     await projectName.fill('Удаление')
+    await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await page.getByRole('button', { name: 'Создать проект' }).click()
     for (const name of ['Первый', 'Второй']) {
       await page.getByRole('button', { name: 'Добавить статус' }).first().click()
@@ -15,7 +16,7 @@ for (const width of [320, 1280]) {
       await expect(page.getByRole('dialog')).toBeHidden()
     }
     const first = page.locator('.status-column').filter({ has: page.getByRole('heading', { name: 'Первый', exact: true }) })
-    await first.getByRole('button', { name: /Добавить карточку/ }).click()
+    await first.locator('.add-card').click()
     await page.getByLabel('Название карточки').fill('Карточка')
     await page.getByRole('button', { name: 'Создать карточку' }).click()
     await expect(page.getByRole('dialog')).toBeHidden()

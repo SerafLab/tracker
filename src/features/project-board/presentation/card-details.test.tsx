@@ -1,0 +1,210 @@
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { afterEach, expect, it, vi } from 'vitest'
+import { App } from '../../../app/app'
+import { ProjectBoardDatabase } from '../infrastructure/indexeddb/database'
+import { DexieProjectBoardRepository } from '../infrastructure/indexeddb/dexie-project-board-repository'
+import { PlainText } from './card-detail-view'
+
+const pwa = vi.hoisted(() => ({ ready: false, update: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('virtual:pwa-register/react', () => ({ useRegisterSW: () => ({ needRefresh: [pwa.ready, vi.fn()], offlineReady: [false, vi.fn()], updateServiceWorker: pwa.update }) }))
+
+const databases: ProjectBoardDatabase[] = []
+afterEach(async () => { pwa.ready = false; pwa.update.mockClear(); cleanup(); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(db => db.delete())) })
+async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectBoardRepository) => void = () => {}) {
+  const db = new ProjectBoardDatabase(`details-${crypto.randomUUID()}`); databases.push(db)
+  const repo = new DexieProjectBoardRepository(db)
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: '2026-11-01T00:00:00Z' }, [])
+  await repo.createProject({ id: 'q', name: 'Other', createdAt: '2026-11-01T00:00:01Z' }, [])
+  await repo.createStatus({ id: 's', projectId: 'p', name: 'Status' })
+  await repo.createCard({ id: 'c', statusId: 's', name: 'Card', description: '', important: false, urgent: false })
+  history.replaceState(null, '', `/${hash}`)
+  configure(repo)
+  render(<App repository={repo} />)
+  const user = userEvent.setup()
+  return { repo, db, user }
+}
+async function editor(user: ReturnType<typeof userEvent.setup>) { await user.click(screen.getByRole('button', { name: 'Добавить заметку' })); return screen.getByLabelText('Новая заметка') }
+async function fields() { return within(await screen.findByRole('form', { name: 'Поля карточки' })) }
+
+it('opens a direct detail address, hides project actions, returns to its board and rejects foreign cards', async () => {
+  const { repo, user } = await setup()
+  await fields()
+  expect(screen.getByRole('heading', { name: 'Card', level: 1 })).toBeInTheDocument()
+  expect(screen.getByRole('main')).toHaveFocus()
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  expect(screen.queryByRole('button', { name: 'Переименовать проект' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Добавить статус' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
+  await screen.findByRole('heading', { name: 'Project', level: 1 })
+  await user.click(screen.getByRole('link', { name: 'Card' }))
+  await fields()
+  cleanup(); history.replaceState(null, '', '/#project/q/card/c'); render(<App repository={repo} />)
+  expect(await screen.findByRole('heading', { name: 'Карточка недоступна' })).toBeInTheDocument()
+  expect(screen.queryByDisplayValue('Card')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
+  expect(await screen.findByRole('heading', { name: 'Other' })).toBeInTheDocument()
+})
+
+it('validates basic fields, clears descriptions and retains independent note drafts when fields save', async () => {
+  const { repo, user } = await setup(); const form = await fields()
+  await user.clear(form.getByLabelText('Название карточки'))
+  await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  expect(form.getByRole('alert')).toHaveTextContent('Название обязательно')
+  await user.type(form.getByLabelText('Название карточки'), 'Saved')
+  await user.type(form.getByLabelText('Описание карточки'), 'First\nSecond')
+  const note = await editor(user); await user.type(note, 'Unfinished note')
+  await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  expect(await screen.findByRole('heading', { name: 'Saved', level: 1 })).toBeInTheDocument()
+  expect(note).toHaveValue('Unfinished note')
+  expect((await repo.cardDetails('p', 'c'))!.notes).toEqual([])
+  await user.clear(form.getByLabelText('Описание карточки')); await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  expect((await repo.cardDetails('p', 'c'))!.card.description).toBe('')
+})
+
+it('creates, edits without a no-op date, refuses blank notes, confirms deletion and restores focus', async () => {
+  const { repo, user } = await setup(); await fields()
+  let note = await editor(user)
+  await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  expect(screen.getByRole('alert')).toHaveTextContent('Текст заметки обязателен')
+  await user.type(note, 'First note')
+  vi.spyOn(repo, 'createNote').mockRejectedValueOnce(new Error('quota'))
+  await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Заметка не сохранена')
+  expect(note).toHaveValue('First note')
+  await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  await waitFor(() => expect(screen.queryByLabelText('Новая заметка')).not.toBeInTheDocument()); await screen.findByText('First note')
+  await user.click(screen.getByRole('button', { name: 'Редактировать заметку' }))
+  await user.click(screen.getByRole('button', { name: 'Сохранить заметку' }))
+  expect((await repo.cardDetails('p', 'c'))!.notes[0].updatedAt).toBeUndefined()
+  await user.click(screen.getByRole('button', { name: 'Редактировать заметку' })); note = screen.getByLabelText('Редактировать заметку')
+  await user.clear(note); await user.type(note, 'Changed note')
+  await user.click(screen.getByRole('button', { name: 'Сохранить заметку' }))
+  expect((await repo.cardDetails('p', 'c'))!.notes[0].updatedAt).toBeTruthy()
+  const trigger = screen.getByRole('button', { name: 'Удалить заметку' }); await user.click(trigger)
+  let dialog = screen.getByRole('dialog'); expect(within(dialog).getByText('Changed note')).toBeInTheDocument()
+  expect(within(dialog).getByRole('button', { name: 'Отмена' })).toHaveFocus()
+  await user.keyboard('{Escape}'); expect(trigger).toHaveFocus()
+  await user.click(trigger); dialog = screen.getByRole('dialog')
+  vi.spyOn(repo, 'deleteNote').mockRejectedValueOnce(new Error('quota'))
+  await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Не удалось сохранить')
+  await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Добавить заметку' })).toHaveFocus())
+  expect((await repo.cardDetails('p', 'c'))!.notes).toEqual([])
+})
+
+it('saves a note without saving pending card fields, and guards editor switches', async () => {
+  const { repo, user } = await setup(); const form = await fields()
+  await user.type(form.getByLabelText('Описание карточки'), 'Pending fields')
+  await user.type(await editor(user), 'Saved note'); await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  expect(form.getByLabelText('Описание карточки')).toHaveValue('Pending fields')
+  expect((await repo.cardDetails('p', 'c'))!.card.description).toBe('')
+  await user.type(await editor(user), 'Pending note')
+  await user.click(screen.getByRole('button', { name: 'Редактировать заметку' }))
+  let dialog = screen.getByRole('dialog', { name: 'Несохранённые изменения' })
+  await user.click(within(dialog).getByRole('button', { name: 'Остаться' }))
+  expect(screen.getByLabelText('Новая заметка')).toHaveValue('Pending note')
+  await user.click(screen.getByRole('button', { name: 'Редактировать заметку' }))
+  dialog = screen.getByRole('dialog'); await user.click(within(dialog).getByRole('button', { name: 'Выйти без сохранения' }))
+  expect(screen.getByLabelText('Редактировать заметку')).toHaveValue('Saved note')
+})
+
+it('keeps separately committed fields after a failed save-on-leave note and retries without duplicating writes', async () => {
+  const { repo, user } = await setup(); const form = await fields()
+  await user.type(form.getByLabelText('Описание карточки'), 'Committed first')
+  await user.type(await editor(user), 'Pending second')
+  const update = vi.spyOn(repo, 'updateCard')
+  const create = vi.spyOn(repo, 'createNote').mockRejectedValueOnce(new Error('quota'))
+  await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
+  await user.click(screen.getByRole('button', { name: 'Сохранить и выйти' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Заметка не сохранена')
+  expect(screen.getByLabelText('Новая заметка')).toHaveValue('Pending second')
+  expect((await repo.cardDetails('p', 'c'))!.card.description).toBe('Committed first')
+  expect(location.hash).toBe('#project/p/card/c')
+  await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
+  await user.click(screen.getByRole('button', { name: 'Сохранить и выйти' }))
+  await screen.findByRole('heading', { name: 'Project', level: 1 })
+  expect(update).toHaveBeenCalledOnce(); expect(create).toHaveBeenCalledTimes(2)
+  expect((await repo.cardDetails('p', 'c'))!.notes.map(note => note.text)).toEqual(['Pending second'])
+})
+
+it('preserves drafts for Stay/Escape and warns on unload only while dirty', async () => {
+  const { user } = await setup(); const form = await fields()
+  const clean = new Event('beforeunload', { cancelable: true }); fireEvent(window, clean); expect(clean.defaultPrevented).toBe(false)
+  await user.type(form.getByLabelText('Описание карточки'), 'Draft')
+  const dirty = new Event('beforeunload', { cancelable: true }); fireEvent(window, dirty); expect(dirty.defaultPrevented).toBe(true)
+  const trigger = screen.getByRole('button', { name: 'Назад к доске' }); await user.click(trigger)
+  await user.keyboard('{Escape}'); expect(trigger).toHaveFocus()
+  expect(form.getByLabelText('Описание карточки')).toHaveValue('Draft')
+  await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(() => { const saved = new Event('beforeunload', { cancelable: true }); fireEvent(window, saved); expect(saved.defaultPrevented).toBe(false) })
+})
+
+it('renders markup literally and links only absolute HTTP(S) URLs in another context', () => {
+  render(<PlainText text={'<script>alert(1)</script>\n[Text](javascript:alert(2)) data:text/html,test mail@example.com example.com\nhttps://example.com/test http://example.org/path'} />)
+  expect(document.querySelector('script')).toBeNull()
+  const links = screen.getAllByRole('link'); expect(links).toHaveLength(2)
+  for (const link of links) { expect(link).toHaveAttribute('target', '_blank'); expect(link).toHaveAttribute('rel', 'noopener noreferrer') }
+})
+
+it('defers PWA activation until the dirty editor permits the update and saves before continuing', async () => {
+  pwa.ready = true
+  const { repo, user } = await setup(); const form = await fields()
+  await user.type(form.getByLabelText('Описание карточки'), 'Save before update')
+  await user.click(screen.getByRole('button', { name: 'Обновить' }))
+  expect(screen.getByRole('dialog', { name: 'Несохранённые изменения' })).toBeInTheDocument()
+  expect(pwa.update).not.toHaveBeenCalled()
+  await user.click(screen.getByRole('button', { name: 'Остаться' }))
+  expect(form.getByLabelText('Описание карточки')).toHaveValue('Save before update')
+  await user.click(screen.getByRole('button', { name: 'Обновить' }))
+  await user.click(screen.getByRole('button', { name: 'Сохранить и выйти' }))
+  await waitFor(() => expect(pwa.update).toHaveBeenCalledExactlyOnceWith(true))
+  expect((await repo.cardDetails('p', 'c'))!.card.description).toBe('Save before update')
+})
+
+
+it('keeps the requested card route and storage error when reading details fails', async () => {
+  const { repo } = await setup('#project/p/card/c', repo => { vi.spyOn(repo, 'cardDetails').mockRejectedValueOnce(new Error('read unavailable')) })
+  expect(await screen.findByRole('heading', { name: 'Рабочая доска недоступна' })).toBeInTheDocument()
+  expect(location.hash).toBe('#project/p/card/c')
+  expect(screen.getByRole('alert')).toHaveTextContent('Локальное хранилище недоступно')
+  expect(screen.queryByRole('button', { name: 'Project' })).not.toBeInTheDocument()
+  expect(await repo.projects()).toHaveLength(2)
+})
+
+it('focuses the retained new-note draft after deleting the last saved note', async () => {
+  const { repo, user } = await setup(); await fields()
+  await user.type(await editor(user), 'Saved note')
+  await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  await waitFor(() => expect(screen.queryByLabelText('Новая заметка')).not.toBeInTheDocument())
+  const draft = await editor(user); await user.type(draft, 'Keep this new draft')
+  await user.click(screen.getByRole('button', { name: 'Удалить заметку' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Удалить' }))
+  await waitFor(() => expect(draft).toHaveFocus())
+  expect(draft).toHaveValue('Keep this new draft')
+  expect((await repo.cardDetails('p', 'c'))!.notes).toEqual([])
+})
+
+
+it('returns to the catalogue for a missing project without exposing another card', async () => {
+  await setup('#project/missing/card/c')
+  expect(await screen.findByRole('heading', { name: 'Трекер личных проектов' })).toBeInTheDocument()
+  expect(location.hash).toBe('')
+  expect(screen.queryByDisplayValue('Card')).not.toBeInTheDocument()
+})
+
+it('does not dispatch the same field save twice while persistence is pending', async () => {
+  const { repo, user } = await setup(); const form = await fields()
+  let finish!: () => void
+  const update = vi.spyOn(repo, 'updateCard').mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve }))
+  await user.type(form.getByLabelText('Описание карточки'), 'Pending save')
+  const element = screen.getByRole('form', { name: 'Поля карточки' })
+  fireEvent.submit(element); fireEvent.submit(element)
+  expect(update).toHaveBeenCalledOnce()
+  expect(form.getByLabelText('Описание карточки')).toBeDisabled()
+  finish()
+  await waitFor(() => expect(form.getByLabelText('Описание карточки')).toBeEnabled())
+})

@@ -15,8 +15,8 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await create.focus(); await page.keyboard.press('Enter')
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('textbox')).toBeFocused()
-    await expect(dialog.getByRole('combobox')).toHaveCount(0)
-    await expect(page.getByRole('combobox')).toHaveCount(0)
+    await expect(dialog.getByRole('combobox', { name: en ? 'Status set' : 'Набор статусов' })).toHaveValue('simple')
+    await expect(page.getByRole('combobox', { name: en ? 'Application language' : 'Язык приложения' })).toHaveCount(0)
     for (let count = 0; count < 7; count++) {
       await page.keyboard.press(count % 2 ? 'Shift+Tab' : 'Tab')
       expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
@@ -25,6 +25,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await create.click()
     const name = 'ОченьДлинноеИмяПроектаБезПробелов'.repeat(3)
     await dialog.getByRole('textbox').fill(name)
+    await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await dialog.getByRole('button', { name: createName, exact: true }).click()
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(name)
     const add = page.getByRole('button', { name: addName, exact: true })
@@ -104,7 +105,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     if (state === 'restart') {
       await expect(page.getByRole('button', {name: en ? 'Create project' : 'Создать проект'})).toBeVisible()
       await page.evaluate(() => new Promise<void>((resolve, reject) => {
-        const request = indexedDB.open('personal-project-tracker', 30)
+        const request = indexedDB.open('personal-project-tracker', 40)
         request.onsuccess = () => { request.result.close(); resolve() }
         request.onerror = () => reject(request.error)
       }))
@@ -113,7 +114,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(page.getByRole('button', {name: /^(Создать проект|Create project|Добавить статус|Add status)$/})).toHaveCount(0)
     await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
     await expect(page.getByRole('combobox')).toHaveValue(language)
-    await expect(page.getByRole('button', {name: /^(Переименовать проект|Rename project)$/})).toHaveCount(0)
+    await expect(page.getByRole('button', {name: /^(Переименовать проект|Rename project|Удалить проект|Delete project)$/})).toHaveCount(0)
     expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({path: testInfo.outputPath(`${state}-${language}-${width}.png`), fullPage: true})

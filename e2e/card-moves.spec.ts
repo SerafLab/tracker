@@ -6,6 +6,7 @@ for (const width of [320, 1280]) {
     await page.goto('/tracker/')
     await page.getByRole('button', { name: 'Создать проект' }).click()
     await page.getByLabel('Название проекта').fill('Доска')
+    await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await page.getByRole('button', { name: 'Создать проект' }).click()
     for (const name of ['Первый', 'Средний', 'Последний']) {
       await page.getByRole('button', { name: 'Добавить статус' }).first().click()
@@ -15,7 +16,7 @@ for (const width of [320, 1280]) {
     }
     const name = 'ОченьДлинноеНазваниеКарточкиБезПробелов'.repeat(4)
     const first = page.locator('.status-column').filter({ has: page.getByRole('heading', { name: 'Первый', exact: true }) })
-    await first.getByRole('button', { name: /Добавить карточку/ }).click()
+    await first.locator('.add-card').click()
     await page.getByLabel('Название карточки').fill(name)
     await page.getByRole('button', { name: 'Создать карточку' }).click()
     await expect(page.getByRole('dialog')).toBeHidden()

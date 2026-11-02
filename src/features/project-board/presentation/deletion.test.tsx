@@ -11,9 +11,9 @@ async function setup(cards = true) {
   const db = new ProjectBoardDatabase(`deletion-${crypto.randomUUID()}`)
   databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
-  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' })
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [])
   await repo.createStatus({ id: 's', projectId: 'p', name: 'Status' })
-  if (cards) for (const id of ['a', 'b']) await repo.createCard({ id, statusId: 's', name: 'Same', important: false, urgent: false })
+  if (cards) for (const id of ['a', 'b']) await repo.createCard({ id, statusId: 's', name: 'Same', description: '', important: false, urgent: false })
   location.hash = '#project/p'
   render(<App repository={repo} />)
   await screen.findByRole('heading', { name: 'Project' })
@@ -49,7 +49,7 @@ it('explains nonempty status refusal and rechecks cards added while confirmation
   const { repo, user } = await setup(false)
   const trigger = screen.getByRole('button', { name: 'Действия статуса Status' })
   let dialog = await openDelete(user, trigger)
-  await repo.createCard({ id: 'late', statusId: 's', name: 'Late', important: false, urgent: false })
+  await repo.createCard({ id: 'late', statusId: 's', name: 'Late', description: '', important: false, urgent: false })
   await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
   expect(await within(dialog).findByRole('alert')).toHaveTextContent('Сначала переместите или удалите их')
   expect(within(dialog).getByRole('button', { name: 'Удалить' })).toBeDisabled()
@@ -84,10 +84,10 @@ it.each(['card', 'status'] as const)('keeps the %s and dialog after a storage fa
   }
 })
 
-it('translates deletion menus and dialogs and never offers project deletion', async () => {
+it('translates deletion menus and dialogs while offering project deletion through board settings', async () => {
   const { user } = await setup(false)
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(screen.queryByRole('menuitem', { name: 'Удалить' })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Удалить проект' })).toBeInTheDocument()
   await user.keyboard('{Escape}')
   await user.click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
   await user.selectOptions(screen.getByRole('combobox', { name: 'Язык приложения' }), 'en')

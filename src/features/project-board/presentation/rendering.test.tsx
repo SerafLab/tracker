@@ -24,14 +24,14 @@ it('isolates board dialogs, column dialogs and a card move dialog from unchanged
     id: 'p', name: 'Project', createdAt: 'now',
     statuses: ['A', 'B'].map((name, position) => ({
       id: name, name, projectId: 'p', position,
-      cards: [{ id: `card-${name}`, statusId: name, name: `Card ${name}`, position: 0, important: false, urgent: false }],
+      cards: [{ id: `card-${name}`, statusId: name, name: `Card ${name}`, position: 0, description: '', important: false, urgent: false }],
     })),
   }
   const user = userEvent.setup()
-  render(<ProjectBoardView board={board} saveError={false} focusCreation={false} onCreationFocused={vi.fn()}
+  render(<ProjectBoardView onDeleteProject={async () => true} board={board} saveError={false} focusCreation={false} onCreationFocused={vi.fn()}
     onReturn={vi.fn()} onRenameProject={vi.fn()} onCreateStatus={vi.fn()}
     onRenameStatus={vi.fn()} onMoveStatus={vi.fn()} onCreateCard={vi.fn()}
-    onUpdateCard={vi.fn()} onDeleteCard={vi.fn()} onDeleteStatus={vi.fn()} onMoveCard={vi.fn()}
+    onOpenCard={vi.fn()} onDeleteCard={vi.fn()} onDeleteStatus={vi.fn()} onMoveCard={vi.fn()}
   />)
   const renders = (label: string) => menuRenders.mock.calls.filter(([name]) => name === label).length
   const openAction = async (trigger: string, action: string) => {
@@ -64,7 +64,7 @@ it('isolates board dialogs, column dialogs and a card move dialog from unchanged
   for (const action of ['rename', 'create']) {
     menuRenders.mockClear()
     if (action === 'rename') await openAction('Действия статуса A', 'Переименовать')
-    else await user.click(screen.getAllByRole('button', { name: 'Добавить карточку' })[0])
+    else await user.click(screen.getByRole('heading', { name: 'A' }).closest('article')!.querySelector<HTMLButtonElement>('.add-card')!)
     expect(screen.getByRole('dialog')).toBeInTheDocument()
     await user.keyboard('{Escape}')
     expect(renders('Действия статуса A')).toBeGreaterThan(0)

@@ -9,7 +9,7 @@ import { ActionMenu } from './features/project-board/presentation/controls'
 
 const databases: ProjectBoardDatabase[] = []
 function repository() { const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`); databases.push(database); return new DexieProjectBoardRepository(database) }
-async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string, button: string) { if (label === 'Новый проект') { await user.click(await screen.findByRole('button', { name: 'Создать проект' })); label = 'Название проекта' }; const input = await screen.findByLabelText(label); await user.clear(input); await user.type(input, value); await user.click(within(input.closest('form')!).getByRole('button', { name: button })) }
+async function fill(user: ReturnType<typeof userEvent.setup>, label: string, value: string, button: string) { if (label === 'Новый проект') { await user.click(await screen.findByRole('button', { name: 'Создать проект' })); label = 'Название проекта' }; const input = await screen.findByLabelText(label); if (label === 'Название проекта') await user.selectOptions(screen.getByRole('combobox', { name: 'Набор статусов' }), 'empty'); await user.clear(input); await user.type(input, value); await user.click(within(input.closest('form')!).getByRole('button', { name: button })) }
 async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string) {
   const trigger = (await screen.findAllByRole('button', { name: 'Добавить статус' }))[0]
   await user.click(trigger)
@@ -18,7 +18,7 @@ async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string)
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await waitFor(() => expect(trigger).toHaveFocus())
 }
-async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(within(column).getByRole('button', { name: /Добавить карточку/ })); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
+async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(column.querySelector<HTMLButtonElement>('.add-card')!); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
 function setViewport(width: number) { Object.defineProperty(window, 'innerWidth', { configurable: true, value: width }); window.dispatchEvent(new Event('resize')) }
 
 beforeEach(() => { location.hash = ''; setViewport(1280) })
@@ -248,7 +248,7 @@ describe('project board', () => {
     for (const name of ['Идеи', 'В работе', 'Завершено']) {
       expect(screen.getByRole('heading', { name })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: `Действия статуса ${name}` })).toBeEnabled()
-      expect(within(screen.getByRole('heading', { name }).closest('article')!).getByRole('button', { name: /Добавить карточку/ })).toBeEnabled()
+      expect(screen.getByRole('heading', { name }).closest('article')!.querySelector('.add-card')).toBeEnabled()
     }
     expect(await screen.findByRole('button', { name: 'Действия карточки Позвонить арендодателю' })).toBeEnabled()
     await user.click(screen.getByRole('button', { name: 'Действия статуса Идеи' }))
@@ -274,7 +274,7 @@ describe('project board', () => {
     const newer = new Dexie(databaseName)
     render(<App databaseName={databaseName} reloadApp={reload} />)
     await screen.findByRole('button', { name: 'Создать проект' })
-    newer.version(3).stores({ projects: 'id, createdAt', statuses: 'id, projectId, [projectId+position]', cards: 'id, statusId, [statusId+position]', workspace: 'id', releases: 'id' })
+    newer.version(4).stores({ projects: 'id, createdAt', statuses: 'id, projectId, [projectId+position]', cards: 'id, statusId, [statusId+position]', workspace: 'id', releases: 'id' })
     await newer.open()
     expect(await screen.findByRole('heading', { name: 'Нужно перезапустить EasyTrack' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Создать проект' })).not.toBeInTheDocument()
@@ -285,11 +285,11 @@ describe('project board', () => {
   })
 })
 
-it('retains the card creation draft on validation and storage errors and retries the whole form', async () => {
+it.each(['.add-card-header', '.add-card'])('retains the %s creation draft on validation and storage errors and retries the whole form', async source => {
   const user = userEvent.setup(); const repo = repository(); render(<App repository={repo} />)
   await fill(user, 'Новый проект', 'Priority', 'Создать проект'); await addStatus(user, 'Todo')
   const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
-  const trigger = within(column).getByRole('button', { name: /Добавить карточку/ })
+  const trigger = column.querySelector<HTMLButtonElement>(source)!
   await user.click(trigger)
   const dialog = screen.getByRole('dialog')
   expect(within(dialog).getByLabelText('Важная')).not.toBeChecked()
@@ -311,32 +311,77 @@ it('retains the card creation draft on validation and storage errors and retries
   expect(column.querySelectorAll('.card-badge')).toHaveLength(2)
 })
 
-it('edits flags atomically, keeps failed drafts, reorders after success and translates badges without changing data', async () => {
+it('edits fields on the detail page atomically, preserves failed drafts, and keeps priority order', async () => {
   const user = userEvent.setup(); const repo = repository(); render(<App repository={repo} />)
   await fill(user, 'Новый проект', 'Priority', 'Создать проект'); await addStatus(user, 'Todo')
-  const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
+  let column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
   await addCard(user, column, 'First'); await addCard(user, column, 'Second')
   await user.click(screen.getByRole('button', { name: 'Действия карточки Second' })); await user.click(screen.getByRole('menuitem', { name: 'Редактировать' }))
-  let dialog = screen.getByRole('dialog')
-  expect(within(dialog).getByLabelText('Название карточки')).toHaveValue('Second')
-  await user.clear(within(dialog).getByLabelText('Название карточки')); await user.type(within(dialog).getByLabelText('Название карточки'), 'Edited')
-  await user.click(within(dialog).getByLabelText('Важная'))
+  const form = await screen.findByRole('form', { name: 'Поля карточки' })
+  expect(within(form).getByLabelText('Название карточки')).toHaveValue('Second')
+  await user.clear(within(form).getByLabelText('Название карточки')); await user.type(within(form).getByLabelText('Название карточки'), 'Edited')
+  await user.click(within(form).getByLabelText('Важная'))
+  await user.type(within(form).getByLabelText('Описание карточки'), 'Details')
   vi.spyOn(repo, 'updateCard').mockRejectedValueOnce(new Error('quota'))
-  await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
-  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Не удалось сохранить')
-  expect(Array.from(column.querySelectorAll('.card-name')).map(node => node.textContent)).toEqual(['First', 'Second'])
-  expect(within(dialog).getByLabelText('Важная')).toBeChecked()
-  await user.click(within(dialog).getByRole('button', { name: 'Сохранить' }))
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await user.click(within(form).getByRole('button', { name: 'Сохранить' }))
+  expect(await within(form).findByRole('alert')).toHaveTextContent('Не удалось сохранить')
+  const projectId = (await repo.projects())[0].id
+  expect((await repo.board(projectId))!.statuses[0].cards.map(card => card.name)).toEqual(['First', 'Second'])
+  expect(within(form).getByLabelText('Важная')).toBeChecked()
+  await user.click(within(form).getByRole('button', { name: 'Сохранить' }))
+  await screen.findByRole('heading', { name: 'Edited', level: 1 })
+  await user.click(within(form).getByLabelText('Срочная'))
+  await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
+  await user.click(screen.getByRole('button', { name: 'Выйти без сохранения' }))
+  await screen.findByRole('heading', { name: 'Todo' })
+  column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
   expect(Array.from(column.querySelectorAll('.card-name')).map(node => node.textContent)).toEqual(['Edited', 'First'])
-  expect(screen.getByRole('button', { name: 'Действия карточки Edited' })).toHaveFocus()
-  await user.click(screen.getByRole('button', { name: 'Действия карточки Edited' })); await user.click(screen.getByRole('menuitem', { name: 'Редактировать' }))
-  dialog = screen.getByRole('dialog'); await user.click(within(dialog).getByLabelText('Срочная')); await user.click(within(dialog).getByRole('button', { name: 'Отмена' }))
   expect(column.querySelectorAll('.card-badge')).toHaveLength(1)
-  const before = await repo.board((await repo.projects())[0].id)
-  await user.click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
+  const before = await repo.board(projectId)
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
   await user.selectOptions(screen.getByRole('combobox', { name: 'Язык приложения' }), 'en')
   expect(screen.getByText('Important')).toBeInTheDocument()
   expect(screen.queryByText('Urgent')).not.toBeInTheDocument()
-  expect(await repo.board(before!.id)).toEqual(before)
+  expect(await repo.board(projectId)).toEqual(before)
+})
+
+
+it.each(['.add-card-header', '.add-card'])('returns creation focus to %s after save, cancel and Escape in empty and populated statuses', async source => {
+  const user = userEvent.setup(); render(<App repository={repository()} />)
+  await fill(user, 'Новый проект', 'Creation entries', 'Создать проект'); await addStatus(user, 'Todo')
+  const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
+  const trigger = column.querySelector<HTMLButtonElement>(source)!
+  expect(within(column).getAllByRole('button', { name: 'Добавить карточку' })).toHaveLength(2)
+  for (const populated of [false, true]) {
+    for (const dismissal of ['cancel', 'escape']) {
+      await user.click(trigger)
+      expect(screen.getAllByRole('dialog')).toHaveLength(1)
+      expect(screen.getByLabelText('Название карточки')).toHaveFocus()
+      if (dismissal === 'cancel') await user.click(screen.getByRole('button', { name: 'Отмена' }))
+      else await user.keyboard('{Escape}')
+      await waitFor(() => expect(trigger).toHaveFocus())
+      expect(column.querySelectorAll('.work-card')).toHaveLength(populated ? 1 : 0)
+    }
+    if (!populated) {
+      await user.click(trigger)
+      await fill(user, 'Название карточки', 'Saved from selected entry', 'Создать карточку')
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+      expect(trigger).toHaveFocus()
+    }
+  }
+})
+
+it.each(['.add-card-header', '.add-card'])('closes a failed %s creation without losing the opener focus', async source => {
+  const user = userEvent.setup(); const repo = repository(); render(<App repository={repo} />)
+  await fill(user, 'Новый проект', 'Creation failure', 'Создать проект'); await addStatus(user, 'Todo')
+  const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
+  const trigger = column.querySelector<HTMLButtonElement>(source)!
+  vi.spyOn(repo, 'createCard').mockRejectedValueOnce(new Error('quota'))
+  await user.click(trigger)
+  await fill(user, 'Название карточки', 'Retained draft', 'Создать карточку')
+  expect(await within(screen.getByRole('dialog')).findByRole('alert')).toHaveTextContent('Не удалось сохранить')
+  expect(screen.getByLabelText('Название карточки')).toHaveValue('Retained draft')
+  expect(column.querySelectorAll('.work-card')).toHaveLength(0)
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(trigger).toHaveFocus())
 })

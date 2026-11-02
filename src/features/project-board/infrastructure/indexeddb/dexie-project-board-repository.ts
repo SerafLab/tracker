@@ -20,6 +20,19 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
     return project
   }
 
+  async deleteProject(id: Id): Promise<void> {
+    await this.db.transaction('rw', [this.db.projects, this.db.statuses, this.db.cards, this.db.notes, this.db.workspace], async () => {
+      if (!await this.db.projects.get(id)) return
+      const statusIds = await this.db.statuses.where('projectId').equals(id).primaryKeys()
+      const cardIds = await this.db.cards.where('statusId').anyOf(statusIds).primaryKeys()
+      await this.db.notes.where('cardId').anyOf(cardIds).delete()
+      await this.db.cards.bulkDelete(cardIds)
+      await this.db.statuses.bulkDelete(statusIds)
+      await this.db.projects.delete(id)
+      if ((await this.preference())?.lastProjectId === id) await this.setLastProject()
+    })
+  }
+
   async renameProject(id: Id, name: string) { await this.db.projects.update(id, { name }) }
 
   async board(projectId: Id): Promise<ProjectBoard | undefined> {
@@ -77,11 +90,13 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
   }
 
   async createStatus(status: NewStatus): Promise<Status> {
-    if (!await this.db.projects.get(status.projectId)) throw new Error('Проект не найден')
-    const position = await this.db.statuses.where('projectId').equals(status.projectId).count()
-    const saved = { ...status, position }
-    await this.db.statuses.add(saved)
-    return saved
+    return this.db.transaction('rw', this.db.projects, this.db.statuses, async () => {
+      if (!await this.db.projects.get(status.projectId)) throw new Error('Проект не найден')
+      const position = await this.db.statuses.where('projectId').equals(status.projectId).count()
+      const saved = { ...status, position }
+      await this.db.statuses.add(saved)
+      return saved
+    })
   }
 
   async renameStatus(id: Id, name: string) { await this.db.statuses.update(id, { name }) }

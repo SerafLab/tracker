@@ -241,3 +241,105 @@ it.each(['create', 'edit', 'delete'] as const)('rolls back a failed note %s and 
   spy.mockRestore(); await action()
   expect((await repo.cardDetails('p', 'a'))!.notes).toHaveLength(operation === 'delete' ? 0 : 1)
 })
+
+async function projectDeletionFixture() {
+  const result = repository(), { repository: repo, database: db } = result
+  await repo.createProject({ id: 'selected', name: 'Same project', createdAt: '1' }, [])
+  await repo.createProject({ id: 'other', name: 'Same project', createdAt: '2' }, [])
+  for (const [id, projectId] of [['s1', 'selected'], ['s2', 'selected'], ['other-status', 'other']]) await repo.createStatus({ id, projectId, name: 'Status' })
+  for (const [id, statusId] of [['c1', 's1'], ['c2', 's1'], ['c3', 's2'], ['other-card', 'other-status']]) {
+    await repo.createCard({ id, statusId, name: 'Card', description: 'Description', important: true, urgent: false })
+    await repo.createNote({ id: `note-${id}`, cardId: id, text: 'Note', createdAt: 'now' })
+  }
+  await repo.setLastProject('selected')
+  const snapshot = () => Promise.all([db.projects.toArray(), db.statuses.toArray(), db.cards.toArray(), db.notes.toArray(), db.workspace.toArray()])
+  return { ...result, snapshot }
+}
+
+it('deletes one project and its statuses, cards and notes while preserving another identically named project', async () => {
+  const { database: db, repository: repo } = await projectDeletionFixture()
+  const other = await repo.board('other'), otherNotes = await db.notes.where('cardId').equals('other-card').toArray()
+  await repo.deleteProject('selected')
+  expect(await repo.board('selected')).toBeUndefined()
+  expect(await repo.board('other')).toEqual(other)
+  expect(await db.statuses.toArray()).toEqual(other!.statuses.map(({ cards: _cards, ...status }) => status))
+  expect(await db.cards.toArray()).toEqual(other!.statuses.flatMap(status => status.cards))
+  expect(await db.notes.toArray()).toEqual(otherNotes)
+  expect((await repo.preference())?.lastProjectId).toBeUndefined()
+  await repo.setLastProject('other')
+  await repo.deleteProject('selected'); await repo.deleteProject('missing')
+  expect((await repo.preference())?.lastProjectId).toBe('other')
+  db.close(); await db.open()
+  expect(await repo.board('selected')).toBeUndefined()
+  expect(await repo.board('other')).toEqual(other)
+  expect(await db.notes.toArray()).toEqual(otherNotes)
+})
+
+it.each([false, true])('deletes an empty project with empty statuses: %s', async withStatuses => {
+  const { repository: repo, database: db } = repository()
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: '1' }, withStatuses ? [{ id: 's', projectId: 'p', name: 'Empty', position: 0 }] : [])
+  await repo.deleteProject('p')
+  expect(await repo.projects()).toEqual([])
+  expect(await db.statuses.count()).toBe(0)
+  expect(await db.cards.count()).toBe(0)
+  expect(await db.notes.count()).toBe(0)
+})
+
+it.each(['cards', 'workspace'] as const)('rolls back all project contents and preference after an intermediate %s failure, then retries', async failure => {
+  const { repository: repo, database: db, snapshot } = await projectDeletionFixture()
+  const before = await snapshot()
+  if (failure === 'cards') vi.spyOn(db.cards, 'bulkDelete').mockRejectedValueOnce(Error('quota'))
+  else vi.spyOn(db.workspace, 'put').mockRejectedValueOnce(Error('quota'))
+  await expect(repo.deleteProject('selected')).rejects.toThrow('quota')
+  expect(await snapshot()).toEqual(before)
+  await repo.deleteProject('selected')
+  expect(await repo.board('selected')).toBeUndefined()
+  expect((await db.notes.toArray()).map(note => note.id)).toEqual(['note-other-card'])
+  expect((await repo.preference())?.lastProjectId).toBeUndefined()
+})
+
+it('reads the current children inside deletion rather than relying on a previously read board', async () => {
+  const { repository: repo, database: db } = await projectDeletionFixture()
+  await repo.board('selected')
+  await repo.createStatus({ id: 'late-status', projectId: 'selected', name: 'Late' })
+  await repo.createCard({ id: 'late-card', statusId: 'late-status', name: 'Late', description: '', important: false, urgent: false })
+  await repo.createNote({ id: 'late-note', cardId: 'late-card', text: 'Late', createdAt: 'later' })
+  await repo.setLastProject('other')
+  await repo.deleteProject('selected')
+  expect(await db.statuses.get('late-status')).toBeUndefined()
+  expect(await db.cards.get('late-card')).toBeUndefined()
+  expect(await db.notes.get('late-note')).toBeUndefined()
+  expect((await repo.preference())?.lastProjectId).toBe('other')
+})
+
+it.each(['creation', 'deletion'] as const)('serializes concurrent status creation and project deletion when %s starts first', async first => {
+  const { repository: repo, database: db } = repository()
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [])
+  const create = () => repo.createStatus({ id: 'concurrent', projectId: 'p', name: 'Concurrent' })
+  let creation: ReturnType<typeof create>, deletion: Promise<void>
+  if (first === 'creation') { creation = create(); deletion = repo.deleteProject('p') }
+  else { deletion = repo.deleteProject('p'); creation = create() }
+  const [created, deleted] = await Promise.allSettled([creation, deletion])
+  expect(deleted.status).toBe('fulfilled')
+  expect(created.status).toBe(first === 'creation' ? 'fulfilled' : 'rejected')
+  if (created.status === 'rejected') expect(created.reason).toHaveProperty('message', 'Проект не найден')
+  expect(await repo.board('p')).toBeUndefined()
+  expect(await db.statuses.where('projectId').equals('p').count()).toBe(0)
+  db.close(); await db.open()
+  expect(await repo.board('p')).toBeUndefined()
+  expect(await db.statuses.toArray()).toEqual([])
+  expect(await db.cards.toArray()).toEqual([])
+  expect(await db.notes.toArray()).toEqual([])
+})
+
+it('assigns distinct dense positions to concurrently created statuses and preserves them after reopening', async () => {
+  const { repository: repo, database: db } = repository()
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [])
+  const created = await Promise.all(Array.from({ length: 5 }, (_, index) => repo.createStatus({ id: `s-${index}`, projectId: 'p', name: `Status ${index}` })))
+  expect(created.map(status => status.position)).toEqual([0, 1, 2, 3, 4])
+  const statuses = (await repo.board('p'))!.statuses
+  expect(statuses.map(status => status.id)).toEqual(['s-0', 's-1', 's-2', 's-3', 's-4'])
+  expect(statuses.map(status => status.position)).toEqual([0, 1, 2, 3, 4])
+  db.close(); await db.open()
+  expect((await repo.board('p'))!.statuses).toEqual(statuses)
+})

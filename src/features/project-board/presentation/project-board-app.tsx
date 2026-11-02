@@ -8,16 +8,18 @@ import { ProjectBoardView } from './project-board-view'
 import { ProjectCatalogueView } from './project-catalogue-view'
 import { CardDetailView } from './card-detail-view'
 
-export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue, navigateToCard, registerDraftGuard, requestLeave, onMutationSaved }: {
+export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue, navigateToCard, onProjectDeleted, registerDraftGuard, requestLeave, onMutationSaved }: {
   store: ProjectBoardStore
   navigateToProject: (id: Id) => Promise<void>
   navigateToCatalogue: () => Promise<void>
+  onProjectDeleted: (id: Id) => Promise<void>
   navigateToCard: (projectId: Id, cardId: Id) => Promise<void>
   registerDraftGuard: RegisterDraftGuard
   requestLeave: (action: () => void | Promise<void>) => void
   onMutationSaved?: () => void
 }) {
   const { t } = useTranslation()
+  const [focusCatalogueCreation, setFocusCatalogueCreation] = useState(false)
   const [createdProjectId, setCreatedProjectId] = useState<Id | null>(null)
   const workspace = useStore(store, state => state.workspace)
   const saveError = useStore(store, state => state.saveError)
@@ -34,7 +36,9 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
 
   if (workspace.kind === 'loading') return <><AppBar key="loading" title={t('loading')} /><main className="app-shell" aria-busy="true"><div className="loading-shell"><div className="skeleton skeleton-title" /><div className="skeleton-columns"><div className="skeleton skeleton-column" /><div className="skeleton skeleton-column" /></div></div></main></>
   if (workspace.kind === 'unavailable') return <><AppBar key="unavailable" title={t('unavailable')} /><main className="app-shell"><section className="unavailable-state surface-card"><p role="alert">{t('unavailableHelp')}</p></section></main></>
-  if (workspace.kind === 'catalogue') return <ProjectCatalogueView projects={workspace.projects} saveError={saveError}
+  if (workspace.kind === 'catalogue') return <ProjectCatalogueView projects={workspace.projects} saveError={saveError} focusCreation={focusCatalogueCreation} onCreationFocused={() => setFocusCatalogueCreation(false)}
+    onReadSummary={store.getState().projectDeletionSummary}
+    onDelete={async id => { const saved = await store.getState().deleteProject(id); if (saved) onMutationSaved?.(); return saved }}
     onCreate={async input => {
       const id = await createProject(input)
       if (!id) return false
@@ -62,6 +66,11 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   const { board } = workspace
   return <ProjectBoardView key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError}
     onReturn={navigateToCatalogue}
+    onDeleteProject={async () => {
+      const saved = await store.getState().deleteProject(board.id)
+      if (saved) { setFocusCatalogueCreation(true); onMutationSaved?.(); await onProjectDeleted(board.id) }
+      return saved
+    }}
     onRenameProject={async name => { if (await renameProject(board.id, name)) onMutationSaved?.() }}
     onCreateStatus={async name => { if (await createStatus(board.id, name)) onMutationSaved?.() }}
     onRenameStatus={async (statusId, name) => { if (await renameStatus(board.id, statusId, name)) onMutationSaved?.() }}

@@ -15,6 +15,7 @@ type BoardProps = {
   board: ProjectBoard
   saveError: boolean
   onReturn: () => Promise<void>
+  onDeleteProject: () => Promise<boolean>
   onRenameProject: (name: string) => Promise<void>
   onCreateStatus: (name: string) => Promise<void>
   onRenameStatus: (statusId: Id, name: string) => Promise<void>
@@ -26,7 +27,7 @@ type BoardProps = {
   onMoveCard: (cardId: Id, statusId: Id) => Promise<boolean>
 }
 
-export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, onReturn, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
+export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, onReturn, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
   const { t } = useTranslation()
   const [moveDialogCardId, setMoveDialogCardId] = useState<Id | null>(null)
   const root = useRef<HTMLElement>(null)
@@ -88,6 +89,7 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
     setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus })
   }, [])
   const statuses = useMemo(() => board.statuses.map(({ cards: _cards, ...status }) => status), [board.statuses])
+  const [deletingProject, setDeletingProject] = useState(false)
   const [creatingStatus, setCreatingStatus] = useState(false)
   const [renamingProject, setRenamingProject] = useState(false)
   const projectMenu = useRef<HTMLButtonElement>(null)
@@ -96,10 +98,11 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
       title={board.name}
       onReturn={() => void onReturn()}
       creation={{ label: t('addStatus'), triggerRef: addStatusTrigger, onSelect: () => setCreatingStatus(true) }}
+      deleteProject={{ triggerRef: projectMenu, onSelect: () => setDeletingProject(true) }}
       rename={{ triggerRef: projectMenu, onSelect: () => setRenamingProject(true) }}
     />
     <main ref={root} className="app-shell">
-      {saveError ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
+      {saveError && !deletingProject ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
       {board.statuses.length === 0 ? <section className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p></section> : null}
       <section className="status-columns" aria-label={t('statuses')}>
         {board.statuses.map((status, index) => <StatusColumn
@@ -120,6 +123,7 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
           onMoveCard={moveCard}
         />)}
       </section>
+      {deletingProject ? <DeleteDialog kind="project" name={board.name} blocked={false} summary={{ kind: 'ready', statusCount: board.statuses.length, cardCount: board.statuses.reduce((total, status) => total + status.cards.length, 0) }} returnFocus={projectMenu} onDelete={async () => await onDeleteProject() ? 'deleted' : 'failed'} onClose={() => setDeletingProject(false)} /> : null}
       {deleting ? <DeleteDialog kind={deleting.kind} name={deleting.name} blocked={deleting.kind === 'status' && !!board.statuses.find(status => status.id === deleting.id)?.cards.length} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}
       {creatingStatus ? <NameDialog returnFocus={addStatusTrigger} title={t('newStatus')} label={t('statusName')} button={t('createStatus')} onSubmit={onCreateStatus} onClose={() => setCreatingStatus(false)} /> : null}
       {renamingProject ? <NameDialog returnFocus={projectMenu} title={t('renameProject')} label={t('newName')} button={t('save')} initialName={board.name} onSubmit={onRenameProject} onClose={() => setRenamingProject(false)} /> : null}

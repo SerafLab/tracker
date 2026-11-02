@@ -114,7 +114,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(page.getByRole('button', {name: /^(Создать проект|Create project|Добавить статус|Add status)$/})).toHaveCount(0)
     await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
     await expect(page.getByRole('combobox')).toHaveValue(language)
-    await expect(page.getByRole('button', {name: /^(Переименовать проект|Rename project)$/})).toHaveCount(0)
+    await expect(page.getByRole('button', {name: /^(Переименовать проект|Rename project|Удалить проект|Delete project)$/})).toHaveCount(0)
     expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({path: testInfo.outputPath(`${state}-${language}-${width}.png`), fullPage: true})

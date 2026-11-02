@@ -6,7 +6,7 @@ function repository(): ProjectBoardRepository {
   return {
     cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
     open: vi.fn(), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(),
-    createProject: vi.fn().mockImplementation(project => Promise.resolve(project)), renameProject: vi.fn(),
+    createProject: vi.fn().mockImplementation(project => Promise.resolve(project)), deleteProject: vi.fn(), renameProject: vi.fn(),
     board: vi.fn(), createStatus: vi.fn().mockImplementation(status => Promise.resolve({ ...status, position: 0 })),
     renameStatus: vi.fn(), moveStatus: vi.fn(), createCard: vi.fn().mockImplementation(card => Promise.resolve({ ...card, position: 0 })),
     updateCard: vi.fn(), moveCard: vi.fn(), deleteCard: vi.fn(), deleteStatus: vi.fn().mockResolvedValue('deleted'),
@@ -108,4 +108,13 @@ it('validates notes, gives new notes injected identifiers/dates and leaves edit 
   expect(port.updateNote).toHaveBeenCalledWith('card', 'note', 'Revised', '2026-11-01T12:00:00Z')
   await api.deleteNote('card', 'note')
   expect(port.deleteNote).toHaveBeenCalledWith('card', 'note')
+})
+
+it('deletes exactly the requested project ID through the repository boundary', async () => {
+  const port = repository()
+  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => 'unused' })
+  await api.deleteProject('selected-project')
+  expect(port.deleteProject).toHaveBeenCalledExactlyOnceWith('selected-project')
+  vi.mocked(port.deleteProject).mockRejectedValueOnce(Error('quota'))
+  await expect(api.deleteProject('selected-project')).rejects.toThrow('quota')
 })

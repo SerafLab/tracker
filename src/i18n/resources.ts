@@ -1,4 +1,12 @@
 export const ru = {
+  "deleteProject": "Удалить проект",
+  "deleteProjectConfirmation": "Удалить проект «{{name}}»?",
+  "projectDeletionSummary": "Статусов: {{statuses}}. Карточек: {{cards}}.",
+  "projectContentsLost": "Все статусы, карточки и их заметки будут окончательно удалены без возможности восстановления.",
+  "projectSummaryLoading": "Загружаем содержимое проекта…",
+  "projectSummaryError": "Не удалось загрузить содержимое проекта. Повторите чтение или отмените удаление.",
+  "retry": "Повторить",
+
   "statusSet": "Набор статусов",
   "statusSetPreview": "Начальные статусы",
   "emptyStatusSetHelp": "Проект откроется без статусов. Их можно добавить на доске.",
@@ -130,6 +138,14 @@ export const ru = {
 } as const
 
 export const en: { [Key in keyof typeof ru]: string } = {
+  "deleteProject": "Delete project",
+  "deleteProjectConfirmation": "Delete project “{{name}}”?",
+  "projectDeletionSummary": "Statuses: {{statuses}}. Cards: {{cards}}.",
+  "projectContentsLost": "All statuses, cards and their notes will be permanently deleted and cannot be restored.",
+  "projectSummaryLoading": "Loading project contents…",
+  "projectSummaryError": "Could not load the project contents. Retry reading or cancel deletion.",
+  "retry": "Retry",
+
   "statusSet": "Status set",
   "statusSetPreview": "Initial statuses",
   "emptyStatusSetHelp": "The project will open without statuses. You can add them on the board.",

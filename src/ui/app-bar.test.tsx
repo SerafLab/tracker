@@ -48,7 +48,7 @@ it('keeps settings and recovery on the restart screen without project actions', 
   expect(screen.getAllByRole('heading', {level: 1})).toHaveLength(1)
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
   expect(screen.getAllByRole('combobox')).toHaveLength(1)
-  expect(screen.queryByRole('button', { name: /Создать|Добавить|Переименовать/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Создать|Добавить|Переименовать|Удалить/ })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Перезапустить' }))
   expect(restart).toHaveBeenCalledOnce()
   expect(screen.queryByRole('combobox')).not.toBeInTheDocument()

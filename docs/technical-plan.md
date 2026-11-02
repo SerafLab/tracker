@@ -106,3 +106,5 @@ Actions фиксируются полными commit SHA с комментари
 - [Поддержка браузеров в Playwright](https://playwright.dev/docs/browsers).
 - [Защита веток GitHub](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches).
 - [Настройки безопасности GitHub Actions](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository).
+
+Удаление проекта выполняется одной транзакцией по projects, statuses, cards, notes и workspace. Каскад читает актуальные связи внутри транзакции и очищает lastProjectId только при совпадении. После успешной записи Zustand обновляет каталог, а переход с удалённой доски меняет только маршрут, без второй обязательной записи предпочтения. Ошибка последующего чтения показывает недоступность хранилища, не отменяя подтверждённое удаление.

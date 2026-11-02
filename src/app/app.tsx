@@ -28,7 +28,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const [savingDrafts, setSavingDrafts] = useState(false)
   const pendingSave = useRef(false)
   const stayTrigger = useRef<HTMLButtonElement>(null)
-  const navigate = useRef<(hash: string) => Promise<void>>(async () => {})
+  const navigate = useRef<(hash: string, refresh?: boolean) => Promise<void>>(async () => {})
   const [runtime] = useState(() => {
     const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { staleConnection.current = true; setRestartRequired(true) })
     const repository = suppliedRepository ?? new DexieProjectBoardRepository(database!)
@@ -127,14 +127,14 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       }
       acceptPosition(next)
     }
-    navigate.current = async hash => {
+    navigate.current = async (hash, refresh = true) => {
       if (!active) return
       if (hash !== location.hash) {
         position = { index: position.index + 1, hash }
         history.pushState({ easyTrackIndex: position.index }, '', hash || location.pathname + location.search)
         observed = `${position.index}:${hash}`
       }
-      await showRoute()
+      if (refresh) await showRoute()
     }
     void showRoute(true)
     addEventListener('popstate', onHistory)
@@ -145,8 +145,9 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const navigateToProject = async (id: Id) => { requestLeave(() => navigate.current(routeFor(id))) }
   const navigateToCard = async (projectId: Id, cardId: Id) => { requestLeave(() => navigate.current(routeFor(projectId, cardId))) }
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
+  const onProjectDeleted = async (id: Id) => { if (routeFromHash()?.projectId === id) await navigate.current('', false) }
   if (restartRequired) return <RestartRequired onRestart={reloadApp} />
-  return <><ProjectBoardApp store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><InstallGuidance /><PwaUpdateRegistration requestUpdate={requestLeave} />
+  return <><ProjectBoardApp store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><InstallGuidance /><PwaUpdateRegistration requestUpdate={requestLeave} />
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
 }

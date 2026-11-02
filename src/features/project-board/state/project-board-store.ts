@@ -12,6 +12,7 @@ export type Workspace =
   | { kind: 'unavailable' }
 
 export type DeleteStatusStateResult = DeleteStatusResult | 'failed'
+export type ProjectDeletionSummary = { statusCount: number; cardCount: number }
 export type ShowCardResult = 'shown' | 'missing' | 'unavailable' | 'superseded'
 
 export type ProjectBoardState = {
@@ -26,6 +27,8 @@ export type ProjectBoardState = {
   updateNote(projectId: Id, cardId: Id, noteId: Id, text: string): Promise<Note | undefined>
   deleteNote(projectId: Id, cardId: Id, noteId: Id): Promise<boolean>
   createProject(input: CreateProjectInput): Promise<Id | undefined>
+  projectDeletionSummary(id: Id): Promise<ProjectDeletionSummary>
+  deleteProject(id: Id): Promise<boolean>
   renameProject(id: Id, name: string): Promise<boolean>
   createStatus(projectId: Id, name: string): Promise<boolean>
   renameStatus(projectId: Id, statusId: Id, name: string): Promise<boolean>
@@ -175,6 +178,17 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
           set({ saveError: true })
           return undefined
         }
+      },
+      async projectDeletionSummary(id) {
+        const board = await useCases.board(id)
+        if (!board) throw new Error('Проект не найден')
+        return { statusCount: board.statuses.length, cardCount: board.statuses.reduce((total, status) => total + status.cards.length, 0) }
+      },
+      async deleteProject(id) {
+        const startedAt = navigation
+        if (!await preserveConfirmedState(async () => { await preferenceWrite; await useCases.deleteProject(id) })) return false
+        if (navigation === startedAt) await get().showCatalogue()
+        return true
       },
       async renameProject(id, name) {
         const startedAt = navigation

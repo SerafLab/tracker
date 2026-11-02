@@ -40,6 +40,7 @@ export function createProjectBoardUseCases(dependencies: {
       return repository.updateNote(cardId, noteId, text.trim(), now())
     },
     deleteNote: (cardId: Id, noteId: Id) => repository.deleteNote(cardId, noteId),
+    deleteProject: (id: Id) => repository.deleteProject(id),
     renameProject: (id: Id, input: string) => repository.renameProject(id, name(input)),
     createStatus: (projectId: Id, input: string) => repository.createStatus({ id: createId(), projectId, name: name(input) }),
     renameStatus: (id: Id, input: string) => repository.renameStatus(id, name(input)),

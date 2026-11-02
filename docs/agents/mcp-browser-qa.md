@@ -1,6 +1,6 @@
 # MCP production-origin browser gate — 2026-11-01
 
-Status: **FAILED / core implementation remains gated**. This records a real Codex internal-browser experiment, not a localhost substitute. No MCP task operations were implemented or advertised.
+Initial loopback status: **FAILED**. Native WebMCP alternative: **PASS on production**, detailed below; actual task integration is pending. This records a real Codex internal-browser experiment, not a localhost substitute. No MCP task operations were implemented or advertised.
 
 ## Environment and published prerequisite
 
@@ -28,3 +28,17 @@ The browser offers document-bound WebMCP discovery, but this diagnostic document
 ## Next decision
 
 The existing design explicitly requires a successful production handshake before core MCP implementation. Keep the change active and stop dependent groups 2–6 until the transport is revised with the user or the existing path demonstrably works. Do not mark the gate complete, replace it with localhost evidence, disable browser security, or claim a task was saved through MCP.
+
+## Selected alternative: native WebMCP — 2026-11-02
+
+The user selected testing page-defined WebMCP tools after the WebSocket result above. The isolated prerequisite PR23 merged as `ae3dd324792c596609983c08ee778e00b3322928`; its deployment and smoke checks succeeded. Native local feasibility was repeated at the unchanged production origin after an ordinary EasyTrack worker update.
+
+**Native production feasibility: PASS.** The actual IAB (same Chrome156 user agent above) registered three tools at `https://seraflab.github.io/tracker/webmcp-probe.html`; browser discovery returned their schemas and document-bound names. The agent invoked echo and `store_marker`, receiving `ok:true` and `saved:true`. The browser visibility capability remained `false` after the call. The document itself reported `visibilityState: visible`; no claim is made about execution in a document reported as hidden.
+
+The original experiment tab was closed. A newly opened document registered fresh tool handles; `read_marker` returned the exact synthetic value `production-durable-2026-11-02`. This proves execution and IndexedDB continuity in the selected production browser context. The experiment uses only the separate `easytrack-webmcp-experiment` database; it neither accesses project data nor implements the actual task tools. No browser protection, flag, origin-trial token, global MCP setting, or external browser was used.
+
+Actual calls used the browser's `webmcp.fetchTools()` and the returned `tools.call(name,input)` handles, not DOM CRUD or injected application functions. Native proof is separate from the explicit model-context fixtures in automated tests.
+
+![Real native production WebMCP result](screenshots/webmcp-production-proof.jpg)
+
+The feasibility obstacle is resolved for this host. Replacing the original stdio/relay public integration contract with browser-native page tools requires the explicit user decision and coherent OpenSpec revision; the agent-access feature is not yet implemented or delivered.

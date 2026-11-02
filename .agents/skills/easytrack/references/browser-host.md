@@ -12,7 +12,7 @@ nodeRepl.write(discovered.description());
 // Call discovered.call(actualListedName, {}) and inspect the returned envelope.
 ```
 
-`actualListedName` must be the name returned for this tab, not text copied from an example. Do not assume global tool discovery names are interchangeable with document-local handles. Reuse the discovered object only within its valid document lifetime and refresh after navigation/tool-change/stale-handle notifications.
+`actualListedName` must be the name returned for this tab, not text copied from an example. Do not assume global tool discovery names are interchangeable with document-local handles. In Codex IAB, call `fetchTools` before the first WebMCP call on each tab in every turn, even if the document has not navigated; handles can expire between turns. Reuse the discovered object only during that turn while it remains valid, and refresh after navigation/tool-change/stale-handle notifications. This per-turn rule describes Codex IAB; follow the current documentation of another host rather than assuming the same lifetime there.
 
 When there is no suitable app tab, create an internal tab at `https://seraflab.github.io/tracker/` with the host's documented unshown option if supported. For example, the documented CUA surface may provide `cua.createBrowserTab('iab', appUrl, {visible:false})`. First inspect the browser/tab inventory and retain the actual browser/tab identifiers; do not reacquire a different browser to work around a tab failure. A visible-only host can still be used, with its limitation reported.
 

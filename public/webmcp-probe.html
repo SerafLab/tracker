@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>EasyTrack WebMCP experiment</title>
+<style>body{font:16px system-ui;max-width:44rem;margin:2rem auto;padding:1rem;overflow-wrap:anywhere}pre{white-space:pre-wrap}button{font:inherit;padding:.75rem}</style>
+<h1>EasyTrack WebMCP experiment</h1>
+<p>This experiment exposes three tools for a synthetic marker. It uses a separate browser database and does not access EasyTrack projects or cards.</p>
+<p id="status" role="status">Checking native page-tool support…</p><pre id="evidence"></pre>
+<script type="module">
+const status = document.querySelector('#status'), evidence = document.querySelector('#evidence');
+const report = value => { evidence.textContent += JSON.stringify(value) + '\n'; };
+report({ origin: location.origin, secure: isSecureContext, userAgent: navigator.userAgent, nativeWebMCP: typeof document.modelContext?.registerTool === 'function' });
+const valid = input => input && typeof input.marker === 'string' && input.marker.length > 0 && input.marker.length <= 80 && Object.keys(input).length === 1;
+const schema = { type: 'object', properties: { marker: { type: 'string', minLength: 1, maxLength: 80 } }, required: ['marker'], additionalProperties: false };
+const open = () => new Promise((resolve, reject) => {
+ const request = indexedDB.open('easytrack-webmcp-experiment', 1);
+ request.onupgradeneeded = () => request.result.createObjectStore('markers');
+ request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+});
+async function readMarker() {
+ const database = await open();
+ try { return await new Promise((resolve, reject) => { const transaction = database.transaction('markers'); const request = transaction.objectStore('markers').get('marker'); request.onsuccess = () => resolve(request.result ?? null); request.onerror = () => reject(request.error); }); }
+ finally { database.close(); }
+}
+async function storeMarker(marker) {
+ const database = await open();
+ try { await new Promise((resolve, reject) => { const transaction = database.transaction('markers', 'readwrite'); transaction.objectStore('markers').put(marker, 'marker'); transaction.oncomplete = resolve; transaction.onerror = () => reject(transaction.error); transaction.onabort = () => reject(transaction.error); }); }
+ finally { database.close(); }
+}
+const tools = [
+ { name: 'easytrack_probe_echo', description: 'Return the synthetic marker supplied for the EasyTrack WebMCP feasibility experiment. Does not read or write task data.', inputSchema: schema, annotations: { readOnlyHint: true, consequentialHint: false }, execute(input) {
+   if (!valid(input)) return { ok: false, error: 'invalid_argument' };
+   const result = { ok: true, marker: input.marker, origin: location.origin, visibility: document.visibilityState };
+   report({ tool: 'echo', ...result }); return result;
+ } },
+ { name: 'easytrack_probe_store_marker', description: 'Save a synthetic marker in the separate experiment database to verify browser execution and persistence. Never accesses projects or cards.', inputSchema: schema, annotations: { readOnlyHint: false, consequentialHint: false }, async execute(input, { signal } = {}) {
+   if (!valid(input)) return { ok: false, error: 'invalid_argument' };
+   signal?.throwIfAborted();
+   try { await storeMarker(input.marker); const result = { ok: true, saved: true, marker: input.marker, visibility: document.visibilityState }; report({ tool: 'store', ...result }); return result; }
+   catch { return { ok: false, error: 'storage_unavailable' }; }
+ } },
+ { name: 'easytrack_probe_read_marker', description: 'Read the synthetic marker from the separate WebMCP experiment database. Does not read EasyTrack projects or cards.', inputSchema: { type: 'object', properties: {}, additionalProperties: false }, annotations: { readOnlyHint: true, consequentialHint: false }, async execute() {
+   try { const result = { ok: true, marker: await readMarker(), visibility: document.visibilityState }; report({ tool: 'read', ...result }); return result; }
+   catch { return { ok: false, error: 'storage_unavailable' }; }
+ } },
+];
+let lifetime;
+async function register() {
+ if (typeof document.modelContext?.registerTool !== 'function') {
+  status.textContent = 'Native WebMCP is unavailable in this browser context'; return;
+ }
+ if (lifetime && !lifetime.signal.aborted) return;
+ const attempt = lifetime = new AbortController();
+ const current = () => !attempt.signal.aborted && lifetime === attempt;
+ try {
+  for (const tool of tools) {
+   if (!current()) return;
+   await document.modelContext.registerTool(tool, { signal: attempt.signal });
+   if (!current()) return;
+  }
+  status.textContent = 'Three experiment tools registered';
+  report({ registered: tools.map(tool => tool.name) });
+ } catch (error) { if (current()) { status.textContent = `Registration failed: ${error.name}`; report({ registered: false, error: error.name }); } }
+}
+addEventListener('pagehide', () => { lifetime?.abort(); status.textContent = 'Experiment tools suspended'; });
+addEventListener('pageshow', event => { if (event.persisted) void register(); });
+await register();
+</script></html>

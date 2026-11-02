@@ -81,3 +81,27 @@ Deletion and DnD branches both started at accepted base `51aeffe16a141b7986b88ee
 The DnD sensor prototype on LAN port 4190 passed desktop input checks. The user received the requested iPhone Chrome/Safari and Android Chrome checklist and reported «всё хорошо, идем дальше». Device models/versions were not provided and must not be invented. This confirms the early prototype gate; final integrated device acceptance remains pending.
 
 After the failed real loopback gate the user selected «Проверить WebMCP — инструменты самой страницы». Root owns the isolated `codex/webmcp-feasibility` experiment in `/private/tmp/tracker-webmcp-feasibility`; actual native IAB discovery, echo, marker write, close/reopen read and invocation with browser visibility false passed in a local secure context. Production-origin proof and any resulting public-contract revision remain separate requirements. The old stdio MCP core is not implemented.
+
+## Delivery split after user merge — 2026-11-02
+
+The user reported accidentally merging draft PR22. GitHub confirms it merged head `4e9683f` as `332726f16bc172949a5f6508bb578ce5812de3bc` using a merge commit. This contained only the four accepted implementations (presets, header/footer creation, details/notes, project deletion), their synchronized/archived specs, and the already-published feasibility prerequisites. All required checks and the Pages deployment/smoke passed. DnD and task-agent access remain active and were not part of that implementation.
+
+Clean local main was fast-forwarded to `332726f`. Continuation integration is now `codex/remaining-active-changes` in the same `/private/tmp/tracker-all-active-changes` worktree. The local production WebMCP proof commit was preserved as `1ee36f3`; old integration branch remains available because its equivalent QA commit is not yet in main. The original user worktree remains untouched with its initial uncommitted proposals/config.
+
+The user explicitly approved implementing WebMCP in place of the separate Node/stdio server after native production proof. Planner `status_presets` owns only coherent MCP artifact revision in `codex/agent-webmcp-integration`, `/private/tmp/tracker-agent-webmcp-integration`, base `1ee36f3`; core code begins after plan acceptance and the shared DnD placement interface is accepted. Native tool updates preserve current card description transactionally, without adding description/note write tools.
+
+DnD implementation `e6c6734` is clean and under independent review by `card_details`. It passed 189 unit/UI +105 browser checks; task 5.2 final real-device verification and 5.3 sync/archive remain pending. Its LAN preview remains on port4190. Integration checks use4185, DnD e2e4183, deletion e2e4182, and feasibility e2e4184 to avoid sharing servers.
+
+## Native implementation plan accepted — 2026-11-02
+
+Planner revision `038c295ef5a9a2dd7219b66ecc634997b6aa86ad` was reviewed against the approved WebMCP scope. Only four existing planning artifacts changed; strict validation passed, with 3/26 tasks completed solely for feasibility and the user's transport decision. Native task execution, skill and real candidate/production/new-chat acceptance remain pending.
+
+The repository skill is an independent subtask in `codex/agent-webmcp-skill`, `/private/tmp/tracker-agent-webmcp-skill`, base `038c295`; `card_details` owns only skill files and installation guidance. Core implementation will start after the DnD public placement/state interface is accepted. DnD review identified preference cleanup blocked during placement and a stale post-commit read; `batch_analysis` is fixing both with six regressions. Final physical-device acceptance has been requested from the user for the complete LAN board, separately from the passed prototype.
+
+## DnD accepted and integrated — 2026-11-02
+
+DnD `c543a6d` (after `e6c6734`) passed full independent review and scoped fix review. The user confirmed the final full-board physical checklist as «все OK» and, when asked only for missing device/version metadata, instructed «делай дальще». Functional physical acceptance is recorded; models/versions remain unknown rather than invented. A CDP test race was caused by listening for an earlier interrupted scrollend; waiting for the current swipe's scrollend fixed the harness without changing product sensors.
+
+Merge `5b64d14` preserved deletion and DnD behavior. Integration fix `8c5312a` disables project deletion during placement commit/read/recovery and covers all three phases plus the UI control. Independent review accepted it. Combined mandatory check passed: 218 unit/UI, 3 diagnostic checks, 120 browser scenarios, architecture and production build. Main specs were semantically synced with all delta blocks verified, preserving unmentioned details/notes/deletion/presets/header requirements and replacing visible-arrow requirements. Strict validation passed for all six capabilities.
+
+Skill `54323fe` passed skill-creator validation and independent behavioral forward-testing (ambiguous project, lost creation result across sessions, dirty-note show conflict), without live mutations. Core task API and candidate/production/new-chat proof are still pending.

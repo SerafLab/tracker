@@ -32,12 +32,12 @@ describe('project-board use cases', () => {
     await useCases.renameStatus('status', 'Просмотр')
     await useCases.updateCard('card', { name: 'Квартира', description: '', important: true, urgent: false })
     await useCases.moveStatus('status', -1)
-    await useCases.moveCard('card', 'other-status')
+    await useCases.moveCard('card', { statusId: 'other-status', beforeCardId: null, expected: { statusId: 'initial', important: false, urgent: false } })
     expect(port.renameProject).toHaveBeenCalledWith('project', 'Паспорт')
     expect(port.renameStatus).toHaveBeenCalledWith('status', 'Просмотр')
     expect(port.updateCard).toHaveBeenCalledWith('card', { name: 'Квартира', description: '', important: true, urgent: false })
     expect(port.moveStatus).toHaveBeenCalledWith('status', -1)
-    expect(port.moveCard).toHaveBeenCalledWith('card', 'other-status')
+    expect(port.moveCard).toHaveBeenCalledWith('card', { statusId: 'other-status', beforeCardId: null, expected: { statusId: 'initial', important: false, urgent: false } })
   })
 
   it('rejects invalid input and preserves repository failures such as cross-project transfers', async () => {
@@ -46,7 +46,7 @@ describe('project-board use cases', () => {
     const useCases = createProjectBoardUseCases({ repository: port, createId: () => 'id', now: () => 'now' })
     expect(() => useCases.createProject({ name: ' ', initialStatusNames: [] })).toThrow('Название обязательно')
     expect(port.createProject).not.toHaveBeenCalled()
-    await expect(useCases.moveCard('card', 'foreign-status')).rejects.toThrow('другой проект')
+    await expect(useCases.moveCard('card', { statusId: 'foreign-status', beforeCardId: null, expected: { statusId: 'initial', important: false, urgent: false } })).rejects.toThrow('другой проект')
   })
 })
 

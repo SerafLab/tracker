@@ -23,17 +23,21 @@ for (const width of [320, 1280]) {
     const card = page.locator('.work-card').filter({ hasText: name })
     const geometry = await card.evaluate(element => {
       const text = element.querySelector('.card-name')!.getBoundingClientRect()
-      const controls = element.querySelector('.card-controls')!.getBoundingClientRect()
-      return { fits: element.scrollWidth <= element.clientWidth, separate: text.bottom <= controls.top, sizes: Array.from(element.querySelectorAll('button')).map(button => ({ width: button.clientWidth, height: button.clientHeight })) }
+      const controls = element.querySelector('.card-heading .menu')!.getBoundingClientRect()
+      return { fits: element.scrollWidth <= element.clientWidth, separate: text.right <= controls.left, sizes: Array.from(element.querySelectorAll('button')).map(button => ({ width: button.clientWidth, height: button.clientHeight })) }
     })
     expect(geometry.fits).toBe(true)
     expect(geometry.separate).toBe(true)
     for (const size of geometry.sizes) { expect(size.width).toBeGreaterThanOrEqual(42); expect(size.height).toBeGreaterThanOrEqual(42) }
-    const right = card.getByRole('button', { name: 'Переместить вправо в «Средний»' })
-    await right.focus()
+    await expect(card.locator('.card-move-arrows, .card-controls')).toHaveCount(0)
+    await card.getByRole('button', { name: `Действия карточки ${name}` }).focus()
     const scroll = await page.locator('.status-columns').evaluate(element => element.scrollLeft)
     await page.keyboard.press('Enter')
-    await expect(card.getByRole('button', { name: 'Переместить вправо в «Последний»' })).toBeFocused()
+    await page.getByRole('menuitem', { name: 'Переместить в…' }).click()
+    await page.getByRole('dialog').getByRole('combobox').selectOption({ label: 'Средний' })
+    await page.getByRole('dialog').getByRole('button', { name: 'Переместить', exact: true }).click()
+    await expect(page.getByRole('dialog')).toBeHidden()
+    await expect(card.getByRole('button', { name: `Действия карточки ${name}` })).toBeFocused()
     expect(await page.locator('.status-columns').evaluate(element => element.scrollLeft)).toBe(scroll)
     await card.getByRole('button', { name: `Действия карточки ${name}` }).click()
     await page.getByRole('menuitem', { name: 'Переместить в…' }).click()

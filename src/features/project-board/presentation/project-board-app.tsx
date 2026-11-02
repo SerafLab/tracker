@@ -22,6 +22,8 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   const [focusCatalogueCreation, setFocusCatalogueCreation] = useState(false)
   const [createdProjectId, setCreatedProjectId] = useState<Id | null>(null)
   const workspace = useStore(store, state => state.workspace)
+  const placementPending = useStore(store, state => state.placementPending)
+  const placementRefreshError = useStore(store, state => state.placementRefreshError)
   const saveError = useStore(store, state => state.saveError)
   const createProject = useStore(store, state => state.createProject)
   const renameProject = useStore(store, state => state.renameProject)
@@ -64,7 +66,7 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   }
 
   const { board } = workspace
-  return <ProjectBoardView key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError}
+  return <ProjectBoardView key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError} placementPending={placementPending} busy={placementPending || !!placementRefreshError} refreshFailed={!!placementRefreshError} onRetryRefresh={() => store.getState().retryPlacementRefresh()}
     onReturn={navigateToCatalogue}
     onDeleteProject={async () => {
       const saved = await store.getState().deleteProject(board.id)
@@ -79,6 +81,6 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
     onOpenCard={cardId => navigateToCard(board.id, cardId)}
     onDeleteCard={async cardId => { const saved = await deleteCard(board.id, cardId); if (saved) onMutationSaved?.(); return saved }}
     onDeleteStatus={async statusId => { const result = await deleteStatus(board.id, statusId); if (result === 'deleted') onMutationSaved?.(); return result }}
-    onMoveCard={async (cardId, statusId) => { const saved = await moveCard(board.id, cardId, statusId); if (saved) onMutationSaved?.(); return saved }}
+    onMoveCard={async (cardId, placement) => { const result = await moveCard(board.id, cardId, placement); if (result === 'saved') onMutationSaved?.(); return result }}
   />
 }

@@ -1,5 +1,5 @@
 import { createStore } from 'zustand/vanilla'
-import type { CardDetails, CardInput, CreateProjectInput, Note, Id, Project, ProjectBoard } from '../domain/model'
+import type { CardDetails, CardPlacement, CardPlacementResult, CardInput, CreateProjectInput, Note, Id, Project, ProjectBoard } from '../domain/model'
 import type { DeleteStatusResult } from '../application/repository'
 import type { ProjectBoardUseCases } from '../application/use-cases'
 
@@ -13,11 +13,15 @@ export type Workspace =
 
 export type DeleteStatusStateResult = DeleteStatusResult | 'failed'
 export type ProjectDeletionSummary = { statusCount: number; cardCount: number }
+export type MoveCardStateResult = CardPlacementResult | 'failed' | 'refresh-failed'
 export type ShowCardResult = 'shown' | 'missing' | 'unavailable' | 'superseded'
 
 export type ProjectBoardState = {
   workspace: Workspace
   saveError: boolean
+  placementPending: boolean
+  placementRefreshError: Id | null
+  retryPlacementRefresh(): Promise<boolean>
   openStorage(): Promise<boolean>
   clearLastProject(): Promise<boolean>
   showCatalogue(): Promise<void>
@@ -37,7 +41,7 @@ export type ProjectBoardState = {
   createCard(projectId: Id, statusId: Id, input: CardInput): Promise<boolean>
   updateCard(projectId: Id, cardId: Id, input: CardInput): Promise<boolean>
   deleteCard(projectId: Id, cardId: Id): Promise<boolean>
-  moveCard(projectId: Id, cardId: Id, statusId: Id): Promise<boolean>
+  moveCard(projectId: Id, cardId: Id, placement: CardPlacement): Promise<MoveCardStateResult>
 }
 
 
@@ -60,7 +64,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       }
     }
     const preserveConfirmedState = async (operation: () => Promise<unknown>) => {
-      if (!canMutate()) return false
+      if (!canMutate() || get().placementPending || get().placementRefreshError) return false
       const startedAt = navigation
       try {
         await operation()
@@ -75,6 +79,22 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
     return {
       workspace: { kind: 'loading' },
       saveError: false,
+      placementPending: false,
+      placementRefreshError: null,
+      async retryPlacementRefresh() {
+        const id = get().placementRefreshError
+        if (!id || get().placementPending) return false
+        const startedAt = ++request
+        set({ placementPending: true })
+        try {
+          const board = await useCases.board(id)
+          if (!board) throw new Error('board_not_found')
+          if (request !== startedAt || currentProjectId !== id || currentCardId) return false
+          set({ workspace: { kind: 'board', board }, placementRefreshError: null })
+          return true
+        } catch { return false }
+        finally { set({ placementPending: false }) }
+      },
       async openStorage() {
         try {
           await useCases.open()
@@ -85,9 +105,19 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         }
       },
       async clearLastProject() {
-        return preserveConfirmedState(() => rememberProject())
+        if (!canMutate()) return false
+        const startedAt = navigation
+        try {
+          await rememberProject()
+          if (navigation === startedAt) set({ saveError: false })
+          return true
+        } catch {
+          if (navigation === startedAt) set({ saveError: true })
+          return false
+        }
       },
       async showCatalogue() {
+        set({ placementRefreshError: null })
         ++navigation
         const startedAt = ++request
         currentProjectId = undefined
@@ -109,7 +139,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
           if (request !== startedAt || !board) return false
           if (remember && canMutate()) await rememberProject(id)
           if (request !== startedAt) return false
-          set({ workspace: { kind: 'board', board } })
+          set({ workspace: { kind: 'board', board }, placementRefreshError: null })
           return true
         } catch {
           if (request === startedAt) set({ workspace: { kind: 'unavailable' } })
@@ -169,7 +199,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         return true
       },
       async createProject(input) {
-        if (!canMutate()) return undefined
+        if (!canMutate() || get().placementPending || get().placementRefreshError) return undefined
         try {
           const project = await useCases.createProject(input)
           set({ saveError: false })
@@ -217,7 +247,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       },
       async deleteStatus(projectId, statusId) {
         const startedAt = navigation
-        if (!canMutate()) return 'failed'
+        if (!canMutate() || get().placementPending || get().placementRefreshError) return 'failed'
         try {
           const result = await useCases.deleteStatus(statusId)
           if (navigation === startedAt) set({ saveError: false })
@@ -255,11 +285,28 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         await refreshBoard(projectId, startedAt)
         return true
       },
-      async moveCard(projectId, cardId, statusId) {
+      async moveCard(projectId, cardId, placement) {
+        if (!canMutate() || get().placementPending || get().placementRefreshError) return 'failed'
         const startedAt = navigation
-        if (!await preserveConfirmedState(() => useCases.moveCard(cardId, statusId))) return false
-        await refreshBoard(projectId, startedAt)
-        return true
+        set({ placementPending: true, saveError: false })
+        let result: CardPlacementResult
+        try { result = await useCases.moveCard(cardId, placement) }
+        catch { set({ placementPending: false, ...(navigation === startedAt ? { saveError: true } : {}) }); return 'failed' }
+        if (navigation === startedAt && currentProjectId === projectId && !currentCardId) {
+          const refreshRequest = ++request
+          try {
+            const board = await useCases.board(projectId)
+            if (!board) throw new Error('board_not_found')
+            if (navigation === startedAt && request === refreshRequest) set({ workspace: { kind: 'board', board } })
+          } catch {
+            if (navigation === startedAt && request === refreshRequest) {
+              set({ placementPending: false, placementRefreshError: projectId })
+              return 'refresh-failed'
+            }
+          }
+        }
+        set({ placementPending: false })
+        return result
       },
     }
   })

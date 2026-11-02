@@ -7,7 +7,7 @@ import { BoardIcon } from './board-icon'
 
 type Action = { label: string; onSelect: () => void; disabled?: boolean }
 
-export function ActionMenu({ label, actions, triggerRef }: { label: string; actions: Action[]; triggerRef?: React.RefObject<HTMLButtonElement | null> }) {
+export function ActionMenu({ label, actions, triggerRef, disabled = false }: { disabled?: boolean; label: string; actions: Action[]; triggerRef?: React.RefObject<HTMLButtonElement | null> }) {
   const [open, setOpen] = useState(false)
   const localButton = useRef<HTMLButtonElement>(null)
   const button = triggerRef ?? localButton
@@ -63,7 +63,7 @@ export function ActionMenu({ label, actions, triggerRef }: { label: string; acti
       window.removeEventListener('resize', closeOnViewportChange)
     }
   }, [open])
-  return <div className="menu"><button ref={button} className="button button-quiet button-icon" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}><BoardIcon name="more" /></button>
+  return <div className="menu"><button ref={button} disabled={disabled} className="button button-quiet button-icon" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}><BoardIcon name="more" /></button>
     {open ? <div ref={menu} className="menu-items" popover="manual" role="menu" aria-label={label}>{actions.map(action => <button className="menu-item" role="menuitem" key={action.label} disabled={action.disabled} onClick={() => { setOpen(false); button.current?.focus(); action.onSelect() }}>{action.label}</button>)}</div> : null}
   </div>
 }

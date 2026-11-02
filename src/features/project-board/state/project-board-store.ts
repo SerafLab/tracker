@@ -102,7 +102,16 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         }
       },
       async clearLastProject() {
-        return preserveConfirmedState(() => rememberProject())
+        if (!canMutate()) return false
+        const startedAt = navigation
+        try {
+          await rememberProject()
+          if (navigation === startedAt) set({ saveError: false })
+          return true
+        } catch {
+          if (navigation === startedAt) set({ saveError: true })
+          return false
+        }
       },
       async showCatalogue() {
         set({ placementRefreshError: null })
@@ -270,12 +279,13 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         try { result = await useCases.moveCard(cardId, placement) }
         catch { set({ placementPending: false, ...(navigation === startedAt ? { saveError: true } : {}) }); return 'failed' }
         if (navigation === startedAt && currentProjectId === projectId && !currentCardId) {
+          const refreshRequest = ++request
           try {
             const board = await useCases.board(projectId)
             if (!board) throw new Error('board_not_found')
-            if (navigation === startedAt) set({ workspace: { kind: 'board', board } })
+            if (navigation === startedAt && request === refreshRequest) set({ workspace: { kind: 'board', board } })
           } catch {
-            if (navigation === startedAt) {
+            if (navigation === startedAt && request === refreshRequest) {
               set({ placementPending: false, placementRefreshError: projectId })
               return 'refresh-failed'
             }

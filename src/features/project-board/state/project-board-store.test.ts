@@ -342,3 +342,50 @@ it('clears a recovered board error and rejects an older retry read after newer n
   expect(store.getState().workspace).toEqual({ kind: 'board', board: { ...board, name: 'Newer confirmed board' } })
   expect(store.getState().placementPending).toBe(false)
 })
+
+it.each(['commit', 'refresh', 'refresh-failed'] as const)('clears catalogue preference independently of placement %s', async stage => {
+  const commit = deferred<'saved'>(), read = deferred<typeof board>()
+  let preference: string | undefined = board.id
+  const api = useCases({
+    moveCard: vi.fn(() => commit.promise),
+    setLastProject: vi.fn(async id => { preference = id }),
+    preference: vi.fn(async () => ({ id: 'workspace' as const, lastProjectId: preference })),
+  })
+  const store = createProjectBoardStore(api)
+  await store.getState().showBoard(board.id)
+  vi.mocked(api.board).mockImplementationOnce(() => read.promise)
+  const moving = store.getState().moveCard(board.id, 'c', { statusId: 's', beforeCardId: null, expected: { statusId: 's', important: false, urgent: false } })
+  if (stage !== 'commit') {
+    commit.resolve('saved')
+    await vi.waitFor(() => expect(api.board).toHaveBeenCalledTimes(2))
+    if (stage === 'refresh-failed') { read.reject(Error('read failed')); expect(await moving).toBe('refresh-failed') }
+  }
+  expect(await store.getState().clearLastProject()).toBe(true)
+  await store.getState().showCatalogue()
+  commit.resolve('saved'); read.resolve(board)
+  await moving
+  expect(api.setLastProject).toHaveBeenCalledExactlyOnceWith(undefined)
+  expect((await api.preference())?.lastProjectId).toBeUndefined()
+  expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: [] })
+  expect(store.getState().placementPending).toBe(false)
+  expect(store.getState().placementRefreshError).toBeNull()
+})
+
+it.each(['resolve', 'reject'] as const)('ignores stale post-placement refresh %s after a newer same-project read', async finish => {
+  const read = deferred<typeof board>(), latest = { ...board, name: 'Latest snapshot' }
+  const api = useCases({ moveCard: vi.fn().mockResolvedValue('saved') }), store = createProjectBoardStore(api)
+  await store.getState().showBoard(board.id)
+  vi.mocked(api.board).mockImplementationOnce(() => read.promise)
+  const moving = store.getState().moveCard(board.id, 'c', { statusId: 's', beforeCardId: null, expected: { statusId: 's', important: false, urgent: false } })
+  await vi.waitFor(() => expect(api.board).toHaveBeenCalledTimes(2))
+  vi.mocked(api.board).mockResolvedValueOnce(latest)
+  expect(await store.getState().showBoard(board.id)).toBe(true)
+  if (finish === 'resolve') read.resolve({ ...board, name: 'Old placement snapshot' })
+  else read.reject(Error('old placement read failed'))
+  expect(await moving).toBe('saved')
+  expect(store.getState().workspace).toEqual({ kind: 'board', board: latest })
+  expect(store.getState().placementRefreshError).toBeNull()
+  expect(store.getState().saveError).toBe(false)
+  expect(store.getState().placementPending).toBe(false)
+  expect(api.moveCard).toHaveBeenCalledOnce()
+})

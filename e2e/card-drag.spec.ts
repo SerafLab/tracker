@@ -171,7 +171,9 @@ test('keeps native touch swipes before hold, then drags without opening on relea
     const swipe = async (x: number, y: number, dx: number, dy: number) => {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
       for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * step / 6, y: y + dy * step / 6 }] })
+      const scrolled = page.evaluate(() => new Promise<void>(resolve => document.addEventListener('scrollend', () => resolve(), { once: true, capture: true })))
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+      await scrolled
     }
     let bounds = await card(page, 'A2').boundingBox()
     await swipe(300, bounds!.y + 25, -210, 0)
@@ -187,9 +189,10 @@ test('keeps native touch swipes before hold, then drags without opening on relea
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: bounds!.x + 30, y: bounds!.y + 25 }] })
     await page.waitForTimeout(300)
     await expect(card(page, 'A2')).toHaveAttribute('data-dragging', 'true')
+    await expect(page.locator('.drag-card-preview')).toBeVisible()
     const target = await card(page, 'A1').boundingBox()
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: target!.x + 30, y: target!.y + 5 }] })
-    await expect(page.locator('.card-placement-marker')).toBeVisible()
+    for (let step = 1; step <= 10; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: target!.x + 30, y: bounds!.y + 25 + (target!.y + 5 - bounds!.y - 25) * step / 10 }] })
+    await expect.poll(() => page.locator('.card-placement-marker').evaluateAll(elements => elements[0]?.nextElementSibling?.querySelector('.card-name')?.textContent)).toBe('A1')
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
     await expect(names(page, 'A')).toHaveText(['Both', 'A2', 'A1', 'Urgent', 'None'])
     await expect(page).toHaveURL(boardUrl); await expect(page.locator('.card-detail')).toBeHidden()

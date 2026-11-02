@@ -56,3 +56,27 @@ it('preserves the confirmed board after refresh failure, blocks conflicting acti
   expect(screen.getByRole('status')).toHaveTextContent('Расположение карточки сохранено')
   expect(screen.getByRole('button', { name: 'Действия карточки First' })).toHaveFocus()
 })
+
+it('keeps catalogue navigation after reload while a placement commit is pending', async () => {
+  const { repo, user } = await setup()
+  let finish!: () => void
+  const pending = new Promise<void>(resolve => { finish = resolve }), actual = repo.moveCard.bind(repo)
+  let committed: ReturnType<typeof actual> | undefined
+  vi.spyOn(repo, 'moveCard').mockImplementation((...args) => {
+    committed = pending.then(() => actual(...args))
+    return committed
+  })
+  await waitFor(async () => expect((await repo.preference())?.lastProjectId).toBe('p'))
+  await user.click(screen.getByRole('button', { name: 'Действия карточки First' }))
+  await user.click(screen.getByRole('menuitem', { name: 'Опустить ниже' }))
+  expect(screen.getByRole('status')).toHaveTextContent('Сохраняем расположение карточки')
+  await user.click(screen.getByRole('button', { name: /Все проекты/ }))
+  await screen.findByRole('heading', { name: 'Трекер личных проектов' })
+  await waitFor(async () => expect((await repo.preference())?.lastProjectId).toBeUndefined())
+  finish(); await committed
+  cleanup()
+  render(<App repository={repo} />)
+  expect(await screen.findByRole('heading', { name: 'Трекер личных проектов' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Project' })).not.toBeInTheDocument()
+  expect(location.hash).toBe('')
+})

@@ -71,3 +71,13 @@ User agreed to test the DnD prototype on physical target devices. Evidence still
 - Both accepted deltas synced with scenario preservation and archived at `2026-11-01-*` (`e8a2006`); strict main-spec validation passed.
 - MCP isolated production prerequisite PR20 merged as `5159b6b`, deploy+smoke succeeded. Existing SW navigation fallback initially hid the concrete experiment page; PR21 fixes only that URL, with a regression in a controlled browser context. Core MCP remains gated pending actual handshake.
 - Details runner was interrupted by a usage limit; parent preserved/completed its work, then batch_analysis resumed as runner. Independent review identified whole-card lower-gap click, note-deletion focus while composing, and read-failure route preservation defects; all fixed with regressions. Final feature check143 unit/UI +65 browser passed; awaiting final review/merge.
+
+## Continuation — 2026-11-02
+
+Details `59f6498` passed final independent review with no remaining findings; integration `f3f1ae5` reconciled its model with presets/header controls. Main specs synced and details archived at `51aeffe`. Combined validation: 169 unit/UI + 90 browser checks, then 94 browser checks after adding the cross-feature default-preset → header creation → description/note → footer creation → offline-reopen scenario (`dfc24cc`).
+
+Deletion and DnD branches both started at accepted base `51aeffe16a141b7986b88ee2ac2e09992c60933f`. `status_presets` owns deletion in `/private/tmp/tracker-project-deletion`. `batch_analysis` owns DnD in `/private/tmp/tracker-card-drag-and-drop`; exact placement contract is `{ statusId, beforeCardId: Id|null, expected: {statusId, important, urgent} }`. Repository result is `saved|unchanged`; store adds failure/refresh-failure outcomes.
+
+The DnD sensor prototype on LAN port 4190 passed desktop input checks. The user received the requested iPhone Chrome/Safari and Android Chrome checklist and reported «всё хорошо, идем дальше». Device models/versions were not provided and must not be invented. This confirms the early prototype gate; final integrated device acceptance remains pending.
+
+After the failed real loopback gate the user selected «Проверить WebMCP — инструменты самой страницы». Root owns the isolated `codex/webmcp-feasibility` experiment in `/private/tmp/tracker-webmcp-feasibility`; actual native IAB discovery, echo, marker write, close/reopen read and invocation with browser visibility false passed in a local secure context. Production-origin proof and any resulting public-contract revision remain separate requirements. The old stdio MCP core is not implemented.

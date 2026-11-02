@@ -91,3 +91,9 @@ Clean local main was fast-forwarded to `332726f`. Continuation integration is no
 The user explicitly approved implementing WebMCP in place of the separate Node/stdio server after native production proof. Planner `status_presets` owns only coherent MCP artifact revision in `codex/agent-webmcp-integration`, `/private/tmp/tracker-agent-webmcp-integration`, base `1ee36f3`; core code begins after plan acceptance and the shared DnD placement interface is accepted. Native tool updates preserve current card description transactionally, without adding description/note write tools.
 
 DnD implementation `e6c6734` is clean and under independent review by `card_details`. It passed 189 unit/UI +105 browser checks; task 5.2 final real-device verification and 5.3 sync/archive remain pending. Its LAN preview remains on port4190. Integration checks use4185, DnD e2e4183, deletion e2e4182, and feasibility e2e4184 to avoid sharing servers.
+
+## Native implementation plan accepted — 2026-11-02
+
+Planner revision `038c295ef5a9a2dd7219b66ecc634997b6aa86ad` was reviewed against the approved WebMCP scope. Only four existing planning artifacts changed; strict validation passed, with 3/26 tasks completed solely for feasibility and the user's transport decision. Native task execution, skill and real candidate/production/new-chat acceptance remain pending.
+
+The repository skill is an independent subtask in `codex/agent-webmcp-skill`, `/private/tmp/tracker-agent-webmcp-skill`, base `038c295`; `card_details` owns only skill files and installation guidance. Core implementation will start after the DnD public placement/state interface is accepted. DnD review identified preference cleanup blocked during placement and a stale post-commit read; `batch_analysis` is fixing both with six regressions. Final physical-device acceptance has been requested from the user for the complete LAN board, separately from the passed prototype.

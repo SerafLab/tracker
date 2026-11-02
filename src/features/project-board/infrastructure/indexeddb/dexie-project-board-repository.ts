@@ -1,5 +1,5 @@
-import { moveByOffset, placeCardInGroup } from '../../domain/order'
-import type { Card, CardDetails, CardInput, Note, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../../domain/model'
+import { moveByOffset, placeCardInGroup, placeCard } from '../../domain/order'
+import type { Card, CardPlacement, CardPlacementResult, CardDetails, CardInput, Note, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../../domain/model'
 import type { DeleteStatusResult, NewCard, NewStatus, ProjectBoardRepository } from '../../application/repository'
 import { ProjectBoardDatabase } from './database'
 
@@ -144,17 +144,20 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
     })
   }
 
-  async moveCard(id: Id, statusId: Id) {
-    await this.db.transaction('rw', this.db.cards, this.db.statuses, async () => {
+  async moveCard(id: Id, placement: CardPlacement): Promise<CardPlacementResult> {
+    return this.db.transaction('rw', this.db.cards, this.db.statuses, async () => {
       const card = await this.db.cards.get(id)
-      if (!card || card.statusId === statusId) return
-      const destination = await this.db.statuses.get(statusId)
-      const sourceStatus = await this.db.statuses.get(card.statusId)
-      if (!destination || !sourceStatus || destination.projectId !== sourceStatus.projectId) throw new Error('Нельзя перенести карточку в другой проект')
+      if (!card) throw new Error('source_not_found')
+      const [destination, sourceStatus] = await Promise.all([this.db.statuses.get(placement.statusId), this.db.statuses.get(card.statusId)])
+      if (!destination || !sourceStatus) throw new Error('status_not_found')
+      if (destination.projectId !== sourceStatus.projectId) throw new Error('Нельзя перенести карточку в другой проект')
       const source = await this.db.cards.where('statusId').equals(card.statusId).sortBy('position')
-      const targetCards = await this.db.cards.where('statusId').equals(statusId).sortBy('position')
-      await this.db.cards.bulkPut(placeCardInGroup(targetCards, { ...card, statusId }))
-      await this.db.cards.bulkPut(source.filter(item => item.id !== id).map((item, position) => ({ ...item, position })))
+      const target = card.statusId === placement.statusId ? source : await this.db.cards.where('statusId').equals(placement.statusId).sortBy('position')
+      const ordered = placeCard(source, target, card, placement)
+      if (ordered.unchanged) return 'unchanged'
+      await this.db.cards.bulkPut(ordered.target)
+      if (card.statusId !== placement.statusId) await this.db.cards.bulkPut(ordered.source)
+      return 'saved'
     })
   }
 }

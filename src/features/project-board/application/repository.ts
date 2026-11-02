@@ -1,4 +1,4 @@
-import type { Card, CardDetails, CardInput, Note, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../domain/model'
+import type { Card, CardPlacement, CardPlacementResult, CardDetails, CardInput, Note, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../domain/model'
 
 export type NewStatus = Omit<Status, 'position'>
 export type NewCard = Omit<Card, 'position'>
@@ -23,5 +23,5 @@ export interface ProjectBoardRepository {
   createCard(card: NewCard): Promise<Card>
   updateCard(id: Id, input: CardInput): Promise<void>
   deleteCard(id: Id): Promise<void>
-  moveCard(id: Id, statusId: Id): Promise<void>
+  moveCard(id: Id, placement: CardPlacement): Promise<CardPlacementResult>
 }

@@ -1,0 +1,21 @@
+.probe-header, .probe-footer, .probe-detail { max-width: 70rem; padding: 1rem; margin: 0 auto; }
+.probe-header h1 { font-size: 1.4rem; }
+.probe-header p { line-height: 1.5; }
+.probe-counters { padding: .5rem; background: var(--surface); border: 1px solid var(--border); }
+.probe-agent { overflow-wrap: anywhere; font-size: .75rem; }
+.probe-columns { display: flex; align-items: flex-start; gap: 1rem; overflow-x: auto; padding: 1rem; max-width: 70rem; margin: auto; touch-action: auto; }
+.probe-column { flex: 1 0 17rem; min-width: 0; min-height: 34rem; padding: .5rem; background: var(--surface-subtle); border-radius: .5rem; }
+.probe-column h2 { font-size: 1rem; }
+.probe-list { min-height: 28rem; }
+.probe-card { min-height: 11rem; touch-action: auto; }
+.probe-card-heading { display: flex; align-items: flex-start; gap: .5rem; justify-content: space-between; }
+.probe-card-heading .card-name { min-width: 0; flex: 1; }
+.probe-card-menu { position: relative; z-index: 1; flex-shrink: 0; }
+.probe-menu { position: absolute; top: 2.75rem; right: 0; z-index: 2; width: 10rem; padding: .25rem; background: var(--surface); box-shadow: 0 4px 16px #0002; }
+.probe-card-copy { color: var(--text-secondary); margin: 0; font-size: .8125rem; }
+.probe-card[data-dragging] { -webkit-touch-callout: none; }
+.probe-card[data-dragging] a { -webkit-touch-callout: none; }
+.probe-overlay { width: 16rem; padding: 1rem; box-shadow: 0 4px 24px #0003; pointer-events: none; }
+.probe-gap { border: 2px dashed var(--accent); background: #dbe7dd; color: var(--accent); padding: .5rem; list-style: none; }
+.probe-empty { padding: 2rem .5rem; color: var(--text-secondary); list-style: none; }
+.probe-detail { border: 2px solid var(--accent); }

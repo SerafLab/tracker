@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useModalOpen } from './modal-state'
 import { LocaleSelector } from '../i18n/provider'
 
-type BarAction = { label: string; onSelect: () => void; triggerRef: RefObject<HTMLButtonElement | null> }
+type BarAction = { disabled?: boolean; label: string; onSelect: () => void; triggerRef: RefObject<HTMLButtonElement | null> }
 
 export function AppBar({ title, onReturn, creation, rename }: { title: string; onReturn?: () => void; creation?: BarAction; rename?: Omit<BarAction, 'label'> }) {
   const { t } = useTranslation()
@@ -65,10 +65,10 @@ export function AppBar({ title, onReturn, creation, rename }: { title: string; o
       {onReturn ? <button className="app-brand bar-hint" data-hint={t('allProjects')} aria-label={`EasyTrack — ${t('allProjects')}`} translate="no" onClick={() => { setOpen(false); onReturn() }}>{brand}</button> : <span className="app-brand" translate="no">{brand}</span>}
       <h1 className="page-title">{title}</h1>
       <div className="app-bar-controls">
-        {creation ? <button ref={creation.triggerRef} className="button button-primary button-icon bar-hint" data-hint={creation.label} aria-label={creation.label} onClick={() => { setOpen(false); creation.onSelect() }}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></button> : null}
+        {creation ? <button disabled={creation.disabled} ref={creation.triggerRef} className="button button-primary button-icon bar-hint" data-hint={creation.label} aria-label={creation.label} onClick={() => { setOpen(false); creation.onSelect() }}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></button> : null}
         <button ref={gear} className="button button-quiet button-icon bar-hint" data-hint={t('settings')} aria-label={t('settings')} aria-expanded={open && !modalOpen} aria-controls={id} onClick={() => setOpen(value => !value)}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 3-.6 2.4-2 .9L4 5.6 2 9l1.8 1.7v2.6L2 15l2 3.4 2.4-.7 2 .9L9 21h4l.6-2.4 2-.9 2.4.7 2-3.4-1.8-1.7v-2.6L20 9l-2-3.4-2.4.7-2-.9L13 3Z" /><circle cx="11" cy="12" r="3" /></svg></button>
         {open && !modalOpen ? <div id={id} ref={panel} className="settings-panel" popover="auto" role="region" aria-label={t('settings')}>
-          {rename ? <button className="button button-quiet" onClick={() => { setOpen(false); rename.onSelect() }}>{t('renameProject')}</button> : null}
+          {rename ? <button disabled={rename.disabled} className="button button-quiet" onClick={() => { setOpen(false); rename.onSelect() }}>{t('renameProject')}</button> : null}
           <LocaleSelector />
         </div> : null}
       </div>

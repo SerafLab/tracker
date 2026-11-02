@@ -1,4 +1,13 @@
 export const ru = {
+  "cardMoveUp": "Поднять выше",
+  "cardMoveDown": "Опустить ниже",
+  "placementSaved": "Расположение карточки сохранено.",
+  "placementUnchanged": "Расположение карточки не изменилось.",
+  "placementSaving": "Сохраняем расположение карточки…",
+  "placementRefreshFailed": "Расположение сохранено, но не удалось обновить доску. Повторите чтение.",
+  "retryBoardRead": "Обновить доску",
+  "placementHere": "Место вставки",
+
   "statusSet": "Набор статусов",
   "statusSetPreview": "Начальные статусы",
   "emptyStatusSetHelp": "Проект откроется без статусов. Их можно добавить на доске.",
@@ -93,9 +102,6 @@ export const ru = {
   "moveCard": "Переместить карточку",
   "move": "Переместить",
   "moveToOther": "Переместить в…",
-  "moveCardActions": "Переместить карточку {{name}}",
-  "moveAdjacentLeft": "Переместить влево в «{{name}}»",
-  "moveAdjacentRight": "Переместить вправо в «{{name}}»",
   "loading": "Открываем рабочее пространство…",
   "unavailable": "Рабочая доска недоступна",
   "unavailableHelp": "Локальное хранилище недоступно. Изменения не будут показаны как сохранённые.",
@@ -130,6 +136,15 @@ export const ru = {
 } as const
 
 export const en: { [Key in keyof typeof ru]: string } = {
+  "cardMoveUp": "Move up",
+  "cardMoveDown": "Move down",
+  "placementSaved": "Card placement saved.",
+  "placementUnchanged": "Card placement did not change.",
+  "placementSaving": "Saving card placement…",
+  "placementRefreshFailed": "Placement was saved, but the board could not refresh. Retry reading the board.",
+  "retryBoardRead": "Refresh board",
+  "placementHere": "Insert here",
+
   "statusSet": "Status set",
   "statusSetPreview": "Initial statuses",
   "emptyStatusSetHelp": "The project will open without statuses. You can add them on the board.",
@@ -224,9 +239,6 @@ export const en: { [Key in keyof typeof ru]: string } = {
   "moveCard": "Move card",
   "move": "Move",
   "moveToOther": "Move to…",
-  "moveCardActions": "Move card {{name}}",
-  "moveAdjacentLeft": "Move left to “{{name}}”",
-  "moveAdjacentRight": "Move right to “{{name}}”",
   "loading": "Opening workspace…",
   "unavailable": "Project board unavailable",
   "unavailableHelp": "Local storage is unavailable. Changes will not be shown as saved.",

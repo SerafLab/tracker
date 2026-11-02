@@ -1,3 +1,4 @@
+import { appendPlacement } from '../../domain/order'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProjectBoardDatabase } from './database'
 import { DexieProjectBoardRepository } from './dexie-project-board-repository'
@@ -21,7 +22,7 @@ describe('DexieProjectBoardRepository', () => {
     ])
     await database.cards.add({ id: 'card', statusId: 'found', name: 'Квартира у парка', position: 0, description: '', important: false, urgent: false })
     await repo.moveStatus('viewing', -1)
-    await repo.moveCard('card', 'viewing')
+    await transfer(repo, 'card', 'viewing')
     expect((await repo.board('project'))?.statuses.map(status => status.name)).toEqual(['Просмотр', 'Найдено'])
     expect((await repo.board('project'))?.statuses[0].cards.map(card => card.name)).toEqual(['Квартира у парка'])
   })
@@ -64,15 +65,17 @@ it('creates and edits at group tails with dense positions while unchanged flags 
 it('moves into group tails, compacts sources, preserves peers, and rejects cross-project moves', async () => {
   const { repository: repo, add } = await populated()
   await add('a', true); await add('b', true); await add('c'); await add('peer', true, false, 't'); await add('tail', false, false, 't')
-  await repo.moveCard('a', 't')
+  await transfer(repo, 'a', 't')
   let board = (await repo.board('p'))!
   expect(board.statuses.map(status => status.cards.map(card => card.id))).toEqual([['b', 'c'], ['peer', 'a', 'tail']])
-  await repo.moveCard('a', 's'); await repo.moveCard('b', 's')
+  await transfer(repo, 'a', 's')
+  const b = (await repo.board('p'))!.statuses[0].cards.find(card => card.id === 'b')!
+  await expect(repo.moveCard('b', { ...appendPlacement(b, 's'), beforeCardId: 'a' })).resolves.toBe('unchanged')
   board = (await repo.board('p'))!
   expect(board.statuses[0].cards.map(card => card.id)).toEqual(['b', 'a', 'c'])
   expect(board.statuses[0].cards.map(card => card.position)).toEqual([0, 1, 2])
   expect(board.statuses[0].cards[1]).toMatchObject({ description: '', important: true, urgent: false })
-  await expect(repo.moveCard('a', 'foreign')).rejects.toThrow('другой проект')
+  await expect(transfer(repo, 'a', 'foreign')).rejects.toThrow('другой проект')
   expect(await repo.board('p')).toEqual(board)
 })
 it.each(['create', 'update', 'move'])('rolls back fields and ordering when %s fails partway through a write', async operation => {
@@ -81,7 +84,7 @@ it.each(['create', 'update', 'move'])('rolls back fields and ordering when %s fa
   const before = await repo.board('p')
   const original = database.cards.bulkPut.bind(database.cards)
   vi.spyOn(database.cards, 'bulkPut').mockImplementationOnce((...args: Parameters<typeof original>) => original(...args).then(() => { throw new Error('quota') }))
-  const action = operation === 'create' ? add('new', true, true) : operation === 'update' ? repo.updateCard('b', { name: 'New', description: '', important: true, urgent: true }) : repo.moveCard('a', 't')
+  const action = operation === 'create' ? add('new', true, true) : operation === 'update' ? repo.updateCard('b', { name: 'New', description: '', important: true, urgent: true }) : transfer(repo, 'a', 't')
   await expect(action).rejects.toThrow('quota')
   expect(await repo.board('p')).toEqual(before)
 })
@@ -94,7 +97,7 @@ it('serializes concurrent creates without losing cards or duplicating positions'
 it('edits only editable fields even when a stale UI object includes status and position', async () => {
   const { repository: repo, add } = await populated()
   const stale = await add('a', true)
-  await add('b', true, false, 't'); await repo.moveCard('a', 't')
+  await add('b', true, false, 't'); await transfer(repo, 'a', 't')
   await repo.updateCard('a', { ...stale, name: 'Edited' })
   const cards = (await repo.board('p'))!.statuses[1].cards
   expect(cards.map(card => card.id)).toEqual(['b', 'a'])
@@ -215,7 +218,7 @@ it('preserves a detailed card and its notes on move and removes notes only with 
   expect((await repo.board('p'))!.statuses[0].cards.map(card => card.id)).toEqual(['a', 'b'])
   const note = { id: 'n', cardId: 'a', text: 'note', createdAt: '2026-11-01T00:00:00Z' }
   await repo.createNote(note)
-  await repo.moveCard('a', 't')
+  await transfer(repo, 'a', 't')
   expect((await repo.cardDetails('p', 'a'))!.notes).toEqual([note])
   expect((await repo.cardDetails('p', 'a'))!.card.description).toBe('line\nhttps://example.com')
   const before = await repo.cardDetails('p', 'a')
@@ -240,4 +243,54 @@ it.each(['create', 'edit', 'delete'] as const)('rolls back a failed note %s and 
   expect(await repo.cardDetails('p', 'a')).toEqual(before)
   spy.mockRestore(); await action()
   expect((await repo.cardDetails('p', 'a'))!.notes).toHaveLength(operation === 'delete' ? 0 : 1)
+})
+
+
+async function transfer(repo: DexieProjectBoardRepository, id: string, statusId: string) {
+  const boards = await Promise.all((await repo.projects()).map(project => repo.board(project.id)))
+  const card = boards.flatMap(board => board?.statuses.flatMap(status => status.cards) ?? []).find(card => card.id === id)!
+  return repo.moveCard(id, appendPlacement(card, statusId))
+}
+
+it('persists exact positions, retains notes and rejects invalid or stale placements without writes', async () => {
+  const { repository: repo, database: db, add } = await populated()
+  const a = await add('a', true); await add('b', true); await add('none')
+  await add('x', true, false, 't'); await add('y', true, false, 't'); await add('bottom', false, false, 't')
+  await repo.createNote({ id: 'n', cardId: 'a', text: 'History', createdAt: '2026-11-01T00:00:00Z' })
+  const before = await repo.board('p')
+  const put = vi.spyOn(db.cards, 'bulkPut')
+  for (const placement of [
+    { ...appendPlacement(a, 's'), beforeCardId: 'a' }, { ...appendPlacement(a, 's'), beforeCardId: 'none' },
+    { ...appendPlacement(a, 's'), beforeCardId: 'missing' }, { ...appendPlacement(a, 't'), beforeCardId: 'b' },
+    { ...appendPlacement(a, 'missing') }, { ...appendPlacement(a, 't'), expected: { ...a, urgent: true } },
+    { ...appendPlacement(a, 't'), expected: { ...a, statusId: 't' } },
+  ]) await expect(repo.moveCard('a', placement)).rejects.toThrow()
+  await expect(repo.moveCard('missing', appendPlacement(a, 't'))).rejects.toThrow('source_not_found')
+  expect(put).not.toHaveBeenCalled(); expect(await repo.board('p')).toEqual(before)
+  expect(await repo.moveCard('a', { ...appendPlacement(a, 's'), beforeCardId: 'b' })).toBe('unchanged')
+  expect(put).not.toHaveBeenCalled()
+  expect(await repo.moveCard('a', { ...appendPlacement(a, 't'), beforeCardId: 'y' })).toBe('saved')
+  expect((await repo.board('p'))!.statuses[1].cards.map(card => card.id)).toEqual(['x', 'a', 'y', 'bottom'])
+  expect((await repo.cardDetails('p', 'a'))!.notes.map(note => note.id)).toEqual(['n'])
+  db.close(); await db.open()
+  expect((await repo.board('p'))!.statuses[1].cards.map(card => card.id)).toEqual(['x', 'a', 'y', 'bottom'])
+})
+
+it.each(['target', 'source', 'reorder'] as const)('rolls back %s placement writes and permits retry in a reopened session', async failure => {
+  const { repository: repo, database: db, add } = await populated()
+  const a = await add('a', true); await add('b', true); await add('x', true, false, 't')
+  const before = await repo.board('p'), actual = db.cards.bulkPut.bind(db.cards)
+  let writes = 0
+  const spy = vi.spyOn(db.cards, 'bulkPut').mockImplementation((...args: Parameters<typeof actual>) => actual(...args).then(result => {
+    if (++writes === (failure === 'source' ? 2 : 1)) throw new Error('placement quota')
+    return result
+  }))
+  const placement = appendPlacement(a, failure === 'reorder' ? 's' : 't')
+  await expect(repo.moveCard('a', placement)).rejects.toThrow('placement quota')
+  spy.mockRestore(); db.close()
+  const reopened = new ProjectBoardDatabase(db.name); databases.push(reopened)
+  const fresh = new DexieProjectBoardRepository(reopened)
+  expect(await fresh.board('p')).toEqual(before)
+  expect(await fresh.moveCard('a', placement)).toBe('saved')
+  expect((await fresh.board('p'))!.statuses.flatMap(status => status.cards).filter(card => card.id === 'a')).toHaveLength(1)
 })

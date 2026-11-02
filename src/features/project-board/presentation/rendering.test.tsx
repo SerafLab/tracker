@@ -28,7 +28,7 @@ it('isolates board dialogs, column dialogs and a card move dialog from unchanged
     })),
   }
   const user = userEvent.setup()
-  render(<ProjectBoardView board={board} saveError={false} focusCreation={false} onCreationFocused={vi.fn()}
+  render(<ProjectBoardView board={board} saveError={false} placementPending={false} busy={false} refreshFailed={false} onRetryRefresh={vi.fn()} focusCreation={false} onCreationFocused={vi.fn()}
     onReturn={vi.fn()} onRenameProject={vi.fn()} onCreateStatus={vi.fn()}
     onRenameStatus={vi.fn()} onMoveStatus={vi.fn()} onCreateCard={vi.fn()}
     onOpenCard={vi.fn()} onDeleteCard={vi.fn()} onDeleteStatus={vi.fn()} onMoveCard={vi.fn()}

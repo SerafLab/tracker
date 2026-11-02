@@ -20,6 +20,9 @@
     "test:production": "npm run build && vitest --run"
   },
   "dependencies": {
+    "@dnd-kit/collision": "0.5.3",
+    "@dnd-kit/dom": "0.5.3",
+    "@dnd-kit/react": "0.5.3",
     "dexie": "^4.4.6",
     "i18next": "^26.5.2",
     "linkify-react": "4.4.0",

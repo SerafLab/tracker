@@ -109,3 +109,21 @@ it('revokes a deferred registration attempt and prevents late tools from the old
   expect(tools.get('get_connection')!.inputSchema).not.toHaveProperty('exposedTo')
   current.stop(); expect(tools.size).toBe(0)
 })
+
+it.each(['list_projects', 'get_board'] as const)('bounds pending read %s on timeout and abort without reporting a mutation outcome', async tool => {
+  vi.useFakeTimers()
+  try {
+    const pending = deferred<unknown>(), { runtime } = setup({ execute: vi.fn(() => pending.promise) })
+    const input = { sessionId, ...(tool === 'get_board' ? { projectId: 'project' } : {}) }
+    const call = runtime.call(tool, input)
+    await vi.advanceTimersByTimeAsync(15_000)
+    expect(await call).toMatchObject({ error: { code: 'disconnected' } })
+    const controller = new AbortController(), aborted = runtime.call(tool, input, controller.signal)
+    controller.abort()
+    expect(await aborted).toMatchObject({ error: { code: 'disconnected' } })
+    pending.resolve(tool === 'list_projects' ? { projects: [project] } : { board: { ...project, statuses: [] } })
+    await vi.runAllTimersAsync()
+    expect(await runtime.call('get_connection', {})).toMatchObject({ data: { lastMutationSequence: 0 } })
+    expect(await runtime.call(tool, input)).toMatchObject({ ok: true })
+  } finally { vi.useRealTimers() }
+})

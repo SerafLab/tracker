@@ -35,13 +35,13 @@ export function createToolRuntime(dependencies: RuntimeDependencies, options: { 
       return { ok: true, sessionId, data: parsed.data }
     } catch (error) { return errorResult(error) }
   }
-  const bounded = (promise: Promise<ToolResult>, signal?: AbortSignal): Promise<ToolResult> => new Promise(resolve => {
+  const bounded = (promise: Promise<ToolResult>, signal?: AbortSignal, mutation = true): Promise<ToolResult> => new Promise(resolve => {
     let settled = false
     const done = (result: ToolResult) => {
       if (settled) return
       settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort); resolve(result)
     }
-    const abort = () => done(failure('outcome_unknown', 'Response interrupted after dispatch; do not replay the mutation'))
+    const abort = () => done(mutation ? failure('outcome_unknown', 'Response interrupted after dispatch; do not replay the mutation') : failure('disconnected', 'Read response interrupted; retry reading when available'))
     const timer = setTimeout(abort, options.responseTimeout ?? 15_000)
     signal?.addEventListener('abort', abort, { once: true })
     if (signal?.aborted) abort()
@@ -59,7 +59,7 @@ export function createToolRuntime(dependencies: RuntimeDependencies, options: { 
       if (input.sessionId !== sessionId) return failure('disconnected', 'This call targets another or expired document session')
       try { ready() } catch (error) { return errorResult(error) }
       if (signal?.aborted) return failure('disconnected', 'Call canceled before dispatch')
-      if (readTools.has(tool)) return execute(tool, input)
+      if (readTools.has(tool)) return bounded(execute(tool, input), signal, false)
       const requestId = input.requestId as number
       const fingerprint = JSON.stringify({ tool, input })
       const entry = entries.get(requestId)

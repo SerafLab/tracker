@@ -181,8 +181,6 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .card-list { display: grid; gap: .75rem; }
 .work-card { display: grid; gap: .8125rem; min-width: 0; padding: 1.0625rem 1rem .5625rem; transition: border-color .16s ease; }
 .card-name { min-width: 0; font-size: .9375rem; font-weight: 530; line-height: 1.5; overflow-wrap: anywhere; }
-.card-controls { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-inline: -.3125rem; border-top: 1px solid #efeee7; padding-top: .25rem; }
-.card-move-arrows { display: flex; gap: .125rem; }
 .add-card { justify-content: flex-start; width: 100%; margin: .75rem 0 0; padding: 0; border: 0; gap: .75rem; font-weight: 450; }
 .add-card-symbol { height: 2.75rem; }
 .add-card:hover .add-card-symbol, .add-card:active .add-card-symbol { background: var(--accent-hover); }
@@ -277,8 +275,6 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .card-detail-link::after { content: ''; position: absolute; inset: 0; border-radius: var(--radius-card); }
 .card-detail-link:focus-visible { outline: none; }
 .card-detail-link:focus-visible::after { outline: 2px solid var(--focus); outline-offset: 3px; }
-.card-controls { position: relative; pointer-events: none; }
-.card-controls button, .card-controls .menu { position: relative; z-index: 1; pointer-events: auto; }
 .card-detail { max-width: 56rem; }
 .card-detail:focus { outline: none; }
 .detail-context { margin-block: 1rem; overflow-wrap: anywhere; }
@@ -297,3 +293,20 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .note-date { color: var(--text-secondary); font-size: .8125rem; line-height: 1.5; }
 .note-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .75rem; }
 .note-editor { margin-block: 1rem; }
+
+/* Card menus are independent controls above the stretched detail link. */
+.work-card { padding: 1rem; }
+.card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; min-width: 0; }
+.card-heading .card-name { flex: 1; min-width: 0; }
+.card-heading .menu { flex-shrink: 0; position: relative; z-index: 1; }
+.work-card { touch-action: auto; }
+.work-card[data-dragging] a { -webkit-touch-callout: none; }
+.board-drag-surface { min-width: 0; }
+.status-column { min-height: 12rem; }
+.card-placement-marker { list-style: none; min-height: 1.5rem; border: 2px dashed var(--accent); border-radius: var(--radius-control); color: var(--accent); font-size: .75rem; padding: .125rem .5rem; background: #e3ece4; }
+.drag-card-preview { width: 16rem; padding: 1rem; display: grid; gap: .5rem; box-shadow: 0 4px 24px #0003; pointer-events: none; overflow-wrap: anywhere; }
+.placement-status { color: var(--text-secondary); margin: 0 0 .75rem; }
+.placement-status:empty { display: none; }
+
+/* Scroll snapping would undo the library’s small autoscroll increments. */
+.board-drag-surface[data-drag-active="true"] .status-columns { scroll-snap-type: none; }

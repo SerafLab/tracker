@@ -4,7 +4,7 @@ import type { ProjectBoardRepository } from './repository'
 
 function repository(): ProjectBoardRepository {
   return {
-    cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
+    executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
     open: vi.fn(), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(),
     createProject: vi.fn().mockImplementation(project => Promise.resolve(project)), deleteProject: vi.fn(), renameProject: vi.fn(),
     board: vi.fn(), createStatus: vi.fn().mockImplementation(status => Promise.resolve({ ...status, position: 0 })),
@@ -20,7 +20,7 @@ describe('project-board use cases', () => {
     await useCases.createProject({ name: '  Поиск квартиры  ', initialStatusNames: [] })
     await useCases.createStatus('project', 'Найдено')
     await useCases.createCard('status', { name: 'Квартира у парка', description: '', important: false, urgent: true })
-    expect(port.createProject).toHaveBeenCalledWith({ id: 'project', name: 'Поиск квартиры', createdAt: '2026-10-07T00:00:00.000Z' }, [])
+    expect(port.createProject).toHaveBeenCalledWith({ id: 'project', name: 'Поиск квартиры', createdAt: '2026-10-07T00:00:00.000Z' }, [], true)
     expect(port.createStatus).toHaveBeenCalledWith({ id: 'status', projectId: 'project', name: 'Найдено' })
     expect(port.createCard).toHaveBeenCalledWith({ id: 'card', statusId: 'status', name: 'Квартира у парка', description: '', important: false, urgent: true })
   })
@@ -32,12 +32,12 @@ describe('project-board use cases', () => {
     await useCases.renameStatus('status', 'Просмотр')
     await useCases.updateCard('card', { name: 'Квартира', description: '', important: true, urgent: false })
     await useCases.moveStatus('status', -1)
-    await useCases.moveCard('card', 'other-status')
+    await useCases.moveCard('card', { statusId: 'other-status', beforeCardId: null, expected: { statusId: 'initial', important: false, urgent: false } })
     expect(port.renameProject).toHaveBeenCalledWith('project', 'Паспорт')
     expect(port.renameStatus).toHaveBeenCalledWith('status', 'Просмотр')
     expect(port.updateCard).toHaveBeenCalledWith('card', { name: 'Квартира', description: '', important: true, urgent: false })
     expect(port.moveStatus).toHaveBeenCalledWith('status', -1)
-    expect(port.moveCard).toHaveBeenCalledWith('card', 'other-status')
+    expect(port.moveCard).toHaveBeenCalledWith('card', { statusId: 'other-status', beforeCardId: null, expected: { statusId: 'initial', important: false, urgent: false } })
   })
 
   it('rejects invalid input and preserves repository failures such as cross-project transfers', async () => {
@@ -46,7 +46,7 @@ describe('project-board use cases', () => {
     const useCases = createProjectBoardUseCases({ repository: port, createId: () => 'id', now: () => 'now' })
     expect(() => useCases.createProject({ name: ' ', initialStatusNames: [] })).toThrow('Название обязательно')
     expect(port.createProject).not.toHaveBeenCalled()
-    await expect(useCases.moveCard('card', 'foreign-status')).rejects.toThrow('другой проект')
+    await expect(useCases.moveCard('card', { statusId: 'foreign-status', beforeCardId: null, expected: { statusId: 'initial', important: false, urgent: false } })).rejects.toThrow('другой проект')
   })
 })
 
@@ -93,7 +93,7 @@ it('validates all initial names before generating independent ordered records', 
     { id: 'id-2', projectId: 'id-1', name: 'First', position: 0 },
     { id: 'id-3', projectId: 'id-1', name: 'Second', position: 1 },
     { id: 'id-4', projectId: 'id-1', name: 'Third', position: 2 },
-  ])
+  ], true)
 })
 
 it('validates notes, gives new notes injected identifiers/dates and leaves edit metadata to the repository', async () => {

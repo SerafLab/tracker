@@ -1,0 +1,4 @@
+interface:
+  display_name: "EasyTrack"
+  short_description: "Manage EasyTrack cards in the internal browser"
+  default_prompt: "Use $easytrack to show my EasyTrack projects."

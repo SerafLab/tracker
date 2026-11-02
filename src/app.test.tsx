@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import Dexie from 'dexie'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -19,6 +19,14 @@ async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string)
   await waitFor(() => expect(trigger).toHaveFocus())
 }
 async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(column.querySelector<HTMLButtonElement>('.add-card')!); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
+async function moveThroughMenu(user: ReturnType<typeof userEvent.setup>, name: string, destination: string) {
+  await user.click(screen.getByRole('button', { name: `Действия карточки ${name}` }))
+  await user.click(screen.getByRole('menuitem', { name: 'Переместить в…' }))
+  const dialog = screen.getByRole('dialog')
+  await user.selectOptions(within(dialog).getByRole('combobox'), within(dialog).getByRole('option', { name: destination }))
+  await user.click(within(dialog).getByRole('button', { name: 'Переместить' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+}
 function setViewport(width: number) { Object.defineProperty(window, 'innerWidth', { configurable: true, value: width }); window.dispatchEvent(new Event('resize')) }
 
 beforeEach(() => { location.hash = ''; setViewport(1280) })
@@ -143,25 +151,20 @@ describe('project board', () => {
     await user.click(within(screen.getByRole('heading', { name: 'Найдено' }).closest('article')!).getByRole('button', { name: 'Действия статуса Найдено' })); expect(screen.getByRole('menuitem', { name: 'Переместить влево' })).toBeDisabled()
   })
 
-  it('moves arrows in both directions, appends cards, and preserves keyboard focus', async () => {
+  it('moves through the menu in both directions, appends to peers and preserves focus', async () => {
     const user = userEvent.setup(); render(<App repository={repository()} />)
     await fill(user, 'Новый проект', 'Доска', 'Создать проект'); await screen.findByRole('heading', { name: 'Доска' })
     await addStatus(user, 'Первый'); await addStatus(user, 'Средний'); await addStatus(user, 'Последний')
     const column = (name: string) => screen.getByRole('heading', { name }).closest('article')!
-    await addCard(user, column('Средний'), 'Уже здесь')
-    await addCard(user, column('Первый'), 'Движущаяся')
-    const card = () => screen.getByText('Движущаяся').closest('li')!
-    expect(within(card()).getByRole('button', { name: 'Переместить влево' })).toBeDisabled()
-    within(card()).getByRole('button', { name: 'Переместить вправо в «Средний»' }).focus()
-    await user.keyboard('{Enter}')
-    await waitFor(() => expect(within(column('Средний')).getAllByRole('listitem').map(item => item.textContent)).toEqual([expect.stringContaining('Уже здесь'), expect.stringContaining('Движущаяся')]))
-    await waitFor(() => expect(within(card()).getByRole('button', { name: 'Переместить вправо в «Последний»' })).toHaveFocus())
-    await user.keyboard(' ')
-    await waitFor(() => expect(within(column('Последний')).getByText('Движущаяся')).toBeInTheDocument())
-    expect(within(card()).getByRole('button', { name: 'Переместить вправо' })).toBeDisabled()
-    await waitFor(() => expect(within(card()).getByRole('button', { name: 'Действия карточки Движущаяся' })).toHaveFocus())
-    await user.click(within(card()).getByRole('button', { name: 'Переместить влево в «Средний»' }))
-    await waitFor(() => expect(within(column('Средний')).getByText('Движущаяся')).toBeInTheDocument())
+    await addCard(user, column('Средний'), 'Уже здесь'); await addCard(user, column('Первый'), 'Движущаяся')
+    await moveThroughMenu(user, 'Движущаяся', 'Средний')
+    expect(Array.from(column('Средний').querySelectorAll('.card-name')).map(item => item.textContent)).toEqual(['Уже здесь', 'Движущаяся'])
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Действия карточки Движущаяся' })).toHaveFocus())
+    await moveThroughMenu(user, 'Движущаяся', 'Последний')
+    expect(column('Последний')).toContainElement(screen.getByText('Движущаяся'))
+    await moveThroughMenu(user, 'Движущаяся', 'Средний')
+    expect(column('Средний')).toContainElement(screen.getByText('Движущаяся'))
+    expect(document.querySelector('.card-move-arrows')).not.toBeInTheDocument()
   })
 
   it('translates card movement controls after switching the interface to English', async () => {
@@ -172,22 +175,21 @@ describe('project board', () => {
     await user.click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Язык приложения' }), 'en')
     const card = screen.getByText('Карточка').closest('li')!
-    expect(within(card).getByRole('group', { name: 'Move card Карточка' })).toBeInTheDocument()
+    expect(card.querySelector('.card-move-arrows')).not.toBeInTheDocument()
     await user.click(within(card).getByRole('button', { name: 'Card actions for Карточка' }))
     expect(screen.getByRole('menuitem', { name: 'Move to…' })).toBeInTheDocument()
-    await user.keyboard('{Escape}')
-    await user.click(within(card).getByRole('button', { name: 'Move right to “Второй”' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Move to…' }))
+    await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Move' }))
     expect(await within(screen.getByRole('heading', { name: 'Второй' }).closest('article')!).findByText('Карточка')).toBeInTheDocument()
   })
 
-  it('disables both arrows for one status and excludes current status from the move form', async () => {
+  it('omits move actions for one status and excludes current status from the move form', async () => {
     const user = userEvent.setup(); render(<App repository={repository()} />)
     await fill(user, 'Новый проект', 'Доска', 'Создать проект'); await screen.findByRole('heading', { name: 'Доска' })
     await addStatus(user, 'Одинаковый')
     await addCard(user, screen.getByRole('heading', { name: 'Одинаковый' }).closest('article')!, 'Карточка')
     const card = () => screen.getByText('Карточка').closest('li')!
-    expect(within(card()).getByRole('button', { name: 'Переместить влево' })).toBeDisabled()
-    expect(within(card()).getByRole('button', { name: 'Переместить вправо' })).toBeDisabled()
+    expect(card().querySelector('.card-move-arrows')).not.toBeInTheDocument()
     await user.click(within(card()).getByRole('button', { name: 'Действия карточки Карточка' }))
     expect(screen.queryByRole('menuitem', { name: 'Переместить в…' })).not.toBeInTheDocument()
     await user.keyboard('{Escape}')
@@ -211,30 +213,24 @@ describe('project board', () => {
     expect(screen.getAllByRole('heading', { name: 'Одинаковый' })[1].closest('article')).toContainElement(card())
   })
 
-  it('blocks repeated moves while saving and retains the original card and focus on failure', async () => {
+  it('blocks repeated placements while saving and retains the original card and dialog on failure', async () => {
     const repo = repository(); const user = userEvent.setup(); render(<App repository={repo} />)
     await fill(user, 'Новый проект', 'Доска', 'Создать проект'); await screen.findByRole('heading', { name: 'Доска' })
     await addStatus(user, 'Первый'); await addStatus(user, 'Второй')
     await addCard(user, screen.getByRole('heading', { name: 'Первый' }).closest('article')!, 'Карточка')
     let reject!: (reason: Error) => void
     const move = vi.spyOn(repo, 'moveCard').mockImplementation(() => new Promise((_resolve, rejectMove) => { reject = rejectMove }))
-    const arrow = screen.getByRole('button', { name: 'Переместить вправо в «Второй»' })
-    arrow.focus(); await user.keyboard('{Enter}')
-    expect(arrow).toBeDisabled(); await user.keyboard('{Enter}')
-    expect(move).toHaveBeenCalledOnce()
-    reject(new Error('quota'))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить изменения')
-    await waitFor(() => expect(arrow).toHaveFocus())
-    expect(screen.getByRole('heading', { name: 'Первый' }).closest('article')).toContainElement(screen.getByText('Карточка'))
-    move.mockRejectedValue(new Error('quota'))
     await user.click(screen.getByRole('button', { name: 'Действия карточки Карточка' })); await user.click(screen.getByRole('menuitem', { name: 'Переместить в…' }))
-    await user.keyboard('{Tab}{Tab}{Enter}')
-    await waitFor(() => expect(screen.getByRole('dialog').querySelector('button[type="submit"], .button-primary')).toHaveFocus())
-    const dialog = screen.getByRole('dialog')
-    expect(within(dialog).getByRole('alert')).toHaveTextContent('Не удалось сохранить изменения')
-    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    const dialog = screen.getByRole('dialog'), form = within(dialog).getByRole('combobox').closest('form')!
+    fireEvent.submit(form); fireEvent.submit(form)
+    expect(move).toHaveBeenCalledOnce()
+    expect(within(dialog).getByRole('combobox')).toBeDisabled()
+    reject(new Error('quota'))
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Не удалось сохранить изменения')
+    expect(screen.getByRole('heading', { name: 'Первый' }).closest('article')).toContainElement(screen.getByText('Карточка'))
     expect(within(dialog).getByRole('button', { name: 'Переместить' })).toHaveAccessibleDescription(expect.stringContaining('Не удалось сохранить изменения'))
     await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Действия карточки Карточка' })).toHaveFocus())
     expect(screen.getByRole('alert')).toHaveTextContent('Не удалось сохранить изменения')
   })
 

@@ -11,7 +11,7 @@ async function setup(cards = true) {
   const db = new ProjectBoardDatabase(`deletion-${crypto.randomUUID()}`)
   databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
-  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [])
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [], true)
   await repo.createStatus({ id: 's', projectId: 'p', name: 'Status' })
   if (cards) for (const id of ['a', 'b']) await repo.createCard({ id, statusId: 's', name: 'Same', description: '', important: false, urgent: false })
   location.hash = '#project/p'

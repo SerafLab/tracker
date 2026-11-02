@@ -1,4 +1,5 @@
 export const ru = {
+  "agentRefreshFailed": "Изменения сохранены, но экран не обновлён. Повторите чтение без повторной записи.",
   "deleteProject": "Удалить проект",
   "deleteProjectConfirmation": "Удалить проект «{{name}}»?",
   "projectDeletionSummary": "Статусов: {{statuses}}. Карточек: {{cards}}.",
@@ -6,6 +7,14 @@ export const ru = {
   "projectSummaryLoading": "Загружаем содержимое проекта…",
   "projectSummaryError": "Не удалось загрузить содержимое проекта. Повторите чтение или отмените удаление.",
   "retry": "Повторить",
+  "cardMoveUp": "Поднять выше",
+  "cardMoveDown": "Опустить ниже",
+  "placementSaved": "Расположение карточки сохранено.",
+  "placementUnchanged": "Расположение карточки не изменилось.",
+  "placementSaving": "Сохраняем расположение карточки…",
+  "placementRefreshFailed": "Расположение сохранено, но не удалось обновить доску. Повторите чтение.",
+  "retryBoardRead": "Обновить доску",
+  "placementHere": "Место вставки",
 
   "statusSet": "Набор статусов",
   "statusSetPreview": "Начальные статусы",
@@ -101,9 +110,6 @@ export const ru = {
   "moveCard": "Переместить карточку",
   "move": "Переместить",
   "moveToOther": "Переместить в…",
-  "moveCardActions": "Переместить карточку {{name}}",
-  "moveAdjacentLeft": "Переместить влево в «{{name}}»",
-  "moveAdjacentRight": "Переместить вправо в «{{name}}»",
   "loading": "Открываем рабочее пространство…",
   "unavailable": "Рабочая доска недоступна",
   "unavailableHelp": "Локальное хранилище недоступно. Изменения не будут показаны как сохранённые.",
@@ -138,6 +144,7 @@ export const ru = {
 } as const
 
 export const en: { [Key in keyof typeof ru]: string } = {
+  "agentRefreshFailed": "Changes were saved, but the view could not refresh. Retry reading without repeating the write.",
   "deleteProject": "Delete project",
   "deleteProjectConfirmation": "Delete project “{{name}}”?",
   "projectDeletionSummary": "Statuses: {{statuses}}. Cards: {{cards}}.",
@@ -145,6 +152,14 @@ export const en: { [Key in keyof typeof ru]: string } = {
   "projectSummaryLoading": "Loading project contents…",
   "projectSummaryError": "Could not load the project contents. Retry reading or cancel deletion.",
   "retry": "Retry",
+  "cardMoveUp": "Move up",
+  "cardMoveDown": "Move down",
+  "placementSaved": "Card placement saved.",
+  "placementUnchanged": "Card placement did not change.",
+  "placementSaving": "Saving card placement…",
+  "placementRefreshFailed": "Placement was saved, but the board could not refresh. Retry reading the board.",
+  "retryBoardRead": "Refresh board",
+  "placementHere": "Insert here",
 
   "statusSet": "Status set",
   "statusSetPreview": "Initial statuses",
@@ -240,9 +255,6 @@ export const en: { [Key in keyof typeof ru]: string } = {
   "moveCard": "Move card",
   "move": "Move",
   "moveToOther": "Move to…",
-  "moveCardActions": "Move card {{name}}",
-  "moveAdjacentLeft": "Move left to “{{name}}”",
-  "moveAdjacentRight": "Move right to “{{name}}”",
   "loading": "Opening workspace…",
   "unavailable": "Project board unavailable",
   "unavailableHelp": "Local storage is unavailable. Changes will not be shown as saved.",

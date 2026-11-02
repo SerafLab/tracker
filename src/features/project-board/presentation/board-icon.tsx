@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react'
 
 const paths = {
-  left: <path d="m14 6-6 6 6 6M8 12h12" />,
-  right: <path d="m10 6 6 6-6 6M4 12h12" />,
   plus: <path d="M12 5v14M5 12h14" />,
   more: <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>,
   close: <path d="m6 6 12 12M6 18 18 6" />,

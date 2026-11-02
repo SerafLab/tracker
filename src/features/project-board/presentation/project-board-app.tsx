@@ -22,6 +22,10 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   const [focusCatalogueCreation, setFocusCatalogueCreation] = useState(false)
   const [createdProjectId, setCreatedProjectId] = useState<Id | null>(null)
   const workspace = useStore(store, state => state.workspace)
+  const agentPending = useStore(store, state => state.agentPending)
+  const agentRefreshError = useStore(store, state => state.agentRefreshError)
+  const placementPending = useStore(store, state => state.placementPending)
+  const placementRefreshError = useStore(store, state => state.placementRefreshError)
   const saveError = useStore(store, state => state.saveError)
   const createProject = useStore(store, state => state.createProject)
   const renameProject = useStore(store, state => state.renameProject)
@@ -54,7 +58,7 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   if (workspace.kind === 'card-missing') return <><AppBar title={t('cardMissing')} onReturn={() => void navigateToCatalogue()} /><main className="app-shell"><p role="alert">{t('cardMissingHelp')}</p><button className="button button-secondary" onClick={() => void navigateToProject(workspace.project.id)}>{t('backToBoard')}</button></main></>
   if (workspace.kind === 'card') {
     const { details } = workspace
-    return <CardDetailView key={details.card.id} details={details} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave}
+    return <CardDetailView key={details.card.id} details={details} busy={agentPending || agentRefreshError} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave}
       onReturn={() => navigateToProject(details.project.id)} onCatalogue={navigateToCatalogue}
       onSave={async input => { const saved = await updateCard(details.project.id, details.card.id, input); if (saved) onMutationSaved?.(); return saved }}
       onCreateNote={async text => { const saved = await store.getState().createNote(details.project.id, details.card.id, text); if (saved) onMutationSaved?.(); return saved }}
@@ -64,7 +68,7 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   }
 
   const { board } = workspace
-  return <ProjectBoardView key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError}
+  return <ProjectBoardView key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError} placementPending={placementPending} busy={agentPending || agentRefreshError || placementPending || !!placementRefreshError} refreshFailed={!!placementRefreshError} onRetryRefresh={() => store.getState().retryPlacementRefresh()}
     onReturn={navigateToCatalogue}
     onDeleteProject={async () => {
       const saved = await store.getState().deleteProject(board.id)
@@ -79,6 +83,6 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
     onOpenCard={cardId => navigateToCard(board.id, cardId)}
     onDeleteCard={async cardId => { const saved = await deleteCard(board.id, cardId); if (saved) onMutationSaved?.(); return saved }}
     onDeleteStatus={async statusId => { const result = await deleteStatus(board.id, statusId); if (result === 'deleted') onMutationSaved?.(); return result }}
-    onMoveCard={async (cardId, statusId) => { const saved = await moveCard(board.id, cardId, statusId); if (saved) onMutationSaved?.(); return saved }}
+    onMoveCard={async (cardId, placement) => { const result = await moveCard(board.id, cardId, placement); if (result === 'saved') onMutationSaved?.(); return result }}
   />
 }

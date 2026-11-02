@@ -1,4 +1,4 @@
-export type { Id, ProjectBoard, CreateProjectInput, CardDetails, DraftGuard, RegisterDraftGuard } from './domain/model'
+export type { Id, CardPlacement, CardPlacementResult, ProjectBoard, CreateProjectInput, CardDetails, DraftGuard, RegisterDraftGuard } from './domain/model'
 export type { ProjectBoardRepository } from './application/repository'
 export { createProjectBoardUseCases } from './application/use-cases'
 export { ProjectBoardDatabase } from './infrastructure/indexeddb/database'
@@ -6,3 +6,6 @@ export { DexieProjectBoardRepository } from './infrastructure/indexeddb/dexie-pr
 export { ProjectBoardApp } from './presentation/project-board-app'
 export { createProjectBoardStore } from './state/project-board-store'
 export { ActionDialog } from './presentation/controls'
+export { CommandError } from './application/agent-command'
+export type { AgentCommand, AgentCommandResult, AgentSavedData, CardAttributes } from './application/agent-command'
+export type { ProjectBoardStore } from './state/project-board-store'

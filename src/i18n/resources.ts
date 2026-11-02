@@ -1,4 +1,5 @@
 export const ru = {
+  "agentRefreshFailed": "Изменения сохранены, но экран не обновлён. Повторите чтение без повторной записи.",
   "deleteProject": "Удалить проект",
   "deleteProjectConfirmation": "Удалить проект «{{name}}»?",
   "projectDeletionSummary": "Статусов: {{statuses}}. Карточек: {{cards}}.",
@@ -143,6 +144,7 @@ export const ru = {
 } as const
 
 export const en: { [Key in keyof typeof ru]: string } = {
+  "agentRefreshFailed": "Changes were saved, but the view could not refresh. Retry reading without repeating the write.",
   "deleteProject": "Delete project",
   "deleteProjectConfirmation": "Delete project “{{name}}”?",
   "projectDeletionSummary": "Statuses: {{statuses}}. Cards: {{cards}}.",

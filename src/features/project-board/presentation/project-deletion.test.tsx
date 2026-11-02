@@ -15,7 +15,7 @@ async function setup({ count = 3, board = false, populated = true, sameNames = f
   const repo = new DexieProjectBoardRepository(db)
   for (let index = 0; index < count; index++) {
     const id = ['p', 'q', 'r'][index]
-    await repo.createProject({ id, name: sameNames ? 'Same' : ['First', 'Next', 'Last'][index], createdAt: `${index}` }, [])
+    await repo.createProject({ id, name: sameNames ? 'Same' : ['First', 'Next', 'Last'][index], createdAt: `${index}` }, [], true)
     if (populated) {
       await repo.createStatus({ id: `s-${id}`, projectId: id, name: 'Status' })
       await repo.createCard({ id: `c-${id}`, statusId: `s-${id}`, name: 'Card', description: 'Details', important: false, urgent: false })

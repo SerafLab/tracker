@@ -31,9 +31,9 @@ describe('DexieProjectBoardRepository', () => {
     const { database, repository: repo } = repository()
     await repo.open()
     vi.spyOn(database.projects, 'add').mockRejectedValueOnce(new Error('quota'))
-    await expect(repo.createProject({ id: 'broken', name: 'Паспорт', createdAt: 'now' }, [])).rejects.toThrow('quota')
-    await repo.createProject({ id: 'first', name: 'Поиск квартиры', createdAt: '1' }, [])
-    await repo.createProject({ id: 'second', name: 'Паспорт', createdAt: '2' }, [])
+    await expect(repo.createProject({ id: 'broken', name: 'Паспорт', createdAt: 'now' }, [], true)).rejects.toThrow('quota')
+    await repo.createProject({ id: 'first', name: 'Поиск квартиры', createdAt: '1' }, [], true)
+    await repo.createProject({ id: 'second', name: 'Паспорт', createdAt: '2' }, [], true)
     await repo.createStatus({ id: 'status', projectId: 'first', name: 'Найдено' })
     expect((await repo.board('second'))?.statuses).toEqual([])
   })
@@ -42,8 +42,8 @@ describe('DexieProjectBoardRepository', () => {
 
 async function populated() {
   const fixture = repository(); const { repository: repo } = fixture
-  await repo.createProject({ id: 'p', name: 'P', createdAt: 'now' }, [])
-  await repo.createProject({ id: 'q', name: 'Q', createdAt: 'later' }, [])
+  await repo.createProject({ id: 'p', name: 'P', createdAt: 'now' }, [], true)
+  await repo.createProject({ id: 'q', name: 'Q', createdAt: 'later' }, [], true)
   for (const [id, projectId] of [['s', 'p'], ['t', 'p'], ['foreign', 'q']]) await repo.createStatus({ id, projectId, name: id })
   const add = (id: string, important = false, urgent = false, statusId = 's') => repo.createCard({ id, statusId, name: id, description: '', important, urgent })
   return { ...fixture, add }
@@ -169,9 +169,9 @@ it('rolls back status deletion and compaction together when writing fails', asyn
 
 it('creates initial statuses and preference atomically, including an empty set', async () => {
   const { database: db, repository: repo } = repository()
-  await repo.createProject({ id: 'previous', name: 'Old', createdAt: '1' }, [])
+  await repo.createProject({ id: 'previous', name: 'Old', createdAt: '1' }, [], true)
   const statuses = ['To do', 'In progress', 'Done'].map((name, position) => ({ id: `s${position}`, projectId: 'new', name, position }))
-  await repo.createProject({ id: 'new', name: 'New', createdAt: '2' }, statuses)
+  await repo.createProject({ id: 'new', name: 'New', createdAt: '2' }, statuses, true)
   expect((await repo.board('new'))?.statuses).toEqual(statuses.map(status => ({ ...status, cards: [] })))
   expect(await repo.preference()).toEqual({ id: 'workspace', lastProjectId: 'new' })
   expect((await repo.board('previous'))?.statuses).toEqual([])
@@ -180,13 +180,13 @@ it('creates initial statuses and preference atomically, including an empty set',
 
 it.each(['statuses', 'workspace'] as const)('rolls back the project, statuses and preference after %s failure', async failure => {
   const { database: db, repository: repo } = repository()
-  await repo.createProject({ id: 'old', name: 'Old', createdAt: '1' }, [])
+  await repo.createProject({ id: 'old', name: 'Old', createdAt: '1' }, [], true)
   const statuses = [0, 1, 2].map(position => ({ id: `s${position}`, projectId: 'new', name: `Status ${position}`, position }))
   if (failure === 'statuses') {
     // A duplicate in the batch makes IndexedDB reject after its first valid insert.
     statuses[1].id = statuses[0].id
   } else vi.spyOn(db.workspace, 'put').mockRejectedValueOnce(Error('quota'))
-  await expect(repo.createProject({ id: 'new', name: 'New', createdAt: '2' }, statuses)).rejects.toThrow()
+  await expect(repo.createProject({ id: 'new', name: 'New', createdAt: '2' }, statuses, true)).rejects.toThrow()
   expect(await repo.projects()).toEqual([{ id: 'old', name: 'Old', createdAt: '1' }])
   expect(await db.statuses.toArray()).toEqual([])
   expect(await repo.preference()).toEqual({ id: 'workspace', lastProjectId: 'old' })
@@ -247,8 +247,8 @@ it.each(['create', 'edit', 'delete'] as const)('rolls back a failed note %s and 
 
 async function projectDeletionFixture() {
   const result = repository(), { repository: repo, database: db } = result
-  await repo.createProject({ id: 'selected', name: 'Same project', createdAt: '1' }, [])
-  await repo.createProject({ id: 'other', name: 'Same project', createdAt: '2' }, [])
+  await repo.createProject({ id: 'selected', name: 'Same project', createdAt: '1' }, [], true)
+  await repo.createProject({ id: 'other', name: 'Same project', createdAt: '2' }, [], true)
   for (const [id, projectId] of [['s1', 'selected'], ['s2', 'selected'], ['other-status', 'other']]) await repo.createStatus({ id, projectId, name: 'Status' })
   for (const [id, statusId] of [['c1', 's1'], ['c2', 's1'], ['c3', 's2'], ['other-card', 'other-status']]) {
     await repo.createCard({ id, statusId, name: 'Card', description: 'Description', important: true, urgent: false })
@@ -280,7 +280,7 @@ it('deletes one project and its statuses, cards and notes while preserving anoth
 
 it.each([false, true])('deletes an empty project with empty statuses: %s', async withStatuses => {
   const { repository: repo, database: db } = repository()
-  await repo.createProject({ id: 'p', name: 'Project', createdAt: '1' }, withStatuses ? [{ id: 's', projectId: 'p', name: 'Empty', position: 0 }] : [])
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: '1' }, withStatuses ? [{ id: 's', projectId: 'p', name: 'Empty', position: 0 }] : [], true)
   await repo.deleteProject('p')
   expect(await repo.projects()).toEqual([])
   expect(await db.statuses.count()).toBe(0)
@@ -317,7 +317,7 @@ it('reads the current children inside deletion rather than relying on a previous
 
 it.each(['creation', 'deletion'] as const)('serializes concurrent status creation and project deletion when %s starts first', async first => {
   const { repository: repo, database: db } = repository()
-  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [])
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [], true)
   const create = () => repo.createStatus({ id: 'concurrent', projectId: 'p', name: 'Concurrent' })
   let creation: ReturnType<typeof create>, deletion: Promise<void>
   if (first === 'creation') { creation = create(); deletion = repo.deleteProject('p') }
@@ -337,7 +337,7 @@ it.each(['creation', 'deletion'] as const)('serializes concurrent status creatio
 
 it('assigns distinct dense positions to concurrently created statuses and preserves them after reopening', async () => {
   const { repository: repo, database: db } = repository()
-  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [])
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [], true)
   const created = await Promise.all(Array.from({ length: 5 }, (_, index) => repo.createStatus({ id: `s-${index}`, projectId: 'p', name: `Status ${index}` })))
   expect(created.map(status => status.position)).toEqual([0, 1, 2, 3, 4])
   const statuses = (await repo.board('p'))!.statuses

@@ -14,8 +14,8 @@ afterEach(async () => { pwa.ready = false; pwa.update.mockClear(); cleanup(); hi
 async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectBoardRepository) => void = () => {}) {
   const db = new ProjectBoardDatabase(`details-${crypto.randomUUID()}`); databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
-  await repo.createProject({ id: 'p', name: 'Project', createdAt: '2026-11-01T00:00:00Z' }, [])
-  await repo.createProject({ id: 'q', name: 'Other', createdAt: '2026-11-01T00:00:01Z' }, [])
+  await repo.createProject({ id: 'p', name: 'Project', createdAt: '2026-11-01T00:00:00Z' }, [], true)
+  await repo.createProject({ id: 'q', name: 'Other', createdAt: '2026-11-01T00:00:01Z' }, [], true)
   await repo.createStatus({ id: 's', projectId: 'p', name: 'Status' })
   await repo.createCard({ id: 'c', statusId: 's', name: 'Card', description: '', important: false, urgent: false })
   history.replaceState(null, '', `/${hash}`)

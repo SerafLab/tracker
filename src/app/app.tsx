@@ -1,3 +1,7 @@
+import { useStore } from 'zustand'
+import { createBrowserAdapter } from './webmcp/adapter'
+import { useWebMcp } from './webmcp/use-webmcp'
+import { ToolError } from './webmcp/error'
 import { LocaleProvider } from '../i18n/provider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -142,12 +146,40 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     return () => { active = false; ++request; removeEventListener('popstate', onHistory); removeEventListener('hashchange', onHistory) }
   }, [runtime, requestLeave])
 
+  const agentPending = useStore(runtime.store, state => state.agentPending)
+  const agentRefreshError = useStore(runtime.store, state => state.agentRefreshError)
+  useWebMcp(createBrowserAdapter({
+    store: runtime.store,
+    state: () => staleConnection.current ? 'restart_required' : runtime.store.getState().storageState,
+    route: () => location.hash,
+    isDirty: () => !!draftGuard.current?.isDirty() || !!pendingRef.current || pendingSave.current,
+    reads: runtime.useCases,
+    onSaved: requestPersistentStorage,
+    async showWorkspace(projectId) {
+      const assertClean = () => {
+        if (staleConnection.current) throw new ToolError('restart_required')
+        if (draftGuard.current?.isDirty() || pendingRef.current || pendingSave.current) throw new ToolError('conflict', 'Unsaved drafts block showing another workspace')
+      }
+      assertClean()
+      if (projectId && !await runtime.useCases.board(projectId)) throw new ToolError('not_found')
+      assertClean()
+      const expected = projectId ? routeFor(projectId) : ''
+      await navigate.current(expected)
+      const workspace = runtime.store.getState().workspace
+      if (location.hash !== expected || (projectId ? workspace.kind !== 'board' || workspace.board.id !== projectId : workspace.kind !== 'catalogue')) throw new ToolError('storage_unavailable', 'Requested workspace was not applied')
+      const preference = await runtime.useCases.preference()
+      if (location.hash !== expected) throw new ToolError('conflict', 'Workspace changed while confirming navigation')
+      if (preference?.lastProjectId !== projectId) throw new ToolError('storage_unavailable', 'Workspace preference was not confirmed')
+      return { route: location.hash, url: location.href }
+    },
+  }), restartRequired)
+
   const navigateToProject = async (id: Id) => { requestLeave(() => navigate.current(routeFor(id))) }
   const navigateToCard = async (projectId: Id, cardId: Id) => { requestLeave(() => navigate.current(routeFor(projectId, cardId))) }
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
   const onProjectDeleted = async (id: Id) => { if (routeFromHash()?.projectId === id) await navigate.current('', false) }
   if (restartRequired) return <RestartRequired onRestart={reloadApp} />
-  return <><ProjectBoardApp store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><InstallGuidance /><PwaUpdateRegistration requestUpdate={requestLeave} />
+  return <>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}<ProjectBoardApp store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><InstallGuidance /><PwaUpdateRegistration requestUpdate={requestLeave} />
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
 }

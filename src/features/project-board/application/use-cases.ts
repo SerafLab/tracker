@@ -1,3 +1,4 @@
+import type { AgentCommand, CardAttributes, RepositoryAgentCommand } from './agent-command'
 import { requiredName, type CardInput, type CardPlacement, type CreateProjectInput, type Id } from '../domain/model'
 import type { ProjectBoardRepository } from './repository'
 
@@ -19,6 +20,17 @@ export function createProjectBoardUseCases(dependencies: {
   }
 
   return {
+    executeAgentCommand: (command: AgentCommand) => {
+      let prepared: RepositoryAgentCommand
+      switch (command.kind) {
+        case 'create_project': prepared = { kind: command.kind, project: { id: createId(), name: name(command.name), createdAt: now() } }; break
+        case 'create_status': prepared = { kind: command.kind, status: { id: createId(), projectId: command.projectId, name: name(command.name) } }; break
+        case 'create_card': prepared = { kind: command.kind, card: { id: createId(), statusId: command.statusId, name: name(command.name), description: '', important: command.important, urgent: command.urgent } }; break
+        default: prepared = 'name' in command ? { ...command, name: name(command.name) } : command
+      }
+      return repository.executeAgentCommand(prepared)
+    },
+    updateCardAttributes: (id: Id, attributes: CardAttributes) => repository.updateCardAttributes(id, { ...attributes, name: name(attributes.name) }),
     open: () => repository.open(),
     projects: () => repository.projects(),
     preference: () => repository.preference(),
@@ -28,7 +40,7 @@ export function createProjectBoardUseCases(dependencies: {
       const projectName = name(input.name)
       const statusNames = input.initialStatusNames.map(name)
       const project = { id: createId(), name: projectName, createdAt: now() }
-      return repository.createProject(project, statusNames.map((statusName, position) => ({ id: createId(), projectId: project.id, name: statusName, position })))
+      return repository.createProject(project, statusNames.map((statusName, position) => ({ id: createId(), projectId: project.id, name: statusName, position })), true)
     },
     cardDetails: (projectId: Id, cardId: Id) => repository.cardDetails(projectId, cardId),
     createNote: (cardId: Id, text: string) => {

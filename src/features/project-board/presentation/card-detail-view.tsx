@@ -12,6 +12,7 @@ const sameFields = (a: CardInput, b: CardInput) => a.name === b.name && a.descri
 
 type Props = {
   details: CardDetails
+  busy: boolean
   onReturn(): Promise<void>
   onCatalogue(): Promise<void>
   onSave(input: CardInput): Promise<boolean>
@@ -22,7 +23,7 @@ type Props = {
   requestLeave(action: () => void | Promise<void>): void
 }
 
-export function CardDetailView({ details, onReturn, onCatalogue, onSave, onCreateNote, onUpdateNote, onDeleteNote, registerDraftGuard, requestLeave }: Props) {
+export function CardDetailView({ details, busy, onReturn, onCatalogue, onSave, onCreateNote, onUpdateNote, onDeleteNote, registerDraftGuard, requestLeave }: Props) {
   const { t, i18n } = useTranslation()
   const [fields, setFields] = useState<CardInput>(() => fieldsOf(details))
   const [confirmed, setConfirmed] = useState<CardInput>(() => fieldsOf(details))
@@ -128,9 +129,9 @@ export function CardDetailView({ details, onReturn, onCatalogue, onSave, onCreat
   }
   const date = (value: string) => new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
   const noteEditor = editor ? <form className="note-editor" onSubmit={event => { event.preventDefault(); void run(saveNote) }}>
-    <div className="field"><label className="field-label" htmlFor={noteInputId}>{t(editor.id ? 'editNote' : 'newNote')}</label><textarea id={noteInputId} className="text-input" rows={5} autoFocus value={editor.text} disabled={saving} aria-describedby={noteError ? noteErrorId : undefined} onChange={event => setEditor({ ...editor, text: event.target.value })} /></div>
+    <div className="field"><label className="field-label" htmlFor={noteInputId}>{t(editor.id ? 'editNote' : 'newNote')}</label><textarea id={noteInputId} className="text-input" rows={5} autoFocus value={editor.text} disabled={saving || busy} aria-describedby={noteError ? noteErrorId : undefined} onChange={event => setEditor({ ...editor, text: event.target.value })} /></div>
     {noteError ? <p id={noteErrorId} role="alert" className="field-error">{t(noteError)}</p> : null}
-    <div className="form-actions"><button type="button" className="button button-secondary" disabled={saving} onClick={closeEditor}>{t('cancel')}</button><button className="button button-primary" disabled={saving}>{t(editor.id ? 'saveNote' : 'addNote')}</button></div>
+    <div className="form-actions"><button type="button" className="button button-secondary" disabled={saving || busy} onClick={closeEditor}>{t('cancel')}</button><button className="button button-primary" disabled={saving || busy}>{t(editor.id ? 'saveNote' : 'addNote')}</button></div>
   </form> : null
   return <>
     <AppBar title={details.card.name} onReturn={() => void onCatalogue()} />
@@ -138,22 +139,22 @@ export function CardDetailView({ details, onReturn, onCatalogue, onSave, onCreat
       <button className="button button-secondary" onClick={() => void onReturn()}>{t('backToBoard')}</button>
       <p className="muted-copy detail-context">{details.project.name} · {details.status.name}</p>
       <form className="detail-fields surface-card" aria-label={t('cardFields')} onSubmit={event => { event.preventDefault(); void run(saveFields) }}>
-        <label className="field"><span className="field-label">{t('cardName')}</span><input className="text-input" value={fields.name} disabled={saving} aria-invalid={fieldError === 'nameRequired' || undefined} aria-describedby={fieldError ? fieldErrorId : undefined} onChange={event => setFields({ ...fields, name: event.target.value })} /></label>
-        <div className="field"><label className="field-label" htmlFor={descriptionId}>{t('cardDescription')}</label><textarea id={descriptionId} className="text-input" rows={6} value={fields.description} disabled={saving} onChange={event => setFields({ ...fields, description: event.target.value })} /></div>
-        <div className="card-flags">{(['important', 'urgent'] as const).map(flag => <label className="card-flag-toggle" key={flag}><input type="checkbox" checked={fields[flag]} disabled={saving} onChange={event => setFields({ ...fields, [flag]: event.target.checked })} /><span>{t(flag)}</span></label>)}</div>
+        <label className="field"><span className="field-label">{t('cardName')}</span><input className="text-input" value={fields.name} disabled={saving || busy} aria-invalid={fieldError === 'nameRequired' || undefined} aria-describedby={fieldError ? fieldErrorId : undefined} onChange={event => setFields({ ...fields, name: event.target.value })} /></label>
+        <div className="field"><label className="field-label" htmlFor={descriptionId}>{t('cardDescription')}</label><textarea id={descriptionId} className="text-input" rows={6} value={fields.description} disabled={saving || busy} onChange={event => setFields({ ...fields, description: event.target.value })} /></div>
+        <div className="card-flags">{(['important', 'urgent'] as const).map(flag => <label className="card-flag-toggle" key={flag}><input type="checkbox" checked={fields[flag]} disabled={saving || busy} onChange={event => setFields({ ...fields, [flag]: event.target.checked })} /><span>{t(flag)}</span></label>)}</div>
         {fieldError ? <p id={fieldErrorId} className="field-error" role="alert">{t(fieldError)}</p> : null}
-        <div className="form-actions"><button className="button button-primary" disabled={saving}>{t('save')}</button></div>
+        <div className="form-actions"><button className="button button-primary" disabled={saving || busy}>{t('save')}</button></div>
       </form>
       {details.card.description ? <section className="saved-description surface-card" aria-label={t('savedDescription')}><h2>{t('savedDescription')}</h2><PlainText text={details.card.description} /></section> : null}
       <section ref={history} className="note-history" aria-label={t('noteHistory')}><h2>{t('noteHistory')}</h2>
         {details.notes.length === 0 ? <p className="muted-copy">{t('noNotes')}</p> : <ol className="note-list">{details.notes.map(note => <li className="note surface-card" key={note.id} data-note-id={note.id}>
           <p className="note-date"><time dateTime={note.createdAt}>{date(note.createdAt)}</time>{note.updatedAt ? <> · {t('noteEdited')} <time dateTime={note.updatedAt}>{date(note.updatedAt)}</time></> : null}</p>
           {editor?.id === note.id ? noteEditor : <PlainText text={note.text} />}
-          <div className="note-actions"><button className="button button-quiet" disabled={saving} onClick={() => openEditor(note)}>{t('editNote')}</button><button className="button button-quiet" disabled={saving} onClick={event => { deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}>{t('deleteNote')}</button></div>
+          <div className="note-actions"><button className="button button-quiet" disabled={saving || busy} onClick={() => openEditor(note)}>{t('editNote')}</button><button className="button button-quiet" disabled={saving || busy} onClick={event => { deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}>{t('deleteNote')}</button></div>
         </li>)}</ol>}
-        {editor && editor.id === null ? noteEditor : <button ref={addTrigger} className="button button-secondary" disabled={saving} onClick={() => openEditor()}>{t('addNote')}</button>}
+        {editor && editor.id === null ? noteEditor : <button ref={addTrigger} className="button button-secondary" disabled={saving || busy} onClick={() => openEditor()}>{t('addNote')}</button>}
       </section>
-      {deleting ? <ActionDialog title={t('deleteNote')} returnFocus={deleteTrigger} onClose={closeDeletion}><p>{t('deleteNoteConfirmation')}</p><blockquote className="detail-text">{deleting.text}</blockquote><p>{t('deletionIrreversible')}</p>{deleteError ? <p className="save-error" role="alert">{t('saveError')}</p> : null}<div className="form-actions"><button ref={cancelDelete} type="button" className="button button-secondary" disabled={saving} onClick={closeDeletion}>{t('cancel')}</button><button type="button" className="button button-primary" disabled={saving} onClick={() => void deleteNote()}>{t('delete')}</button></div></ActionDialog> : null}
+      {deleting ? <ActionDialog title={t('deleteNote')} returnFocus={deleteTrigger} onClose={closeDeletion}><p>{t('deleteNoteConfirmation')}</p><blockquote className="detail-text">{deleting.text}</blockquote><p>{t('deletionIrreversible')}</p>{deleteError ? <p className="save-error" role="alert">{t('saveError')}</p> : null}<div className="form-actions"><button ref={cancelDelete} type="button" className="button button-secondary" disabled={saving || busy} onClick={closeDeletion}>{t('cancel')}</button><button type="button" className="button button-primary" disabled={saving || busy} onClick={() => void deleteNote()}>{t('delete')}</button></div></ActionDialog> : null}
     </main>
   </>
 }

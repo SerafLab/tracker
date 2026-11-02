@@ -29,7 +29,7 @@ Only call `delete_card` or `delete_status` when the user explicitly intends dele
 
 ## Interpret the result
 
-- Announce a mutation as saved only from a valid `ok:true` response for the pinned session and its confirmed data. An `unchanged` outcome is a no-op. A post-commit view warning with `saved:true` means the mutation persisted: refresh/read only, never resend it to fix the screen.
+- Announce a task mutation as saved only from a valid `ok:true` response for the pinned session with `data.saved === true` and its confirmed data. `data.outcome === 'unchanged'` is a no-op. `data.warning.code === 'view_refresh_failed'` alongside `data.saved:true` means the mutation persisted: retain the saved result and refresh/read only, never resend it to fix the screen. These are version-1 result fields even when the host does not publish an output schema.
 - `conflict` from dirty drafts, a pending write or DnD recovery leaves those user actions intact. Do not clear drafts, force navigation, queue a delayed write or retry automatically. Explain the concrete conflict and let the user finish/recover before a fresh request.
 - Invalid arguments, missing IDs and nonempty statuses need correction/inspection, not blind retries. Follow restart/storage-unavailable guidance without clearing site data or creating replacement projects.
 - If a mutation call times out, is aborted, loses its document or throws a host exception after invocation may have begun, classify it as **outcome_unknown** unless there is positive evidence of pre-dispatch refusal. Cancellation/unregistration is not rollback. Do not infer that nothing was saved or automatically replay with the same/new ID or a new session. Rebind read-only when possible, inspect the affected project/board and report what is known. Indistinguishable duplicate names do not prove which record a lost call created. A further creation/deletion requires a new explicit decision based on the observed state.
@@ -37,7 +37,7 @@ Only call `delete_card` or `delete_status` when the user explicitly intends dele
 
 ## Show the workspace
 
-Resolve the project and invoke `show_workspace` with its ID, or omit `projectId` for the catalogue. It is a mutation with session/request metadata. Require success describing the **actual applied route and app URL**; a requested/scheduled transition or guard dialog is not success. Dirty drafts/pending state return conflict, with no force/discard option.
+Resolve the project and invoke `show_workspace` with its ID, or omit `projectId` for the catalogue. It is a mutation with session/request metadata. Require `ok:true` for the pinned session and `data:{route,url}` describing the **actual applied hash route and app URL** (`route === ''` for the catalogue, `'#project/<encodedId>'` for its board). This navigation result has no `data.saved` or `data.warning`; do not require either. A requested/scheduled transition or guard dialog is not success. Dirty drafts/pending state return conflict, with no force/discard option.
 
 Only after success, use the host to make the same pinned tab visible. If visibility control is unavailable, report the successfully applied route and that showing it could not be completed. Do not open a second tab/context to simulate showing the first. An unshown browser panel can still have a `visible` document; do not promise execution while the document is hidden, unloaded or closed.
 

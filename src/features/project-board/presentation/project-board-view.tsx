@@ -104,7 +104,7 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
       onReturn={() => void onReturn()}
       creation={{ disabled: busy, label: t('addStatus'), triggerRef: addStatusTrigger, onSelect: () => setCreatingStatus(true) }}
       rename={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setRenamingProject(true) }}
-      deleteProject={{ triggerRef: projectMenu, onSelect: () => setDeletingProject(true) }}
+      deleteProject={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setDeletingProject(true) }}
     />
     <main ref={root} className="app-shell">
       {saveError && !deletingProject ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}

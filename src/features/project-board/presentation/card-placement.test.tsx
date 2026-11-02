@@ -34,7 +34,7 @@ it.each(['ru', 'en'])('offers only available within-group steps in %s and restor
   await user.click(menu('Middle')); await user.click(screen.getByRole('menuitem', { name: en ? 'Move up' : 'Поднять выше' }))
   await waitFor(() => expect(names()).toEqual(['Both', 'Middle', 'First', 'Last', 'None']))
   expect(menu('Middle')).toHaveFocus()
-  expect(screen.getByRole('status')).toHaveTextContent(en ? 'Card placement saved' : 'Расположение карточки сохранено')
+  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(en ? 'Card placement saved' : 'Расположение карточки сохранено'))
   expect(location.hash).toBe('#project/p')
 })
 
@@ -49,6 +49,9 @@ it('preserves the confirmed board after refresh failure, blocks conflicting acti
   expect(screen.getByRole('button', { name: 'Действия карточки First' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Добавить статус' })).toBeDisabled()
   expect(document.querySelector('.status-columns')).toHaveAttribute('inert')
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  expect(screen.getByRole('button', { name: 'Удалить проект' })).toBeDisabled()
+  await user.keyboard('{Escape}')
   await user.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Обновить доску' }))
   await waitFor(() => expect(names()).toEqual(['Both', 'Middle', 'First', 'Last', 'None']))
   expect(committed).toHaveBeenCalledOnce()

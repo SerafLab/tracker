@@ -12,7 +12,7 @@ async function fixture(page: Page) {
         signal.addEventListener('abort', () => { if (tools.get(tool.name) === tool) tools.delete(tool.name) })
       },
     } })
-    Object.assign(window, { webmcpFixture: { names: () => [...tools.keys()], loseNextReply: () => { loseReply = true }, async call(name: string, input: unknown) { const lose = loseReply; loseReply = false; const result = await tools.get(name)!.execute(input); if (lose) throw Error('Injected lost host reply after execution'); return result } } })
+    Object.assign(window, { webmcpFixture: { names: () => [...tools.keys()], capture: (name: string) => tools.get(name)!.execute, loseNextReply: () => { loseReply = true }, async call(name: string, input: unknown) { const lose = loseReply; loseReply = false; const result = await tools.get(name)!.execute(input); if (lose) throw Error('Injected lost host reply after execution'); return result } } })
   })
   await page.goto('/tracker/')
   await expect.poll(() => page.evaluate(() => (window as any).webmcpFixture.names().length)).toBe(14)
@@ -150,4 +150,22 @@ test('native-contract fixture isolates tabs/sessions and deduplicates identical 
   const isolatedHost = await fixture(isolatedPage)
   expect((await isolatedHost.call('list_projects')).data.projects).toEqual([])
   await isolated.close()
+})
+
+
+test('native-contract fixture revokes old handles and blocks both tool and UI writes after storage versionchange', async ({ page }) => {
+  const host = await fixture(page), oldSession = host.session()
+  await host.call('create_project', { name: 'Retained' })
+  await page.evaluate(() => { (window as any).oldFixtureCall = (window as any).webmcpFixture.capture('create_project') })
+  await page.evaluate(() => new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open('personal-project-tracker', 40)
+    request.onsuccess = () => { request.result.close(); resolve() }
+    request.onerror = () => reject(request.error)
+  }))
+  await expect(page.getByRole('heading', { name: 'Нужно перезапустить EasyTrack' })).toBeVisible()
+  await expect.poll(async () => (await connection(page)).data.state).toBe('restart_required')
+  expect(await page.evaluate(input => (window as any).oldFixtureCall(input), { sessionId: oldSession, requestId: 2, name: 'Blocked old handle' })).toMatchObject({ error: { code: 'disconnected' } })
+  await host.rebind()
+  expect(await host.call('create_project', { name: 'Blocked fresh handle' })).toMatchObject({ error: { code: 'restart_required' } })
+  await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toHaveCount(0)
 })

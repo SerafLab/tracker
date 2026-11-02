@@ -1,9 +1,8 @@
 import { CommandError } from '../../features/project-board'
 import { inputSchemas, dataSchemas, readTools, type ToolName, type ToolResult, type ErrorCode, type ConnectionState } from './schemas'
 
-export class ToolError extends Error {
-  constructor(readonly code: ErrorCode, message: string = code) { super(message) }
-}
+import { ToolError } from './error'
+export { ToolError } from './error'
 export type RuntimeDependencies = {
   state(): ConnectionState
   route(): string

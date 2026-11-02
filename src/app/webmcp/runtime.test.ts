@@ -127,3 +127,16 @@ it.each(['list_projects', 'get_board'] as const)('bounds pending read %s on time
     expect(await runtime.call(tool, input)).toMatchObject({ ok: true })
   } finally { vi.useRealTimers() }
 })
+
+it('revokes every partial handle when native registration fails', async () => {
+  const tools = new Map<string, NativeTool>()
+  const context = { registerTool: vi.fn((tool: NativeTool, { signal }: { signal: AbortSignal }) => {
+    if (tool.name === 'create_status') throw Error('native registration refused')
+    tools.set(tool.name, tool)
+    signal.addEventListener('abort', () => tools.delete(tool.name))
+  }) }
+  const { runtime } = setup(), attempt = registerPageTools(context, runtime)
+  await attempt.ready
+  expect(tools.size).toBe(0)
+  expect(await runtime.call('get_connection', {})).toMatchObject({ error: { code: 'disconnected' } })
+})

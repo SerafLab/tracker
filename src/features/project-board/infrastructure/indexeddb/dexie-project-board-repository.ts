@@ -124,16 +124,18 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
   async renameProject(id: Id, name: string) { if (!await this.db.projects.update(id, { name })) throw new CommandError('not_found') }
 
   async board(projectId: Id): Promise<ProjectBoard | undefined> {
-    const project = await this.db.projects.get(projectId)
-    if (!project) return undefined
-    const statuses = await this.db.statuses.where('projectId').equals(projectId).sortBy('position')
-    return {
-      ...project,
-      statuses: await Promise.all(statuses.map(async status => ({
-        ...status,
-        cards: await this.db.cards.where('statusId').equals(status.id).sortBy('position'),
-      }))),
-    }
+    return this.db.transaction('r', this.db.projects, this.db.statuses, this.db.cards, async () => {
+      const project = await this.db.projects.get(projectId)
+      if (!project) return undefined
+      const statuses = await this.db.statuses.where('projectId').equals(projectId).sortBy('position')
+      return {
+        ...project,
+        statuses: await Promise.all(statuses.map(async status => ({
+          ...status,
+          cards: await this.db.cards.where('statusId').equals(status.id).sortBy('position'),
+        }))),
+      }
+    })
   }
 
   async cardDetails(projectId: Id, cardId: Id): Promise<CardDetails | undefined> {

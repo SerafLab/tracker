@@ -1,3 +1,4 @@
+import { CommandError, type AgentCommand, type AgentSavedData } from '../application/agent-command'
 import { createStore } from 'zustand/vanilla'
 import type { CardDetails, CardPlacement, CardPlacementResult, CardInput, CreateProjectInput, Note, Id, Project, ProjectBoard } from '../domain/model'
 import type { DeleteStatusResult } from '../application/repository'
@@ -18,6 +19,13 @@ export type ShowCardResult = 'shown' | 'missing' | 'unavailable' | 'superseded'
 
 export type ProjectBoardState = {
   workspace: Workspace
+  storageState: 'opening' | 'ready' | 'storage_unavailable'
+  agentPending: boolean
+  agentRefreshError: boolean
+  assertAgentReady(): void
+  beginAgentOperation(): () => void
+  executeAgentCommand(command: AgentCommand): Promise<AgentSavedData & { warning?: { code: 'view_refresh_failed'; message: string } }>
+  retryAgentRefresh(): Promise<boolean>
   saveError: boolean
   placementPending: boolean
   placementRefreshError: Id | null
@@ -47,6 +55,7 @@ export type ProjectBoardState = {
 
 export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutate = () => true) {
   return createStore<ProjectBoardState>((set, get) => {
+    let pendingUiWrites = 0
     let request = 0
     let navigation = 0
     let currentProjectId: Id | undefined
@@ -64,7 +73,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       }
     }
     const preserveConfirmedState = async (operation: () => Promise<unknown>) => {
-      if (!canMutate() || get().placementPending || get().placementRefreshError) return false
+      if (!canMutate() || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return false
       const startedAt = navigation
       try {
         await operation()
@@ -76,8 +85,62 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       }
     }
 
-    return {
+    const assertAgentReady = () => {
+      if (!canMutate()) throw new CommandError('restart_required')
+      if (get().storageState !== 'ready') throw new CommandError(get().storageState === 'opening' ? 'disconnected' : 'storage_unavailable')
+      if (pendingUiWrites || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) throw new CommandError('conflict', 'A write or view recovery is pending')
+    }
+    const refreshCurrent = async (affectedProject?: Id) => {
+      // A navigation already reading its destination owns that request; never supersede it with a background refresh.
+      if (pendingUiWrites) return true
+      const workspace = get().workspace, startedAt = navigation
+
+      if (workspace.kind === 'board' && affectedProject && workspace.board.id !== affectedProject) return true
+      if (workspace.kind === 'card' && affectedProject && workspace.details.project.id !== affectedProject) return true
+      const refreshRequest = ++request
+      try {
+        let refreshed: Workspace = workspace
+        if (workspace.kind === 'catalogue') refreshed = { kind: 'catalogue', projects: await useCases.projects() }
+        else if (workspace.kind === 'board') {
+          const board = await useCases.board(workspace.board.id)
+          if (!board) throw new Error('board_not_found')
+          refreshed = { kind: 'board', board }
+        } else if (workspace.kind === 'card') {
+          const details = await useCases.cardDetails(workspace.details.project.id, workspace.details.card.id)
+          if (details) refreshed = { kind: 'card', details }
+          else refreshed = { kind: 'card-missing', project: workspace.details.project }
+        }
+        if (navigation === startedAt && request === refreshRequest) set({ workspace: refreshed, agentRefreshError: false })
+        return true
+      } catch {
+        if (navigation === startedAt && request === refreshRequest) { set({ agentRefreshError: true }); return false }
+        return true
+      }
+    }
+    const state: ProjectBoardState = {
       workspace: { kind: 'loading' },
+      storageState: 'opening',
+      agentPending: false,
+      agentRefreshError: false,
+      assertAgentReady,
+      beginAgentOperation() {
+        assertAgentReady()
+        set({ agentPending: true })
+        return () => set({ agentPending: false })
+      },
+      async executeAgentCommand(command) {
+        const release = get().beginAgentOperation()
+        try {
+          const result = await useCases.executeAgentCommand(command)
+          const refreshed = await refreshCurrent(result.projectId)
+          return refreshed ? result.data : { ...result.data, warning: { code: 'view_refresh_failed', message: 'Saved; retry reading the current view without repeating the mutation' } }
+        } finally { release() }
+      },
+      async retryAgentRefresh() {
+        if (!canMutate() || get().agentPending || get().placementPending || pendingUiWrites) return false
+        set({ agentPending: true })
+        try { return await refreshCurrent() } finally { set({ agentPending: false }) }
+      },
       saveError: false,
       placementPending: false,
       placementRefreshError: null,
@@ -90,7 +153,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
           const board = await useCases.board(id)
           if (!board) throw new Error('board_not_found')
           if (request !== startedAt || currentProjectId !== id || currentCardId) return false
-          set({ workspace: { kind: 'board', board }, placementRefreshError: null })
+          set({ workspace: { kind: 'board', board }, placementRefreshError: null, agentRefreshError: false })
           return true
         } catch { return false }
         finally { set({ placementPending: false }) }
@@ -98,9 +161,10 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       async openStorage() {
         try {
           await useCases.open()
+          set({ storageState: 'ready' })
           return true
         } catch {
-          set({ workspace: { kind: 'unavailable' } })
+          set({ workspace: { kind: 'unavailable' }, storageState: 'storage_unavailable' })
           return false
         }
       },
@@ -117,7 +181,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         }
       },
       async showCatalogue() {
-        set({ placementRefreshError: null })
+        set({ placementRefreshError: null, agentRefreshError: false })
         ++navigation
         const startedAt = ++request
         currentProjectId = undefined
@@ -139,7 +203,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
           if (request !== startedAt || !board) return false
           if (remember && canMutate()) await rememberProject(id)
           if (request !== startedAt) return false
-          set({ workspace: { kind: 'board', board }, placementRefreshError: null })
+          set({ workspace: { kind: 'board', board }, placementRefreshError: null, agentRefreshError: false })
           return true
         } catch {
           if (request === startedAt) set({ workspace: { kind: 'unavailable' } })
@@ -199,7 +263,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         return true
       },
       async createProject(input) {
-        if (!canMutate() || get().placementPending || get().placementRefreshError) return undefined
+        if (!canMutate() || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return undefined
         try {
           const project = await useCases.createProject(input)
           set({ saveError: false })
@@ -247,7 +311,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       },
       async deleteStatus(projectId, statusId) {
         const startedAt = navigation
-        if (!canMutate() || get().placementPending || get().placementRefreshError) return 'failed'
+        if (!canMutate() || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return 'failed'
         try {
           const result = await useCases.deleteStatus(statusId)
           if (navigation === startedAt) set({ saveError: false })
@@ -286,7 +350,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         return true
       },
       async moveCard(projectId, cardId, placement) {
-        if (!canMutate() || get().placementPending || get().placementRefreshError) return 'failed'
+        if (!canMutate() || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return 'failed'
         const startedAt = navigation
         set({ placementPending: true, saveError: false })
         let result: CardPlacementResult
@@ -309,6 +373,15 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         return result
       },
     }
+    const tracked = ['createNote', 'updateNote', 'deleteNote', 'createProject', 'deleteProject', 'renameProject', 'createStatus', 'renameStatus', 'deleteStatus', 'moveStatus', 'createCard', 'updateCard', 'deleteCard', 'moveCard', 'clearLastProject', 'showBoard', 'showCard', 'showCatalogue'] as const
+    for (const name of tracked) {
+      const action = state[name] as (...args: never[]) => Promise<unknown>
+      ;(state as unknown as Record<string, (...args: never[]) => Promise<unknown>>)[name] = async (...args) => {
+        pendingUiWrites++
+        try { return await action(...args) } finally { pendingUiWrites-- }
+      }
+    }
+    return state
   })
 }
 

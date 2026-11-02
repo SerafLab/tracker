@@ -24,7 +24,7 @@ export type AgentSavedData = { saved: true } & (
   | { deletedId: Id }
 )
 export type AgentCommandResult = { projectId: Id; data: AgentSavedData }
-export type CommandErrorCode = 'not_found' | 'conflict' | 'status_not_empty'
+export type CommandErrorCode = 'not_found' | 'conflict' | 'status_not_empty' | 'storage_unavailable' | 'restart_required' | 'disconnected'
 export class CommandError extends Error {
   constructor(readonly code: CommandErrorCode, message: string = code) { super(message) }
 }

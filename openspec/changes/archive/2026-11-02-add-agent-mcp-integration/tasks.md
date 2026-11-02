@@ -1,6 +1,6 @@
 # Tasks
 
-Текущий native gate подтверждает только marker-only feasibility и выбор транспорта. Task API, skill, candidate/production task workflows и пользовательский новый чат ещё не реализованы/не проверены. Failed WS и успешная native история сохраняются в `docs/agents/mcp-browser-qa.md`.
+Task API, repository skill и pre-PR candidate workflow реализованы и проверены. Все14tools фактически вызваны в реальном IAB кандидата, включая явно разрешённое пользователем тестовое удаление. Production task workflow и пользовательский новый чат остаются обязательным post-deploy handoff и пока не проверены. Failed WS и успешная native история сохраняются в `docs/agents/mcp-browser-qa.md`.
 
 ## 1. Подтверждённый транспорт и решение
 
@@ -35,16 +35,16 @@
 
 ## 5. Skill и документы поддерживаемого workflow
 
-- [ ] 5.1 Через skill-creator создать репозиторный EasyTrack skill для pinned browser/tab/session, discovery/get_connection/version/ready, разрешения ID и native CRUD/show; validator и сценарии должны покрыть неоднозначный проект, отсутствие молчаливого создания, явное удаление/confirm:true, stale handles, outcome_unknown и unsupported host без DOM CRUD/внешнего браузера/stdio.
-- [ ] 5.2 Дополнить README и `docs/agents/mcp-integration.md` установкой skill в других чатах и точными шагами поддерживаемого native host; пройти доступные шаги инструкции, не меняя глобальную конфигурацию и не создавая пользовательский чат. Отдельно описать, что настоящий new-chat walkthrough требует пользователя или его отдельного явного запроса на создание чата.
+- [x] 5.1 Через skill-creator создать репозиторный EasyTrack skill для pinned browser/tab/session, discovery/get_connection/version/ready, разрешения ID и native CRUD/show; validator и сценарии должны покрыть неоднозначный проект, отсутствие молчаливого создания, явное удаление/confirm:true, stale handles, outcome_unknown и unsupported host без DOM CRUD/внешнего браузера/stdio.
+- [x] 5.2 Дополнить README и `docs/agents/mcp-integration.md` установкой skill в других чатах и точными шагами поддерживаемого native host; пройти доступные шаги инструкции, не меняя глобальную конфигурацию и не создавая пользовательский чат. Отдельно описать, что настоящий new-chat walkthrough требует пользователя или его отдельного явного запроса на создание чата.
 - [x] 5.3 Обновить продуктовые границы и ADR native document-bound интеграцией, сохранив исходное failed WS и successful native marker evidence; проверить отсутствие обещаний task/core/new-chat readiness до их фактической приёмки и подготовить QA record с отдельными candidate/production/user-walkthrough состояниями.
 
 ## 6. Pre-PR приёмка реализации
 
 - [x] 6.1 Добавить интеграционный native-contract host fixture → page adapter → IndexedDB → UI сценарий всех tool операций, description preservation, append placement, изоляции, потерь ответа и отказов; test names/QA должны явно называть fixture и не выдавать её за native availability proof.
-- [ ] 6.2 Проверить фактический native task workflow на подготовленной candidate-сборке в отдельном тестовом браузерном контексте: discovery/get_connection, создание проекта/статусов/карточек, чтение/изменение/перенос/разрешённое удаление, UI agreement, show и reload. Записать реальный host/version/visibility и границу candidate-проверки; не подменять ею production task acceptance.
+- [x] 6.2 Проверить фактический native task workflow на подготовленной candidate-сборке в отдельном тестовом браузерном контексте: discovery/get_connection, создание проекта/статусов/карточек, чтение/изменение/перенос/разрешённое удаление, UI agreement, show и reload. Записать реальный host/version/visibility и границу candidate-проверки; не подменять ею production task acceptance.
 - [x] 6.3 Выполнить `npm run check`, strict OpenSpec validation и diff check; проверить architecture boundaries, типы/production bundle, unit/UI/contract/browser tests, отсутствие Node transport dependencies и обхода pre-push/CI. Исправить все ошибки до успешного результата.
-- [ ] 6.4 Получить независимый review соответствия спецификации и объединённым CardInput/presets/notes/deletion/DnD контрактам; устранить существенные замечания и подготовить проверенный implementation result для синхронизации/архивирования и одного PR по правилам репозитория.
+- [x] 6.4 Получить независимый review соответствия спецификации и объединённым CardInput/presets/notes/deletion/DnD контрактам; устранить существенные замечания и подготовить проверенный implementation result для синхронизации/архивирования и одного PR по правилам репозитория.
 
 ## Release handoff после pre-PR приёмки
 

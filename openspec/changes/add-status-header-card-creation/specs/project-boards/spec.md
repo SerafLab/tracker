@@ -56,3 +56,7 @@ The system SHALL provide two card-creation entries in each status when the board
 #### Scenario: Saving from either entry fails
 - **WHEN** a user opens the form from either entry, enters data, and saving fails
 - **THEN** no card appears, the form retains its values and error, and closing it returns focus to the originating entry when that entry remains available
+
+#### Scenario: User sees both creation entries
+- **WHEN** на доске с хотя бы одной карточкой показан пустой или заполненный статус
+- **THEN** перед меню в заголовке виден зелёный квадратный плюс; после списка виден такой же плюс с локализованной подписью, образующие одну кнопку и одну остановку Tab

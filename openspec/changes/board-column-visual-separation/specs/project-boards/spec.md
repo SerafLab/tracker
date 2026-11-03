@@ -3,12 +3,18 @@
 ## MODIFIED Requirements
 
 ### Requirement: Calm board and card presentation
-The system SHALL present statuses as open columns on a warm neutral workspace, with individually bounded light cards and restrained green actions. Status columns SHALL have subtle visual boundaries that distinguish them from the workspace and from one another. Status headers SHALL show a compact card count and occupy a shared height so card lists begin at the same vertical position across columns, regardless of how many lines a status name wraps to. Priority flags SHALL remain readable text with distinct symbols or shapes, without assigning completion meaning to statuses. Existing drag-and-drop and independent move-menu controls SHALL remain available.
+Система SHALL показывать статусы открытыми колонками на тёплом нейтральном фоне, отдельные светлые карточки и сдержанные зелёные действия. Колонки SHALL иметь сдержанные визуальные границы. Заголовки статусов SHALL показывать компактный счётчик и занимать общую высоту, чтобы списки начинались на одной вертикальной позиции независимо от переносов названий. Метки признаков SHALL оставаться читаемым текстом с различимыми символами или формами, без семантики завершения статусов. Меню карточки SHALL постоянно находиться справа от заголовка и оставаться доступным при длинном названии. Нижняя панель контролов, стрелки переноса и отдельная ручка перетаскивания SHALL отсутствовать.
 
 #### Scenario: User compares cards across statuses
-- **WHEN** a board contains cards with all four priority-flag combinations
-- **THEN** cards remain individually distinct, only enabled flags are labeled, and the independent move-menu controls remain reachable
+- **WHEN** на доске показаны карточки всех четырёх комбинаций признаков
+- **THEN** карточки различимы, обозначены только включённые признаки, меню видно рядом с названием, а нижней панели и стрелок нет
+
+#### Scenario: A card has a long name
+- **WHEN** название карточки занимает несколько строк на широком или узком экране
+- **THEN** оно переносится, не перекрывая постоянно видимое меню справа, а метки находятся под заголовком
+
 
 #### Scenario: Status names wrap to different numbers of lines
 - **WHEN** a board has one status name that fits on one line and another that wraps to four lines
 - **THEN** the columns remain visually distinguishable and card lists in all statuses begin at the same vertical position
+

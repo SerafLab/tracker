@@ -19,28 +19,39 @@
 
 
 ### Requirement: Accessible, mobile-usable board controls
-The system SHALL expose primary project, status, and card operations through semantic controls usable without drag-and-drop. Card move arrows SHALL remain visible and usable by touch and keyboard on narrow screens. After a keyboard-initiated card move succeeds, focus SHALL return to a control on the moved card without an additional programmatic scroll of the board. The system SHALL provide compact creation, rename, and move forms in a dialog on wider screens and a mobile-appropriate sheet or equivalent focus-managed surface on narrow screens; card editing SHALL use its accessible detail panel or full page. On a narrow viewport, all status columns and their primary controls SHALL remain reachable, including through horizontal scrolling when necessary.
+Система SHALL предоставлять основные действия проектов, статусов и карточек через семантические контролы без необходимости перетаскивания. Постоянно видимое верхнее меню карточки SHALL предоставлять перенос в другой статус и возможные шаги перестановки внутри группы. После клавиатурного переноса или перестановки фокус SHALL возвращаться к меню той же карточки без дополнительной программной прокрутки. Формы создания, переименования и переноса SHALL открываться в компактном диалоге на широком экране и подходящей мобильной поверхности с управлением фокусом на узком; редактирование карточки SHALL использовать её доступную панель или полную страницу. Все статусы и основные контролы SHALL оставаться достижимыми на узком экране, включая горизонтальную прокрутку доски.
 
 #### Scenario: User works on a narrow viewport
-- **WHEN** the board is displayed in a narrow mobile viewport with several statuses
-- **THEN** the user can reach each status and create, rename, reorder, or move items through visible controls
+- **WHEN** доска с несколькими статусами показана на узком экране
+- **THEN** пользователь может достичь каждого статуса и создавать, переименовывать, переставлять и перемещать объекты через видимые контролы
 
 #### Scenario: User edits from a narrow viewport
-- **WHEN** the user starts a create, rename, or move action on a narrow viewport
-- **THEN** its form is readable, receives focus, and can be completed or dismissed without losing access to the board
+- **WHEN** пользователь начинает создание, переименование или перенос на узком экране
+- **THEN** форма читаема, получает фокус и позволяет завершить либо отменить действие без потери доступа к доске
 
 #### Scenario: Keyboard user moves a card
-- **WHEN** a keyboard user activates an available card move control and the move succeeds
-- **THEN** focus remains on an operable control of that card in its new status
+- **WHEN** пользователь с клавиатуры подтверждает «Переместить в…» и перенос успешно сохраняется
+- **THEN** фокус оказывается на доступном меню той же карточки в новом статусе без дополнительной программной прокрутки
 
 #### Scenario: User moves a card on a narrow viewport
-- **WHEN** a user activates an available card arrow on a narrow viewport
-- **THEN** the card moves to the adjacent status without requiring a menu or form
+- **WHEN** пользователь открывает верхнее меню карточки на узком экране и подтверждает выбранный другой статус
+- **THEN** карточка перемещается в конец своей группы без необходимости перетаскивания или наличия стрелок
 
 #### Scenario: User opens card editing on mobile
 - **WHEN** пользователь выбирает редактирование карточки на узком экране
 - **THEN** подробности карточки открываются на весь экран вместо диалога, а возврат на доску сохраняет доступ к карточкам
 
+#### Scenario: User reorders cards through the menu
+- **WHEN** пользователь выбирает «Поднять выше» или «Опустить ниже» в меню карточки
+- **THEN** карточка меняется местами с непосредственным соседом той же группы в выбранном направлении, фокус возвращается на её меню, а страница карточки не открывается
+
+#### Scenario: No adjacent peer exists
+- **WHEN** карточка первая, последняя или единственная в своей группе
+- **THEN** меню содержит только возможные направления перестановки и не предлагает шаг в соседнюю группу
+
+#### Scenario: User works in English
+- **WHEN** выбран английский язык интерфейса
+- **THEN** меню, инструкции переноса, сообщения об ошибках и объявления результата представлены на английском; пользовательские названия, признаки и порядок не меняются
 
 ### Requirement: Local-storage failure is explicit
 Система SHALL явно показывать ошибку локального хранилища и не сообщать об успешном сохранении мутации, которую не удалось записать. Название, описание, признаки и связанный с ними порядок карточки SHALL сохраняться как одно целое: при отказе записи подтверждённые данные и порядок остаются прежними.

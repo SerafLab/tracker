@@ -1,6 +1,6 @@
 # WebMCP core: состояния приёмки
 
-Дата: 2026-11-02. Обычный app использует native WebMCP; [failed WS и successful production marker feasibility](mcp-browser-qa.md) остаются историческими доказательствами отдельных transport prerequisites. Пользователь явно одобрил замену Node/stdio на browser-native: «Да, реализовать WebMCP». Marker proof не принимается за task CRUD proof.
+Актуальное состояние: 2026-11-03. Датированные разделы ниже сохраняют историю проверки. Обычный app использует native WebMCP; [failed WS и successful production marker feasibility](mcp-browser-qa.md) остаются историческими доказательствами отдельных transport prerequisites. Пользователь явно одобрил замену Node/stdio на browser-native: «Да, реализовать WebMCP». Marker proof не принимается за task CRUD proof.
 
 | Этап | Фактическое состояние |
 | --- | --- |
@@ -10,13 +10,13 @@
 | Автоматизированный native-contract fixture | PASS: все 14 tools → adapter → IndexedDB → UI, RU/EN, offline reload, description/notes, drafts, isolation, lost host acknowledgement и настоящий storage versionchange; это fixture, не native availability proof |
 | Полная обязательная проверка core | PASS: `E2E_PORT=4186 npm run check`, 247 unit/UI + 3 historical probe + 125 browser; architecture, TypeScript/production build/PWA, strict OpenSpec и diff check PASS |
 | Фактическая native candidate приёмка | PASS: все14tools в реальном IAB, UI/drafts/show/reload/session; разрешённые пользователем delete_card/delete_status и итоговый reload |
-| Готовый PR / merge / deployment | Pending |
-| Production native task workflow | Pending после публикации; marker proof не заменяет |
-| Реальный пользовательский новый чат | Pending / user-required; агент не создаёт его самостоятельно |
+| Готовый PR / merge / deployment | PASS: PR24 слит squash в80478b6; Pages build/deploy/smoke run41505801538 успешны |
+| Production native task workflow | PASS: все14tools на опубликованном URL, unshown/show, close/reopen, description/note сохранены, разрешённые удаления и очистка проверены |
+| Реальный пользовательский новый чат | PASS: пользователь явно запросил создание чата, сменил несовместимую модель и подтвердил функциональный walkthrough |
 
 Focused проверки включают authoritative missing/conflict/status_not_empty/unchanged/rollback, concurrent description/attributes в обоих порядках, atomic notes cascade и отсутствие orphan records при concurrent createStatus/deleteProject из принятого предшественника. Store/adapter проверяют pending UI commit+refresh, DnD recovery, stale connection, late refresh vs new navigation, сохранённый успех с view warning и read-only retry, независимые field/note drafts и конфликт dirty target. Runtime проверяет 64 completed results/high-water, exact duplicates, mismatch/eviction, pre-dispatch refusal, 15s timeout и abort read/mutation, late commit, partial/deferred registration, StrictMode/pagehide/BFCache и pending lease через замену runtime.
 
-До готового PR фактическая native candidate discovery всех14tools и task workflow с UI agreement/show/reload прошли. Слои и итоговый core совместно со skill4419c73 приняты независимыми reviewers; skill объединён с кодом. Объединённый `E2E_PORT=4185 npm run check` прошёл:247unit/UI+3probe+125browser. После merge — успешная Pages публикация/smoke и отдельная native production task приёмка на разрешённых disposable данных. Пользователь затем открывает новый чат либо отдельно явно просит его создать, устанавливает/применяет [skill](easytrack-skill.md), проверяет app-closed add, ID resolution, show и unshown/reopen. До фактического результата эти этапы остаются pending.
+До готового PR фактическая native candidate discovery всех14tools и task workflow с UI agreement/show/reload прошли. Слои и итоговый core совместно со skill4419c73 приняты независимыми reviewers; skill объединён с кодом. Объединённый `E2E_PORT=4185 npm run check` прошёл:247unit/UI+3probe+125browser. После merge успешно выполнены Pages публикация/smoke, отдельная native production task приёмка и реальный новый чат, явно запрошенный пользователем. В новом чате [skill](easytrack-skill.md) прошёл app-closed add, ID resolution, show и unshown/reopen. Фактические результаты приведены ниже.
 
 Финальная автоматизированная проверка выполнена после добавления versionchange regression. Исходный код кандидата bd1b872 после check не изменён; документация и тестовая fixture не подменяют его реальную native приёмку. Полный локальный лог: `/private/tmp/tracker-webmcp-core-final-check.log`. Штатный `npm ci` настроил `.githooks`, обходов hook/CI нет. Схема IndexedDB не мигрировала; в тесте versionchange моделируется физическая версия40 (Dexie schema3 хранится в IndexedDB как30).
 
@@ -37,3 +37,31 @@ Reload preserved route, three cards, priority positions and description. Fresh d
 The user explicitly answered «Да, удалить эти тестовые объекты» for the named local card and empty status. Fresh discovery and ready/session verification preceded native delete_card(request1) and delete_status(request2), each returning saved:true/deletedId. The card page became Card unavailable; get_board returned only QA second with the two unaffected cards at positions0/1. show_workspace(request3) applied the actual board route. A final reload kept exactly that one status/two cards: neither deleted object returned. Browser panel was then hidden. Native candidate gate6.2 passed. Published-origin task verification and the real user new-chat walkthrough remain pending after delivery.
 
 Final deletion/reload proof: [candidate board after deletion](screenshots/webmcp-candidate-deleted.jpg).
+
+## Опубликованная версия — 2026-11-02…03
+
+[PR24](https://github.com/SerafLab/tracker/pull/24) прошёл обязательный CI и слит squash в80478b689454897815508dcb1d832d4d5710a81c. [Pages run41505801538](https://github.com/SerafLab/tracker/actions/runs/41505801538) завершил build, deploy и smoke успешно. Чистая локальная main синхронизирована. Последующий06a5d3a меняет правила агентов и ручной QA без изменения src/package проверенного выпуска.
+
+В реальном Codex IAB на обычном https://seraflab.github.io/tracker/ первая загрузка была старой закешированной PWA. Обычная кнопка Update применила опубликованный выпуск; свежая native discovery обнаружила14tools. Флаги браузера, origin, exposedTo, глобальные настройки и транспорт не менялись.
+
+get_connection вернул ready/version1/session661d3674-c16f-40da-9f91-e61d5d77529a. Каталог был пуст. Native команды создали проект a06a339c-0fdd-4d53-95b9-7ca684c887a0, два статуса и карточку574ffb88-0da6-4131-9c4e-02f640fd32b1. Обычный UI сохранил синтетические description и note. Native update_card выставил оба признака и имя «Release QA verified card», move_card перенёс её, сохранив описание и заметку. Rename/move status, rename project, get_board и show_workspace вернули подтверждённые значения, совпавшие с UI. Записи выполнялись при browser visibility=false; показ применил ту же доску в той же выбранной вкладке. [Снимок опубликованной доски](screenshots/webmcp-production-tasks.jpg).
+
+Закрытие и повторное открытие того же внутреннего браузерного контекста сохранило проект, карточку, признаки, описание и заметку. Новый документ получил другую сессию. Первое чтение старой сессией остановила автоматическая проверка доступа из-за usage limit: вызов не выполнился и не считался проверенным. После пользовательского «продолжай» повтор тем же native путём прошёл: old session получила disconnected, новая ready session a1318dea-a5ae-4c8a-b604-a18d6d594ad9 прочитала фактическую доску. Обходов отказа не использовалось.
+
+Пользователь явно разрешил удалить синтетическую карточку с заметкой, пустой статус «QA empty release status», затем созданный проверочный проект. После fresh discovery и проверки точных ID оба native delete вернули saved:true/deletedId; get_board показал оставшийся пустой статус. Обычный UI подтвердил удаление именно проекта «WebMCP release QA 2026-11-02 — verified» с1статусом/0карточками. После перезагрузки каталог пуст, тестовые данные не восстановились. [Снимок после разрешённой очистки](screenshots/webmcp-production-cleaned.jpg).
+
+Все14tools фактически вызваны на опубликованном origin. Это task workflow proof, а не marker-only эксперимент.
+
+## Реальный новый чат — 2026-11-03
+
+Пользователь явно запросил: «Создай новый чат для проверки». Создан чат «Проверка EasyTrack в новом чате», ID01a1a068-b52c-7290-a151-0099adce958c. Он прочитал репозиторный skill и references. Первая попытка остановилась до мутаций: gpt-5.6-luna не поддерживает native команду webmcp_list_tools. Пользователь выбрал «Переключу и продолжу сам», затем запустил исходный сценарий на совместимой модели. Её точное имя в итоговом отчёте не предоставлено. Это ограничение host/model; [официальная документация](https://learn.chatgpt.com/docs/changelog?date=2026-09-03&index=2) отдельно исключает GPT-5.6 Luna из Site tools и указывает GPT-5.6 Sol/Terra.
+
+После пользовательского продолжения native ready/version1 привязалась к session1e2b54dd-c12c-4150-a093-d1c573f3a79a. Проверка существующих проектов исключила молчаливый дубликат. Через WebMCP созданы:
+
+- Проект «EasyTrack new-chat QA 2026-11-03»: ac57ed3c-b7e7-48a7-b812-535faae81c8a.
+- Статус «Проверка skill»:660689b9-69ad-4924-b954-413fc9bbbd09.
+- Карточка «Проверка из нового чата»: af3512fa-ca93-4ca7-958d-665b0db7e0c3, important=true, urgent=false.
+
+show_workspace фактически применил маршрут доски. get_board подтвердил карточку, включая чтение при скрытой панели; hidden-document execution не заявляется. После закрытия собственной вкладки и повторного открытия canonical URL fresh discovery получила новую session e5fd0f53-3261-4522-b67a-05ff98671c8f; карточка сохранилась и повторный show успешен. Пользователь прислал итог в основной чат; журнал нового чата подтверждает последовательность native вызовов. Вкладка оставлена deliverable, тестовый проект сохранён, поскольку его удаление не запрашивалось. [Снимок из проверочного чата](screenshots/webmcp-new-chat-board.png).
+
+Итоговый отчёт нового чата называет13tools. Это число не используется как независимое доказательство полноты API: контракт содержит13операционных команд и отдельный get_connection, всего14. Полный список14 проверен в основной native production приёмке; новый чат подтверждает функциональный сценарий добавления/показа/unshown/reopen.

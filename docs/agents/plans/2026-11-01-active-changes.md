@@ -111,3 +111,20 @@ Skill `54323fe` passed skill-creator validation and independent behavioral forwa
 Core `d0b3696` layers were reviewed independently. Native review found unbounded read waits; `ac16157` fixed timeout/abort for both reads and passed independent re-review. Other repository/UI/lifecycle layers and final core+skill review had no remaining findings. Core merge `35bab82` and schema-aligned skill merge `c05dcc2` preserve the approved14tool/session/ledger/description/placement contracts. Combined mandatory check passed247unit/UI+3historicalprobe+125browser, production build and architecture.
 
 Detached production-build candidate `bd1b872` on4192 passed actual native IAB discovery and all14tools, saved UI agreement, priority append, description/notes preservation, dirty conflicts and unrelated drafts, duplicate request no extra write, explicit show on same tab, unshown-panel execution, reload/newsession/oldsession refusal. The user explicitly approved deletion of only the named synthetic card/empty status; native deletes and final reload passed. QA and screenshots are in docs/agents/webmcp-core-qa.md. Core task implementation is complete; production deployment/task acceptance and user new-chat walkthrough remain separate post-merge handoff. No new user chat/global installation was created.
+
+## Delivery and release acceptance — 2026-11-03
+
+PR24 merged after required CI as80478b6; Pages41505801538 build/deploy/smoke passed. Main was synchronized in the clean main worktree. Actual native production execution called all14tools, preserved the saved description/note, showed the same tab and survived close/reopen. A transient approval-review usage limit blocked one read; it was not counted as executed and succeeded through the same native path after the user resumed. Explicitly approved test deletes and UI cleanup completed, with empty catalogue after reload.
+
+At the user's explicit request a real new user chat was created (01a1a068-b52c-7290-a151-0099adce958c). Its initial gpt-5.6-luna lacked native discovery; the user switched model and resumed. The new-chat create/show/unshown/reopen workflow then passed and was confirmed by the user, with the board left as deliverable. Exact model name was not supplied; no claim was invented. The user-owned new-chat test project is retained. Skill guidance now records this observed model prerequisite. All release acceptance gates are complete; original dirty worktree remains preserved. PR25's independent agent-review rules were fast-forwarded before recording this evidence.
+
+| Original change | Accepted implementation | Feature branch / temporary worktree | Delivered state |
+| --- | --- | --- | --- |
+| add-project-status-presets | 33cfc8a | codex/project-status-presets; tracker-project-status-presets removed | PR22 / main332726f, published |
+| add-status-header-card-creation | a0598e8 | codex/status-header-card-creation; tracker-status-header-card-creation removed | PR22 / main332726f, published |
+| add-card-details | 59f6498 | codex/card-details; tracker-card-details removed | PR22 / main332726f, published |
+| add-project-deletion | a4ece78 | codex/project-deletion; tracker-project-deletion removed | PR22 / main332726f, published |
+| add-card-drag-and-drop | c543a6d; integration8c5312a | codex/card-drag-and-drop; tracker-card-drag-and-drop removed | PR24 / main80478b6, published |
+| add-agent-mcp-integration | d0b3696; skill4419c73; native QA f7277a8 | codex/agent-webmcp-integration and codex/agent-webmcp-skill; corresponding temporary worktrees removed | PR24 / main80478b6, published; production and new-chat acceptance passed |
+
+Clean function worktrees, the detached candidate and their local branches were removed only after confirming their contents in the accepted main/PR24 result. The clean main worktree and the original dirty user worktree remain. The latter's uncommitted config/proposals were neither overwritten nor stashed.

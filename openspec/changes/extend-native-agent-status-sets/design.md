@@ -1,0 +1,7 @@
+# Design
+
+## Decisions
+
+Use the accepted document.modelContext tool registration/runtime and version 2. Inputs keep sessionId/requestId. create_project requires one of simple/search/documents/development/job-search/none; apply_status_set accepts only the five nonempty IDs. Keep stable UI empty mapping at the adapter boundary or unify its ID coherently; never infer from localized labels. Resolve names in the browser's current UI language via shared catalogue before calling application operations. Generate independent IDs in use cases. Repository transaction checks project existence and absence of statuses and commits all statuses together, without changing workspace preference for agent operations. create_project returns data.project with ordered statuses; apply_status_set returns data.board. Duplicate request handling and saved:true plus refresh-warning semantics apply unchanged. Native get_board must not start exposing note history when board previews are introduced.
+
+Skill update uses skill-creator and describes explicit selection, Simple recommendation, none, empty-project application, invalid/missing choices, and protocol 2 binding. Preserve platform access checks and host procedure. Registration/global configuration are not changed. Tests cover contract discovery, omitted/invalid set, exact RU/EN order, none, empty-board atomic conflict/rollback, session/dedup, background route/preference and storage stale guards. Candidate native discovery/execution and production smoke are recorded distinctly.

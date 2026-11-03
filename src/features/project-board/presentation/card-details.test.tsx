@@ -1,16 +1,18 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { App } from '../../../app/app'
 import { ProjectBoardDatabase } from '../infrastructure/indexeddb/database'
 import { DexieProjectBoardRepository } from '../infrastructure/indexeddb/dexie-project-board-repository'
-import { PlainText } from './card-detail-view'
+import { CardDetailView, PlainText } from './card-detail-view'
+import { LocaleProvider } from '../../../i18n/provider'
+import type { CardDetails } from '../domain/model'
 
 const pwa = vi.hoisted(() => ({ ready: false, update: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('virtual:pwa-register/react', () => ({ useRegisterSW: () => ({ needRefresh: [pwa.ready, vi.fn()], offlineReady: [false, vi.fn()], updateServiceWorker: pwa.update }) }))
 
 const databases: ProjectBoardDatabase[] = []
-afterEach(async () => { pwa.ready = false; pwa.update.mockClear(); cleanup(); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(db => db.delete())) })
+afterEach(async () => { vi.useRealTimers(); pwa.ready = false; pwa.update.mockClear(); cleanup(); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(db => db.delete())) })
 async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectBoardRepository) => void = () => {}) {
   const db = new ProjectBoardDatabase(`details-${crypto.randomUUID()}`); databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
@@ -26,6 +28,55 @@ async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectB
 }
 async function editor(user: ReturnType<typeof userEvent.setup>) { await user.click(screen.getByRole('button', { name: 'Добавить заметку' })); return screen.getByLabelText('Новая заметка') }
 async function fields() { return within(await screen.findByRole('form', { name: 'Поля карточки' })) }
+
+for (const [ids, deletedId, nextId, mode] of [
+  [['a', 'b', 'c'], 'b', 'c', 'ready'],
+  [['a', 'b'], 'b', 'a', 'ready'],
+  [['a'], 'a', null, 'ready'],
+  [['a'], 'a', null, 'draft'],
+  [['a'], 'a', null, 'busy'],
+  [['a'], 'a', null, 'new-focus'],
+] as const) it(`settles deletion focus after the DOM commit (${deletedId} → ${nextId ?? 'add'}, ${mode})`, async () => {
+  const details: CardDetails = {
+    project: { id: 'p', name: 'Project', createdAt: '2026-11-01T00:00:00Z' },
+    status: { id: 's', projectId: 'p', name: 'Status', position: 0 },
+    card: { id: 'c', statusId: 's', name: 'Card', description: '', important: false, urgent: false, position: 0 },
+    notes: ids.map(id => ({ id, cardId: 'c', text: id, createdAt: '2026-11-01T00:00:00Z' })),
+  }
+  let finish!: (saved: boolean) => void
+  const props = { details, busy: false, onReturn: vi.fn(), onCatalogue: vi.fn(), onSave: vi.fn(), onCreateNote: vi.fn(), onUpdateNote: vi.fn(), onDeleteNote: vi.fn(() => new Promise<boolean>(resolve => { finish = resolve })), registerDraftGuard: vi.fn(), requestLeave: vi.fn() }
+  const { rerender, container } = render(<LocaleProvider><CardDetailView {...props} /></LocaleProvider>)
+  if (mode === 'draft') {
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+    fireEvent.change(screen.getByLabelText('Новая заметка'), { target: { value: 'Retained draft' } })
+  }
+  const note = container.querySelector(`[data-note-id="${deletedId}"]`) as HTMLElement
+  fireEvent.click(within(note).getByRole('button', { name: 'Удалить заметку' }))
+  fireEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Удалить' }))
+  vi.useFakeTimers()
+  const savedDetails = { ...details, notes: details.notes.filter(note => note.id !== deletedId) }
+  const delayed = mode === 'busy' || mode === 'new-focus'
+  await act(async () => {
+    rerender(<LocaleProvider><CardDetailView {...props} details={savedDetails} busy={delayed} /></LocaleProvider>)
+    finish(true)
+    // A timer may run before React commits the dialog removal and enabled controls.
+    await vi.runAllTimersAsync()
+  })
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  if (delayed) {
+    expect(screen.getByRole('button', { name: 'Добавить заметку' })).toBeDisabled()
+    expect(document.body).toHaveFocus()
+    if (mode === 'new-focus') screen.getByRole('button', { name: 'Назад к доске' }).focus()
+    rerender(<LocaleProvider><CardDetailView {...props} details={savedDetails} /></LocaleProvider>)
+  }
+  let target: HTMLElement
+  if (mode === 'draft') target = screen.getByLabelText('Новая заметка')
+  else if (mode === 'new-focus') target = screen.getByRole('button', { name: 'Назад к доске' })
+  else if (nextId) target = within(container.querySelector(`[data-note-id="${nextId}"]`) as HTMLElement).getByRole('button', { name: 'Редактировать заметку' })
+  else target = screen.getByRole('button', { name: 'Добавить заметку' })
+  expect(target).toHaveFocus()
+  if (mode === 'draft') expect(target).toHaveValue('Retained draft')
+})
 
 it('opens a direct detail address, hides project actions, returns to its board and rejects foreign cards', async () => {
   const { repo, user } = await setup()

@@ -167,13 +167,19 @@ test('keeps native touch swipes before hold, then drags without opening on relea
     const page = await context.newPage(), cdp = await context.newCDPSession(page)
     await setup(page)
     await card(page, 'A2').scrollIntoViewIfNeeded()
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 })
+    await page.evaluate(() => {
+      const observed: unknown[] = []
+      ;(window as unknown as { touchObserved: unknown[] }).touchObserved = observed
+      for (const type of ['touchstart', 'touchmove', 'touchend', 'scrollend']) document.addEventListener(type, event => observed.push({ type, time: performance.now(), target: event.target instanceof Element ? event.target.className : 'document', scrollY, scrollLeft: document.querySelector('.status-columns')?.scrollLeft }), { capture: true, passive: true })
+    })
     const initial = await writes(page), boardUrl = page.url()
     const swipe = async (x: number, y: number, dx: number, dy: number) => {
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
       for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * step / 6, y: y + dy * step / 6 }] })
-      const scrolled = page.evaluate(() => new Promise<void>(resolve => document.addEventListener('scrollend', () => resolve(), { once: true, capture: true })))
+      const scrolled = page.evaluate(() => new Promise(resolve => document.addEventListener('scrollend', event => resolve({ target: event.target instanceof Element ? event.target.className : 'document', scrollY, scrollLeft: document.querySelector('.status-columns')?.scrollLeft }), { once: true, capture: true })))
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-      await scrolled
+      console.log('SWIPE_SCROLLEND', JSON.stringify({ dx, dy, result: await scrolled }))
     }
     let bounds = await card(page, 'A2').boundingBox()
     await swipe(300, bounds!.y + 25, -210, 0)
@@ -181,7 +187,9 @@ test('keeps native touch swipes before hold, then drags without opening on relea
     await page.locator('.status-columns').evaluate(element => { element.scrollLeft = 0 })
     await page.evaluate(() => scrollTo(0, 0))
     bounds = await card(page, 'A2').boundingBox()
+    console.log('VERTICAL_SWIPE_GEOMETRY', JSON.stringify(await page.evaluate(bounds => ({ bounds, viewport: { width: innerWidth, height: innerHeight }, scrollY, scrollLeft: document.querySelector('.status-columns')?.scrollLeft, hit: document.elementFromPoint(bounds!.x + 30, bounds!.y + 25)?.outerHTML }), bounds)))
     await swipe(bounds!.x + 30, bounds!.y + 25, 0, -160)
+    console.log('TOUCH_EVENTS', JSON.stringify(await page.evaluate(() => (window as unknown as { touchObserved: unknown[] }).touchObserved)))
     await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0)
     expect(await writes(page)).toBe(initial); await expect(page).toHaveURL(boardUrl)
     await page.evaluate(() => scrollTo(0, 0)); await card(page, 'A2').scrollIntoViewIfNeeded()

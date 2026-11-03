@@ -39,6 +39,7 @@ export function CardDetailView({ details, busy, onReturn, onCatalogue, onSave, o
   const addTrigger = useRef<HTMLButtonElement>(null)
   const cancelDelete = useRef<HTMLButtonElement>(null)
   const deleteTrigger = useRef<HTMLButtonElement | null>(null)
+  const deletionFocus = useRef<{ deletedId: Id; nextId: Id | undefined } | null>(null)
   const fieldErrorId = useId(), noteErrorId = useId(), noteInputId = useId(), descriptionId = useId()
   const fieldsDirty = !sameFields(fields, confirmed)
   const noteDirty = !!editor && editor.text !== editor.initial
@@ -96,6 +97,16 @@ export function CardDetailView({ details, busy, onReturn, onCatalogue, onSave, o
     if (!deleting) return
     queueMicrotask(() => cancelDelete.current?.focus())
   }, [deleting])
+  useEffect(() => {
+    const intent = deletionFocus.current
+    if (!intent || deleting || saving || busy || details.notes.some(note => note.id === intent.deletedId)) return
+    deletionFocus.current = null
+    // The dialog's passive cleanup has released its focus trap, and this commit
+    // has removed the note and enabled the history controls. Respect newer focus.
+    if (document.activeElement !== document.body && document.activeElement?.isConnected) return
+    const next = Array.from(history.current?.querySelectorAll<HTMLElement>('[data-note-id]') ?? []).find(item => item.dataset.noteId === intent.nextId)
+    ;(next?.querySelector<HTMLButtonElement>('button') ?? addTrigger.current ?? history.current?.querySelector<HTMLTextAreaElement>('.note-editor textarea:not(:disabled)'))?.focus({ preventScroll: true })
+  }, [deleting, saving, busy, details.notes])
 
   const run = async (operation: () => Promise<unknown>) => {
     if (pending.current) return
@@ -103,6 +114,7 @@ export function CardDetailView({ details, busy, onReturn, onCatalogue, onSave, o
     try { await operation() } finally { pending.current = false; setSaving(false) }
   }
   const openEditor = (note?: Note) => {
+    deletionFocus.current = null
     if (editor && editor.id === (note?.id ?? null)) return
     const change = () => { setEditor({ id: note?.id ?? null, text: note?.text ?? '', initial: note?.text ?? '' }); setNoteError(null) }
     if (noteDirty) requestLeave(change)
@@ -120,11 +132,8 @@ export function CardDetailView({ details, busy, onReturn, onCatalogue, onSave, o
     await run(async () => {
       if (!await onDeleteNote(deleting.id)) { setDeleteError(true); return }
       if (editor?.id === deleting.id) setEditor(null)
+      deletionFocus.current = { deletedId: deleting.id, nextId }
       setDeleting(null)
-      window.setTimeout(() => {
-        const next = Array.from(history.current?.querySelectorAll<HTMLElement>('[data-note-id]') ?? []).find(item => item.dataset.noteId === nextId)
-        ;(next?.querySelector<HTMLButtonElement>('button') ?? addTrigger.current ?? history.current?.querySelector<HTMLTextAreaElement>('.note-editor textarea:not(:disabled)'))?.focus({ preventScroll: true })
-      }, 0)
     })
   }
   const date = (value: string) => new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -150,7 +159,7 @@ export function CardDetailView({ details, busy, onReturn, onCatalogue, onSave, o
         {details.notes.length === 0 ? <p className="muted-copy">{t('noNotes')}</p> : <ol className="note-list">{details.notes.map(note => <li className="note surface-card" key={note.id} data-note-id={note.id}>
           <p className="note-date"><time dateTime={note.createdAt}>{date(note.createdAt)}</time>{note.updatedAt ? <> · {t('noteEdited')} <time dateTime={note.updatedAt}>{date(note.updatedAt)}</time></> : null}</p>
           {editor?.id === note.id ? noteEditor : <PlainText text={note.text} />}
-          <div className="note-actions"><button className="button button-quiet" disabled={saving || busy} onClick={() => openEditor(note)}>{t('editNote')}</button><button className="button button-quiet" disabled={saving || busy} onClick={event => { deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}>{t('deleteNote')}</button></div>
+          <div className="note-actions"><button className="button button-quiet" disabled={saving || busy} onClick={() => openEditor(note)}>{t('editNote')}</button><button className="button button-quiet" disabled={saving || busy} onClick={event => { deletionFocus.current = null; deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}>{t('deleteNote')}</button></div>
         </li>)}</ol>}
         {editor && editor.id === null ? noteEditor : <button ref={addTrigger} className="button button-secondary" disabled={saving || busy} onClick={() => openEditor()}>{t('addNote')}</button>}
       </section>

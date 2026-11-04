@@ -3,7 +3,9 @@ import { useTranslation } from 'react-i18next'
 import Linkify from 'linkify-react'
 import type { CardDetails, CardInput, Id, Note, RegisterDraftGuard } from '../domain/model'
 import { AppBar } from '../../../ui/app-bar'
+import { BoardIcon } from './board-icon'
 import { ActionDialog } from './controls'
+import { useModalOpen } from '../../../ui/modal-state'
 
 const linkOptions = { validate: { url: (value: string) => /^https?:\/\//i.test(value), email: false }, target: '_blank', rel: 'noopener noreferrer' }
 export function PlainText({ text }: { text: string }) { return <div className="detail-text"><Linkify options={linkOptions}>{text}</Linkify></div> }
@@ -11,6 +13,12 @@ const fieldsOf = (details: CardDetails): CardInput => ({ name: details.card.name
 const sameFields = (a: CardInput, b: CardInput) => a.name === b.name && a.description === b.description && a.important === b.important && a.urgent === b.urgent
 
 type Props = {
+  refreshFailed?: boolean
+  retrying?: boolean
+  onRetryRefresh?: () => Promise<boolean>
+  narrow?: boolean
+  presentation?: 'panel' | 'page'
+  onExpand?: () => Promise<void>
   details: CardDetails
   busy: boolean
   onReturn(): Promise<void>
@@ -23,8 +31,9 @@ type Props = {
   requestLeave(action: () => void | Promise<void>): void
 }
 
-export function CardDetailView({ details, busy, onReturn, onCatalogue, onSave, onCreateNote, onUpdateNote, onDeleteNote, registerDraftGuard, requestLeave }: Props) {
+export function CardDetailView({ refreshFailed = false, retrying = false, onRetryRefresh, narrow = false, presentation = 'page', onExpand, details, busy, onReturn, onCatalogue, onSave, onCreateNote, onUpdateNote, onDeleteNote, registerDraftGuard, requestLeave }: Props) {
   const { t, i18n } = useTranslation()
+  const modalOpen = useModalOpen()
   const [fields, setFields] = useState<CardInput>(() => fieldsOf(details))
   const [confirmed, setConfirmed] = useState<CardInput>(() => fieldsOf(details))
   const [fieldError, setFieldError] = useState<'nameRequired' | 'saveError' | null>(null)
@@ -142,11 +151,20 @@ export function CardDetailView({ details, busy, onReturn, onCatalogue, onSave, o
     {noteError ? <p id={noteErrorId} role="alert" className="field-error">{t(noteError)}</p> : null}
     <div className="form-actions"><button type="button" className="button button-secondary" disabled={saving || busy} onClick={closeEditor}>{t('cancel')}</button><button className="button button-primary" disabled={saving || busy}>{t(editor.id ? 'saveNote' : 'addNote')}</button></div>
   </form> : null
-  return <>
-    <AppBar title={details.card.name} onReturn={() => void onCatalogue()} />
-    <main ref={main} tabIndex={-1} className="app-shell card-detail">
-      <button className="button button-secondary" onClick={() => void onReturn()}>{t('backToBoard')}</button>
-      <p className="muted-copy detail-context">{details.project.name} · {details.status.name}</p>
+  const panel = presentation === 'panel'
+  return <div className={panel ? 'card-detail-container card-panel' : 'card-detail-container card-page'}>
+    {!panel ? <AppBar title={details.card.name} onReturn={() => void onCatalogue()} /> : null}
+    <section ref={main} role={panel ? narrow ? 'dialog' : 'region' : 'main'} aria-modal={panel && narrow || undefined} aria-label={panel ? t('cardDetailsRegion') : undefined} onKeyDown={event => {
+      if (!panel || !narrow || modalOpen || event.key !== 'Tab') return
+      const elements = Array.from(main.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]') ?? [])
+      const first = elements[0], last = elements.at(-1)
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === main.current)) { event.preventDefault(); last?.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
+    }} tabIndex={-1} className="app-shell card-detail">
+      {panel ? <header className="card-panel-header"><h2>{details.card.name}</h2><div className="card-panel-actions"><button className="button button-secondary" onClick={() => void onExpand?.()}>{t('openCardPage')}</button><button className="button button-secondary button-icon" aria-label={t('closeCard')} onClick={() => void onReturn()}><BoardIcon name="close" /></button></div></header> : null}
+      <button className="button button-secondary card-board-return" aria-label={t('backToBoard')} onClick={() => void onReturn()}><BoardIcon name="back" /><span>{t('backToBoard')}<span className="card-board-name">{details.project.name}</span></span></button>
+      <p className="muted-copy detail-context">{details.status.name}</p>
+      {refreshFailed ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={retrying} onClick={() => void onRetryRefresh?.()}>{t('retryBoardRead')}</button></div> : null}
       <form className="detail-fields surface-card" aria-label={t('cardFields')} onSubmit={event => { event.preventDefault(); void run(saveFields) }}>
         <label className="field"><span className="field-label">{t('cardName')}</span><input className="text-input" value={fields.name} disabled={saving || busy} aria-invalid={fieldError === 'nameRequired' || undefined} aria-describedby={fieldError ? fieldErrorId : undefined} onChange={event => setFields({ ...fields, name: event.target.value })} /></label>
         <div className="field"><label className="field-label" htmlFor={descriptionId}>{t('cardDescription')}</label><textarea id={descriptionId} className="text-input" rows={6} value={fields.description} disabled={saving || busy} onChange={event => setFields({ ...fields, description: event.target.value })} /></div>
@@ -159,11 +177,11 @@ export function CardDetailView({ details, busy, onReturn, onCatalogue, onSave, o
         {details.notes.length === 0 ? <p className="muted-copy">{t('noNotes')}</p> : <ol className="note-list">{details.notes.map(note => <li className="note surface-card" key={note.id} data-note-id={note.id}>
           <p className="note-date"><time dateTime={note.createdAt}>{date(note.createdAt)}</time>{note.updatedAt ? <> · {t('noteEdited')} <time dateTime={note.updatedAt}>{date(note.updatedAt)}</time></> : null}</p>
           {editor?.id === note.id ? noteEditor : <PlainText text={note.text} />}
-          <div className="note-actions"><button className="button button-quiet" disabled={saving || busy} onClick={() => openEditor(note)}>{t('editNote')}</button><button className="button button-quiet" disabled={saving || busy} onClick={event => { deletionFocus.current = null; deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}>{t('deleteNote')}</button></div>
+          <div className="note-actions"><button className="button button-quiet button-icon" aria-label={t('editNote')} disabled={saving || busy} onClick={() => openEditor(note)}><BoardIcon name="edit" /></button><button className="button button-quiet button-icon" aria-label={t('deleteNote')} disabled={saving || busy} onClick={event => { deletionFocus.current = null; deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}><BoardIcon name="delete" /></button></div>
         </li>)}</ol>}
         {editor && editor.id === null ? noteEditor : <button ref={addTrigger} className="button button-secondary" disabled={saving || busy} onClick={() => openEditor()}>{t('addNote')}</button>}
       </section>
       {deleting ? <ActionDialog title={t('deleteNote')} returnFocus={deleteTrigger} onClose={closeDeletion}><p>{t('deleteNoteConfirmation')}</p><blockquote className="detail-text">{deleting.text}</blockquote><p>{t('deletionIrreversible')}</p>{deleteError ? <p className="save-error" role="alert">{t('saveError')}</p> : null}<div className="form-actions"><button ref={cancelDelete} type="button" className="button button-secondary" disabled={saving || busy} onClick={closeDeletion}>{t('cancel')}</button><button type="button" className="button button-primary" disabled={saving || busy} onClick={() => void deleteNote()}>{t('delete')}</button></div></ActionDialog> : null}
-    </main>
-  </>
+    </section>
+  </div>
 }

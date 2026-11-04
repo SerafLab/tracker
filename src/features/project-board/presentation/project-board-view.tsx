@@ -11,6 +11,7 @@ import { DeleteDialog } from './delete-dialog'
 import type { MoveCardStateResult, DeleteStatusStateResult } from '../state/project-board-store'
 
 type BoardProps = {
+  onRequestDestructiveAction?: (action: () => void) => void
   focusCreation: boolean
   onCreationFocused: () => void
   board: ProjectBoard
@@ -32,7 +33,9 @@ type BoardProps = {
   onMoveCard: (cardId: Id, placement: CardPlacement) => Promise<MoveCardStateResult>
 }
 
-export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
+const runImmediately = (action: () => void) => action()
+
+export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
   const { t } = useTranslation()
   const [moveDialogCardId, setMoveDialogCardId] = useState<Id | null>(null)
   const root = useRef<HTMLElement>(null)
@@ -88,11 +91,11 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
     return result
   }, [onMoveCard, t])
   const requestStatusDeletion = useCallback((status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => {
-    setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus })
-  }, [])
+    onRequestDestructiveAction(() => setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus }))
+  }, [onRequestDestructiveAction])
   const requestCardDeletion = useCallback((card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => {
-    setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus })
-  }, [])
+    onRequestDestructiveAction(() => setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus }))
+  }, [onRequestDestructiveAction])
   const statuses = useMemo(() => board.statuses.map(({ cards: _cards, ...status }) => status), [board.statuses])
   const [deletingProject, setDeletingProject] = useState(false)
   const [creatingStatus, setCreatingStatus] = useState(false)
@@ -104,7 +107,7 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
       onReturn={() => void onReturn()}
       creation={{ disabled: busy, label: t('addStatus'), triggerRef: addStatusTrigger, onSelect: () => setCreatingStatus(true) }}
       rename={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setRenamingProject(true) }}
-      deleteProject={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setDeletingProject(true) }}
+      deleteProject={{ disabled: busy, triggerRef: projectMenu, onSelect: () => onRequestDestructiveAction(() => setDeletingProject(true)) }}
     />
     <main ref={root} className="app-shell">
       {saveError && !deletingProject ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}

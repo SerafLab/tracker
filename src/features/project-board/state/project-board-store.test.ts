@@ -258,6 +258,7 @@ it('keeps the detail context and confirmed fields when saving fields and notes, 
   await store.getState().createNote(board.id, 'c', 'Note')
   const confirmed = store.getState().workspace
   expect(confirmed).toMatchObject({ kind: 'card', details: { notes: [note] } })
+  vi.mocked(api.board).mockClear()
   vi.mocked(api.updateNote).mockRejectedValueOnce(new Error('quota'))
   expect(await store.getState().updateNote(board.id, 'c', 'n', 'New')).toBeUndefined()
   expect(store.getState().workspace).toEqual(confirmed)
@@ -461,4 +462,52 @@ it('loads current catalogue summaries each time the catalogue is reopened', asyn
   await store.getState().showBoard('p')
   await store.getState().showCatalogue()
   expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: second })
+})
+
+it('keeps the board snapshot beside an open card and refreshes only confirmed fields after a successful write', async () => {
+  const card = { id: 'c', statusId: 's', name: 'Card', description: 'Before', important: false, urgent: false, position: 0 }
+  const status = { id: 's', projectId: board.id, name: 'S', position: 0, cards: [card] }
+  const snapshot = { ...board, statuses: [status] }
+  const details = { project: board, status, card, notes: [] }
+  const api = useCases({ board: vi.fn().mockResolvedValue(snapshot), cardDetails: vi.fn().mockResolvedValue(details), updateCard: vi.fn().mockRejectedValueOnce(Error('quota')).mockResolvedValue(undefined) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showCard(board.id, card.id)
+  expect(store.getState().boardSnapshot).toEqual(snapshot)
+  const input = { ...card, description: 'After' }
+  expect(await store.getState().updateCard(board.id, card.id, input)).toBe(false)
+  expect(store.getState().boardSnapshot).toEqual(snapshot)
+  expect(store.getState().workspace).toEqual({ kind: 'card', details })
+  const saved = { ...snapshot, statuses: [{ ...status, cards: [input] }] }
+  vi.mocked(api.board).mockResolvedValue(saved)
+  expect(await store.getState().updateCard(board.id, card.id, input)).toBe(true)
+  expect(store.getState().boardSnapshot).toEqual(saved)
+  expect(store.getState().workspace).toMatchObject({ kind: 'card', details: { card: { description: 'After' } } })
+})
+
+it('does not lose open details when refreshing the board after a committed unrelated write fails', async () => {
+  const card = { id: 'c', statusId: 's', name: 'Card', description: 'Before', important: false, urgent: false, position: 0 }
+  const status = { id: 's', projectId: board.id, name: 'S', position: 0, cards: [card] }
+  const snapshot = { ...board, statuses: [status] }, details = { project: board, status, card, notes: [] }
+  const api = useCases({ board: vi.fn().mockResolvedValue(snapshot), cardDetails: vi.fn().mockResolvedValue(details) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showCard(board.id, card.id)
+  vi.mocked(api.board).mockRejectedValueOnce(Error('read failed'))
+  expect(await store.getState().createCard(board.id, status.id, { name: 'Other', description: '', important: false, urgent: false })).toBe(true)
+  expect(api.createCard).toHaveBeenCalledOnce()
+  expect(store.getState().workspace).toEqual({ kind: 'card', details })
+  expect(store.getState().boardSnapshot).toEqual(snapshot)
+  expect(store.getState().agentRefreshError).toBe(true)
+})
+
+
+it('never pairs details with a stale board snapshot from another project', async () => {
+  const other = { id: 'other', name: 'Other', createdAt: 'now' }
+  const card = { id: 'c', statusId: 's', name: 'C', description: '', important: false, urgent: false, position: 0 }
+  const details = { project: other, status: { id: 's', projectId: other.id, name: 'S', position: 0 }, card, notes: [] }
+  const api = useCases({ cardDetails: vi.fn().mockResolvedValue(details) }), store = createProjectBoardStore(api)
+  await store.getState().showBoard(board.id)
+  vi.mocked(api.board).mockResolvedValueOnce(undefined)
+  expect(await store.getState().showCard(other.id, card.id)).toBe('missing')
+  expect(store.getState().boardSnapshot).toBeNull()
+  expect(store.getState().workspace.kind).not.toBe('card')
 })

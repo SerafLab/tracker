@@ -98,3 +98,5 @@
 ## Выбранное native WebMCP расширение
 
 После failed WS production gate и successful native marker feasibility согласованы document-bound page tools, локальные транзакции и repository skill. Это не универсальный stdio MCP и не синхронизация браузеров. Core implementation, native candidate, production task acceptance и пользовательский новый чат проходят отдельные проверки; состояние — [core QA](../agents/webmcp-core-qa.md). Другие AI-направления этим не реализуются.
+
+The card now opens as a panel beside the board, with a full-page view at the same address. Expansion preserves field/note drafts; direct links and reloads open the page. The board shows up to three lines of the confirmed description. Publication remains a separate delivery state.

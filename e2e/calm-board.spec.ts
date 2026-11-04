@@ -162,10 +162,13 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
       await page.evaluate(() => window.scrollTo(0, 0))
       await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
       await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
-      await page.keyboard.press('PageDown')
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100)
-      await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeHidden()
-      // Reopening after the viewport change must still give a correctly placed menu.
+      await page.locator('.board-workspace > main').evaluate(element => { element.scrollTop = 250 })
+      await expect.poll(() => page.locator('.board-workspace > main').evaluate(element => element.scrollTop)).toBeGreaterThan(100)
+      const settingsAfterScroll = page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})
+      await expect(settingsAfterScroll).toBeVisible()
+      expect(await settingsAfterScroll.evaluate(element => { const box = element.getBoundingClientRect(); return box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth })).toBe(true)
+      await page.keyboard.press('Escape')
+      // Nested board scrolling leaves the anchored bar settings available.
       await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
       await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
       await page.keyboard.press('Escape')

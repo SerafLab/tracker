@@ -319,3 +319,33 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 
 /* Scroll snapping would undo the library’s small autoscroll increments. */
 .board-drag-surface[data-drag-active="true"] .status-columns { scroll-snap-type: none; }
+
+.card-heading > .card-detail-link { flex: 1; min-width: 0; display: block; }
+.card-detail-link > .card-name { display: block; }
+.card-description-preview { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; margin-top: .75rem; color: var(--text-secondary); font-size: .875rem; font-weight: 400; line-height: 1.5; }
+.card-detail-container { min-width: 0; }
+.card-board-return { gap: .5rem; max-width: 100%; text-align: left; margin-bottom: .75rem; }
+.card-board-return > span { min-width: 0; }
+.card-board-name { display: block; overflow-wrap: anywhere; font-size: .8125rem; color: var(--text-secondary); }
+.card-panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }
+.card-panel-header h2 { margin: 0; font-size: 1.25rem; overflow-wrap: anywhere; min-width: 0; }
+.card-panel-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+.workspace-layout > .board-workspace { display: flex; flex-direction: column; height: 100dvh; }
+.board-workspace[hidden] { display: none; }
+.board-workspace > .app-bar { flex: none; }
+.board-workspace > main { flex: 1; min-height: 0; overflow: auto; width: 100%; }
+.workspace-with-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(22rem, 38%); grid-template-rows: auto minmax(0, 1fr); height: 100dvh; }
+.workspace-with-panel > .board-workspace { display: contents; }
+.workspace-with-panel .board-workspace > .app-bar { grid-column: 1 / -1; grid-row: 1; }
+.workspace-with-panel .board-workspace > main { grid-column: 1; grid-row: 2; min-width: 0; max-width: 100%; overflow: auto; margin: 0; }
+.card-panel { grid-column: 2; grid-row: 2; overflow-y: auto; overscroll-behavior: contain; border-left: 1px solid var(--border); background: var(--workspace, #f6f5ee); }
+.card-panel .card-detail { padding: 1.25rem; }
+.card-panel .status-columns { max-width: 100%; }
+@media (max-width: 60rem) {
+  .workspace-with-panel { display: block; height: auto; }
+  .workspace-with-panel > .board-workspace { display: flex; flex-direction: column; height: 100dvh; }
+  .card-panel { position: fixed; inset: 0; z-index: 5; border: 0; height: 100dvh; }
+  .card-panel .card-detail { padding: 1rem; }
+  .card-panel-header { flex-wrap: wrap; }
+  .card-panel-actions { justify-content: flex-start; }
+}

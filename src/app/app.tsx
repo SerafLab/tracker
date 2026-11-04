@@ -18,6 +18,8 @@ function routeFromHash() {
   catch { return undefined }
 }
 type PendingTransition = { action: () => void | Promise<void> }
+type CardPresentation = 'panel' | 'page'
+type NavigationOptions = { presentation?: CardPresentation; replace?: boolean }
 type HistoryPosition = { index: number; hash: string }
 const indexFromState = (): number | undefined => typeof history.state?.easyTrackIndex === 'number' ? history.state.easyTrackIndex : undefined
 
@@ -32,7 +34,10 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const [savingDrafts, setSavingDrafts] = useState(false)
   const pendingSave = useRef(false)
   const stayTrigger = useRef<HTMLButtonElement>(null)
-  const navigate = useRef<(hash: string, refresh?: boolean) => Promise<void>>(async () => {})
+  const navigate = useRef<(hash: string, refresh?: boolean, options?: NavigationOptions) => Promise<void>>(async () => {})
+  const [cardPresentation, setCardPresentation] = useState<CardPresentation>('page')
+  const [panelIsolated, setPanelIsolated] = useState(false)
+  const presentation = useRef<CardPresentation>('page')
   const [runtime] = useState(() => {
     const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { staleConnection.current = true; setRestartRequired(true) })
     const repository = suppliedRepository ?? new DexieProjectBoardRepository(database!)
@@ -65,7 +70,8 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     let active = true
     let request = 0
     let position: HistoryPosition = { index: indexFromState() ?? 0, hash: location.hash }
-    history.replaceState({ ...history.state, easyTrackIndex: position.index }, '')
+    // A reloaded/copied card address always starts as a full page.
+    history.replaceState({ ...history.state, easyTrackIndex: position.index, easyTrackPresentation: 'page' }, '')
     let observed = `${position.index}:${position.hash}`
     let restoring = false
     let bypass = false
@@ -76,6 +82,8 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       let expectedHash = location.hash
       const isCurrent = () => active && request === startedAt && location.hash === expectedHash
       if (!await storageReady || !isCurrent()) return
+      presentation.current = history.state?.easyTrackPresentation === 'panel' ? 'panel' : 'page'
+      setCardPresentation(presentation.current)
       let route = routeFromHash()
       if (!route && restoreLastProject) {
         let id: Id | undefined
@@ -131,11 +139,11 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       }
       acceptPosition(next)
     }
-    navigate.current = async (hash, refresh = true) => {
+    navigate.current = async (hash, refresh = true, options = {}) => {
       if (!active) return
-      if (hash !== location.hash) {
-        position = { index: position.index + 1, hash }
-        history.pushState({ easyTrackIndex: position.index }, '', hash || location.pathname + location.search)
+      if (hash !== location.hash || (options.presentation && options.presentation !== presentation.current)) {
+        position = { index: position.index + (options.replace ? 0 : 1), hash }
+        history[options.replace ? 'replaceState' : 'pushState']({ easyTrackIndex: position.index, easyTrackPresentation: options.presentation ?? 'page' }, '', hash || location.pathname + location.search)
         observed = `${position.index}:${hash}`
       }
       if (refresh) await showRoute()
@@ -146,6 +154,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     return () => { active = false; ++request; removeEventListener('popstate', onHistory); removeEventListener('hashchange', onHistory) }
   }, [runtime, requestLeave])
 
+  const cardOpen = useStore(runtime.store, state => state.workspace.kind === 'card')
   const agentPending = useStore(runtime.store, state => state.agentPending)
   const agentRefreshError = useStore(runtime.store, state => state.agentRefreshError)
   useWebMcp(createBrowserAdapter({
@@ -175,11 +184,17 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   }), restartRequired)
 
   const navigateToProject = async (id: Id) => { requestLeave(() => navigate.current(routeFor(id))) }
-  const navigateToCard = async (projectId: Id, cardId: Id) => { requestLeave(() => navigate.current(routeFor(projectId, cardId))) }
+  const navigateToCard = async (projectId: Id, cardId: Id) => {
+    requestLeave(() => navigate.current(routeFor(projectId, cardId), true, { presentation: 'panel', replace: !!routeFromHash()?.cardId && presentation.current === 'panel' }))
+  }
+  const expandCard = async () => { await navigate.current(location.hash, false, { presentation: 'page' }); presentation.current = 'page'; setCardPresentation('page') }
+  const closeCard = async (projectId: Id) => {
+    requestLeave(() => presentation.current === 'panel' ? history.back() : navigate.current(routeFor(projectId)))
+  }
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
   const onProjectDeleted = async (id: Id) => { if (routeFromHash()?.projectId === id) await navigate.current('', false) }
   if (restartRequired) return <RestartRequired onRestart={reloadApp} />
-  return <>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}<ProjectBoardApp store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><InstallGuidance /><PwaUpdateRegistration requestUpdate={requestLeave} />
+  return <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} onExpandCard={expandCard} onCloseCard={closeCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><div inert={panelIsolated} aria-hidden={panelIsolated || undefined}><InstallGuidance /><PwaUpdateRegistration requestUpdate={requestLeave} /></div>
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
 }

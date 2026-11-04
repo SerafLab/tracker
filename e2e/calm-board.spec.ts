@@ -288,3 +288,29 @@ for (const width of [1280, 1440]) for (const language of ['ru', 'en'] as const) 
     await page.screenshot({ path: testInfo.outputPath(`panel-columns-${language}-${width}.png`) })
   })
 }
+
+for (const count of [2, 3]) test(`${count} statuses sit together at the left with the design gap at 1440px`, async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/tracker/')
+  await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
+  await page.evaluate(async count => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(['projects', 'statuses'], 'readwrite')
+      tx.objectStore('projects').put({ id: 'gap', name: 'Gap', createdAt: '2026-11-04T00:00:00Z' })
+      for (let index = 0; index < count; index++) tx.objectStore('statuses').put({ id: `s${index}`, projectId: 'gap', name: `Status ${index}`, position: index })
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  }, count)
+  await page.goto('/tracker/#project/gap')
+  await page.reload()
+  const geometry = await page.locator('.status-columns').evaluate(board => {
+    const boxes = Array.from(board.querySelectorAll('.status-column')).map(column => column.getBoundingClientRect())
+    return { boxes: boxes.map(box => ({ left: box.left, right: box.right, width: box.width })), gap: parseFloat(getComputedStyle(board).columnGap), boardLeft: board.getBoundingClientRect().left, padding: parseFloat(getComputedStyle(board).paddingLeft) }
+  })
+  expect(geometry.boxes).toHaveLength(count)
+  expect(Math.abs(geometry.boxes[0].left - geometry.boardLeft - geometry.padding)).toBeLessThan(1)
+  for (let index = 1; index < count; index++) expect(Math.abs(geometry.boxes[index].left - geometry.boxes[index - 1].right - geometry.gap)).toBeLessThanOrEqual(1)
+  for (const box of geometry.boxes) expect(box.width).toBeLessThanOrEqual(24 * 16 + 1)
+})

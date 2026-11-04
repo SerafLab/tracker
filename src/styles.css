@@ -178,7 +178,7 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
   grid-template-rows: auto minmax(0, 1fr) auto;
   column-gap: 1.375rem;
   min-width: 0;
-  min-height: 35rem;
+  min-height: 0;
   overflow-x: auto;
   padding: .25rem .25rem 1.5rem;
   scroll-snap-type: x proximity;
@@ -190,7 +190,7 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .column-heading { display: flex; align-items: baseline; flex: 1; gap: .5625rem; min-width: 0; }
 .column-title { margin: .375rem 0 0; font-size: .875rem; line-height: 1.3125rem; font-weight: 650; overflow-wrap: anywhere; text-wrap: pretty; }
 .card-count { position: relative; color: var(--text-muted); font-size: .75rem; line-height: 1.3125rem; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.card-list { display: grid; align-content: start; gap: .75rem; }
+.card-list { display: grid; align-content: start; gap: .75rem; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: .25rem; margin: -.25rem; }
 .work-card { display: grid; gap: .8125rem; min-width: 0; padding: 1.0625rem 1rem .5625rem; transition: border-color .16s ease; }
 .card-name { min-width: 0; font-size: .9375rem; font-weight: 530; line-height: 1.5; overflow-wrap: anywhere; }
 .add-card { justify-content: flex-start; width: 100%; margin: .75rem 0 0; padding: 0; border: 0; gap: .75rem; font-weight: 450; }
@@ -259,7 +259,7 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
   .page-title-wrap { grid-column: 1 / -1; grid-row: 2; }
   .page-title { font-size: 1.25rem; line-height: 1.3; letter-spacing: -.025em; }
   .app-shell { padding: 1.375rem 1rem 1.5rem; }
-  .status-columns { grid-auto-columns: min(calc(100vw - 3.375rem), 20.625rem); min-height: 33.75rem; column-gap: 1rem; margin-right: -1rem; padding-right: 1rem; }
+  .status-columns { grid-auto-columns: min(calc(100vw - 3.375rem), 20.625rem); column-gap: 1rem; margin-right: -1rem; padding-right: 1rem; }
   .status-column { max-width: none; }
   .column-header { min-height: 3.875rem; }
   .work-card { padding: .9375rem .875rem .5625rem; }
@@ -345,7 +345,11 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .workspace-layout > .board-workspace { display: flex; flex-direction: column; height: 100dvh; }
 .board-workspace[hidden] { display: none; }
 .board-workspace > .app-bar { flex: none; }
-.board-workspace > main { flex: 1; min-height: 0; overflow: auto; width: 100%; }
+.board-workspace > main { flex: 1; min-height: 0; overflow: auto; width: 100%; display: flex; flex-direction: column; }
+/* The board fills the workspace; only each card list scrolls, so lower entries stay in view. */
+.board-workspace > main > * { flex: none; }
+.board-workspace > main > .board-drag-surface { flex: 1 1 auto; min-height: 20rem; display: flex; flex-direction: column; }
+.board-workspace .board-drag-surface > .status-columns { flex: 1 1 auto; }
 .workspace-with-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(22rem, 38%); grid-template-rows: auto minmax(0, 1fr); height: 100dvh; }
 .workspace-with-panel > .board-workspace { display: contents; }
 .workspace-with-panel .board-workspace > .app-bar { grid-column: 1 / -1; grid-row: 1; }

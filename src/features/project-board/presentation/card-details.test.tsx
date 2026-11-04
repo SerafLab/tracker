@@ -349,8 +349,10 @@ it('keeps one install entry in place and retains the captured install prompt acr
   await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
   await screen.findByRole('link', { name: 'Card' })
   expect(inBoard()).toBe(true)
+  // Back from the board returns to the full card page entry.
   await act(async () => { history.back() })
-  await waitFor(() => expect(inBoard()).toBe(true))
+  await screen.findByRole('button', { name: 'Назад к доске' })
+  expect(inBoard()).toBe(false)
   await user.click(within(entry() as HTMLElement).getByRole('button'))
   expect(prompt).toHaveBeenCalledOnce()
   expect(errors).not.toHaveBeenCalled()

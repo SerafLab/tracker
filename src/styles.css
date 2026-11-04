@@ -332,6 +332,8 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .card-panel { grid-column: 2; grid-row: 2; overflow-y: auto; overscroll-behavior: contain; border-left: 1px solid var(--border); background: var(--workspace, #f6f5ee); }
 .card-panel .card-detail { padding: 1.25rem; }
 .card-panel .status-columns { max-width: 100%; }
+/* With the panel open the install entry stays in the board column's scroll area, never over the panel. */
+.workspace-with-panel .install-help { position: static; display: flex; justify-content: flex-end; margin: 0 1rem 1rem; }
 @media (max-width: 60rem) {
   .workspace-with-panel { display: block; height: auto; }
   .workspace-with-panel > .board-workspace { display: flex; flex-direction: column; height: 100dvh; }

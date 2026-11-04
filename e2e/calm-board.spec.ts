@@ -104,7 +104,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(first.locator('.card-badge')).toHaveCount(4)
     if (width < 1280) {
       expect(await page.locator('.install-help').evaluate(element => getComputedStyle(element).position)).toBe('static')
-      expect(await page.locator('.install-help').evaluate(element => element.getBoundingClientRect().top >= document.querySelector('main')!.getBoundingClientRect().bottom)).toBe(true)
+      expect(await page.locator('.install-help').evaluate(element => element.closest('main') !== null && element.getBoundingClientRect().top >= document.querySelector('.status-columns')!.getBoundingClientRect().bottom)).toBe(true)
     }
     await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur() })
     await page.screenshot({ path: testInfo.outputPath(`calm-${language}-${width}.png`), fullPage: true })

@@ -298,3 +298,69 @@ test('deleting an unrelated card keeps the open card draft without a prompt', as
   await expect(page.getByRole('link', { name: 'Card 5', exact: true })).toHaveCount(0)
   await expect(description).toHaveValue('Draft survives unrelated deletion')
 })
+
+for (const width of [320, 390, 1280, 1440]) for (const panel of [false, true]) test(`a board keeps the bar fixed and the document unscrolled at ${width}px ${panel ? 'with' : 'without'} a panel`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 700 }); await seededBoard(page)
+  if (panel) { await page.getByRole('link', { name: 'Card 0', exact: true }).click(); await expect(page.locator('.card-panel')).toBeVisible() }
+  const main = page.locator('.board-workspace > main, .board-workspace main').first()
+  await main.evaluate(node => { node.scrollTop = node.scrollHeight })
+  const geometry = await page.evaluate(() => ({ doc: document.scrollingElement!.scrollHeight, inner: innerHeight, scrollY, bar: document.querySelector('.app-bar')!.getBoundingClientRect().top }))
+  expect(geometry.doc).toBeLessThanOrEqual(geometry.inner)
+  expect(geometry.scrollY).toBe(0)
+  expect(geometry.bar).toBe(0)
+  await expect(page.locator('.install-help')).toHaveCount(1)
+  if (width <= 390 && !panel) {
+    const entry = page.locator('.install-help')
+    await expect(entry).toBeInViewport()
+    expect(await entry.evaluate(node => !!node.closest('.board-workspace main'))).toBe(true)
+    const overlaps = await page.evaluate(() => {
+      const box = document.querySelector('.install-help')!.getBoundingClientRect()
+      return Array.from(document.querySelectorAll('.work-card, .status-columns button, .status-columns a')).filter(node => {
+        const r = node.getBoundingClientRect()
+        return r.width > 0 && r.left < box.right && r.right > box.left && r.top < box.bottom && r.bottom > box.top
+      }).length
+    })
+    expect(overlaps).toBe(0)
+  }
+})
+
+test('catalogue and full card page scroll the bar with the document', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 500 }); await seededBoard(page)
+  await page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(['projects'], 'readwrite')
+      for (let index = 0; index < 20; index++) tx.objectStore('projects').put({ id: `extra-${index}`, name: `Extra ${index}`, createdAt: `2026-11-03T00:00:${String(index).padStart(2, '0')}Z` })
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error)
+    })
+    db.close()
+  })
+  const barTopAfterScroll = () => page.evaluate(() => { scrollTo(0, 200); return { y: scrollY, top: Array.from(document.querySelectorAll('.app-bar')).find(node => node.getClientRects().length)!.getBoundingClientRect().top } })
+  await page.reload()
+  await page.getByRole('button', { name: /Все проекты/ }).click()
+  await expect(page.getByRole('button', { name: 'Extra 0', exact: true })).toBeVisible()
+  let result = await barTopAfterScroll()
+  expect(result.y).toBeGreaterThan(0)
+  expect(result.top).toBe(-result.y)
+  await page.goto('/tracker/#project/panel-project/card/panel-card-0')
+  await page.reload()
+  await expect(page.getByRole('textbox', { name: 'Описание карточки', exact: true })).toBeVisible()
+  result = await barTopAfterScroll()
+  expect(result.y).toBeGreaterThan(0)
+  expect(result.top).toBe(-result.y)
+})
+
+test('Back after a panel card is deleted returns to the board entry instead of repeating it', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 }); await seededBoard(page)
+  await page.getByRole('link', { name: 'Card 3', exact: true }).click()
+  await expect(page.locator('.card-panel')).toBeVisible()
+  await page.getByRole('button', { name: 'Действия карточки Card 3', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Удалить', exact: true }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Удалить', exact: true }).click()
+  await expect(page.locator('.card-panel')).toHaveCount(0)
+  await expect(page).toHaveURL(/#project\/panel-project$/)
+  const index = await page.evaluate(() => history.state.easyTrackIndex)
+  await page.goBack()
+  await expect(page).toHaveURL(/tracker\/$|#$|tracker\/#?$/)
+  expect(index).toBeGreaterThan(await page.evaluate(() => history.state?.easyTrackIndex ?? -1))
+})

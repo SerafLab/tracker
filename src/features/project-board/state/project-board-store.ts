@@ -1,12 +1,12 @@
 import { CommandError, type AgentCommand, type AgentSavedData } from '../application/agent-command'
 import { createStore } from 'zustand/vanilla'
-import type { CardDetails, CardPlacement, CardPlacementResult, CardInput, CreateProjectInput, Note, Id, Project, ProjectBoard } from '../domain/model'
+import type { CardDetails, CardPlacement, CardPlacementResult, CardInput, CreateProjectInput, Note, Id, Project, ProjectSummary, ProjectBoard } from '../domain/model'
 import type { DeleteStatusResult } from '../application/repository'
 import type { ProjectBoardUseCases } from '../application/use-cases'
 
 export type Workspace =
   | { kind: 'loading' }
-  | { kind: 'catalogue'; projects: Project[] }
+  | { kind: 'catalogue'; projects: ProjectSummary[] }
   | { kind: 'board'; board: ProjectBoard }
   | { kind: 'card'; details: CardDetails }
   | { kind: 'card-missing'; project: Project }
@@ -100,7 +100,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       const refreshRequest = ++request
       try {
         let refreshed: Workspace = workspace
-        if (workspace.kind === 'catalogue') refreshed = { kind: 'catalogue', projects: await useCases.projects() }
+        if (workspace.kind === 'catalogue') refreshed = { kind: 'catalogue', projects: await useCases.catalogue() }
         else if (workspace.kind === 'board') {
           const board = await useCases.board(workspace.board.id)
           if (!board) throw new Error('board_not_found')
@@ -187,7 +187,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         currentProjectId = undefined
         currentCardId = undefined
         try {
-          const projects = await useCases.projects()
+          const projects = await useCases.catalogue()
           if (request === startedAt) set({ workspace: { kind: 'catalogue', projects } })
         } catch {
           if (request === startedAt) set({ workspace: { kind: 'unavailable' } })

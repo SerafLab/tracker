@@ -6,7 +6,7 @@ const board = { id: 'project', name: 'Поиск квартиры', createdAt: '
 function useCases(overrides: Partial<ProjectBoardUseCases> = {}): ProjectBoardUseCases {
   return {
     executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
-    open: vi.fn(), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(), board: vi.fn().mockResolvedValue(board),
+    open: vi.fn(), catalogue: vi.fn().mockResolvedValue([]), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(), board: vi.fn().mockResolvedValue(board),
     createProject: vi.fn(), deleteProject: vi.fn(), renameProject: vi.fn(), createStatus: vi.fn(), renameStatus: vi.fn(), moveStatus: vi.fn(),
     createCard: vi.fn(), updateCard: vi.fn(), moveCard: vi.fn(), deleteCard: vi.fn(), deleteStatus: vi.fn().mockResolvedValue('deleted'), ...overrides,
   }
@@ -136,7 +136,7 @@ it.each(['resolve', 'reject'] as const)('ignores a stale board %s after opening 
 
 it.each(['resolve', 'reject'] as const)('ignores a stale catalogue %s after opening a board', async finish => {
   const pending = deferred<[]>()
-  const api = useCases({ projects: vi.fn(() => pending.promise) })
+  const api = useCases({ catalogue: vi.fn(() => pending.promise) })
   const store = createProjectBoardStore(api)
   const catalogue = store.getState().showCatalogue()
   await store.getState().showBoard('project')
@@ -295,7 +295,7 @@ it('keeps the confirmed project while deletion is pending, then refreshes only a
   vi.mocked(api.setLastProject).mockClear()
   const deleting = store.getState().deleteProject('project')
   expect(store.getState().workspace).toEqual({ kind: 'board', board })
-  expect(api.projects).not.toHaveBeenCalled()
+  expect(api.catalogue).not.toHaveBeenCalled()
   pending.resolve()
   expect(await deleting).toBe(true)
   expect(api.deleteProject).toHaveBeenCalledExactlyOnceWith('project')
@@ -310,7 +310,7 @@ it('keeps workspace and error after a rejected project deletion and allows retry
   expect(await store.getState().deleteProject('project')).toBe(false)
   expect(store.getState().workspace).toEqual({ kind: 'board', board })
   expect(store.getState().saveError).toBe(true)
-  expect(api.projects).not.toHaveBeenCalled()
+  expect(api.catalogue).not.toHaveBeenCalled()
   expect(await store.getState().deleteProject('project')).toBe(true)
   expect(store.getState().saveError).toBe(false)
 })
@@ -322,7 +322,7 @@ it('refuses project deletion after storage becomes stale', async () => {
 })
 
 it('reports project deletion as saved when only its catalogue refresh fails, and retries reading without deleting twice', async () => {
-  const api = useCases({ projects: vi.fn().mockRejectedValueOnce(Error('read unavailable')).mockResolvedValue([]) })
+  const api = useCases({ catalogue: vi.fn().mockRejectedValueOnce(Error('read unavailable')).mockResolvedValue([]) })
   const store = createProjectBoardStore(api)
   await store.getState().showBoard('project')
   expect(await store.getState().deleteProject('project')).toBe(true)
@@ -449,4 +449,16 @@ it.each(['resolve', 'reject'] as const)('ignores stale post-placement refresh %s
   expect(store.getState().saveError).toBe(false)
   expect(store.getState().placementPending).toBe(false)
   expect(api.moveCard).toHaveBeenCalledOnce()
+})
+
+it('loads current catalogue summaries each time the catalogue is reopened', async () => {
+  const first = [{ id: 'p', name: 'P', createdAt: 'now', cardCount: 0 }]
+  const second = [{ ...first[0], cardCount: 5 }]
+  const api = useCases({ catalogue: vi.fn().mockResolvedValueOnce(first).mockResolvedValueOnce(second) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showCatalogue()
+  expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: first })
+  await store.getState().showBoard('p')
+  await store.getState().showCatalogue()
+  expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: second })
 })

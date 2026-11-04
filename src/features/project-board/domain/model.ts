@@ -1,6 +1,7 @@
 export type Id = string
 
 export type Project = { id: Id; name: string; createdAt: string }
+export type ProjectSummary = Project & { cardCount: number }
 export type CreateProjectInput = { name: string; initialStatusNames: string[] }
 export type Status = { id: Id; projectId: Id; name: string; position: number }
 export type Card = { id: Id; statusId: Id; name: string; description: string; position: number; important: boolean; urgent: boolean }

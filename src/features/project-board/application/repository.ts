@@ -1,5 +1,5 @@
 import type { AgentCommandResult, CardAttributes, RepositoryAgentCommand } from './agent-command'
-import type { Card, CardPlacement, CardPlacementResult, CardDetails, CardInput, Note, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../domain/model'
+import type { Card, CardPlacement, CardPlacementResult, CardDetails, CardInput, Note, Id, Project, ProjectSummary, ProjectBoard, Status, WorkspacePreference } from '../domain/model'
 
 export type NewStatus = Omit<Status, 'position'>
 export type NewCard = Omit<Card, 'position'>
@@ -10,6 +10,7 @@ export interface ProjectBoardRepository {
   updateCardAttributes(id: Id, attributes: CardAttributes): Promise<Card>
   open(): Promise<void>
   projects(): Promise<Project[]>
+  catalogue(): Promise<ProjectSummary[]>
   preference(): Promise<WorkspacePreference | undefined>
   setLastProject(id?: Id): Promise<void>
   createProject(project: Project, initialStatuses: Status[], remember: boolean): Promise<Project>

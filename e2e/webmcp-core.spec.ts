@@ -169,3 +169,32 @@ test('native-contract fixture revokes old handles and blocks both tool and UI wr
   expect(await host.call('create_project', { name: 'Blocked fresh handle' })).toMatchObject({ error: { code: 'restart_required' } })
   await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toHaveCount(0)
 })
+
+test('native-contract fixture: delete_card on the open panel card closes the panel to the board, and is refused with a dirty draft', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  const host = await fixture(page)
+  const projectId = (await host.call('create_project', { name: 'Project' })).data.project.id
+  const statusId = (await host.call('create_status', { projectId, name: 'Status' })).data.status.id
+  const firstId = (await host.call('create_card', { statusId, name: 'First' })).data.card.id
+  const secondId = (await host.call('create_card', { statusId, name: 'Second' })).data.card.id
+  await host.call('show_workspace', { projectId })
+  const boardIndex = await page.evaluate(() => history.state?.easyTrackIndex)
+  await page.getByRole('link', { name: 'First', exact: true }).click()
+  const panel = page.locator('.card-panel')
+  await expect(panel).toBeVisible()
+  const description = page.getByLabel('Описание карточки')
+  await description.fill('Kept draft')
+  expect((await host.call('delete_card', { cardId: firstId, confirm: true })).error.code).toBe('conflict')
+  await expect(description).toHaveValue('Kept draft')
+  await expect(panel).toBeVisible()
+  await page.getByRole('form', { name: 'Поля карточки' }).getByRole('button', { name: 'Сохранить', exact: true }).click()
+  await expect(page.locator('.card-description-preview').first()).toHaveText('Kept draft')
+  expect(await host.call('delete_card', { cardId: firstId, confirm: true })).toMatchObject({ ok: true, data: { deletedId: firstId } })
+  await expect(panel).toHaveCount(0)
+  await expect(page).toHaveURL(new RegExp(`#project/${projectId}$`))
+  await expect.poll(() => page.evaluate(() => history.state?.easyTrackIndex)).toBe(boardIndex)
+  await expect(page.getByRole('link', { name: 'Second', exact: true })).toBeVisible()
+  expect(secondId).toBeTruthy()
+  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest('.board-workspace, header'))).toBe(true)
+  await expect(page.getByRole('link', { name: 'First', exact: true })).toHaveCount(0)
+})

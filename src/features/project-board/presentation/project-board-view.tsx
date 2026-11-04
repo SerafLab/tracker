@@ -1,6 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Card, CardPlacement, CardInput, Id, ProjectBoard, Status } from '../domain/model'
+import type { Card, CardPlacement, CardInput, Id, ProjectBoard, BoardView, Status } from '../domain/model'
 import { useModalOpen } from '../../../ui/modal-state'
 import { AppBar } from '../../../ui/app-bar'
 import { CardView } from './card-view'
@@ -11,9 +11,14 @@ import { DeleteDialog } from './delete-dialog'
 import type { MoveCardStateResult, DeleteStatusStateResult } from '../state/project-board-store'
 
 type BoardProps = {
+  onRequestDestructiveAction?: (action: () => void) => void
+  /** The card shown beside the board; only deletions that remove it need the unsaved-draft guard. */
+  openCard?: { id: Id; statusId: Id } | null
+  /** Receives the node where the narrow-screen install entry is placed after the board content. */
+  installSlot?: (node: HTMLElement | null) => void
   focusCreation: boolean
   onCreationFocused: () => void
-  board: ProjectBoard
+  board: BoardView
   saveError: boolean
   busy: boolean
   placementPending: boolean
@@ -32,7 +37,9 @@ type BoardProps = {
   onMoveCard: (cardId: Id, placement: CardPlacement) => Promise<MoveCardStateResult>
 }
 
-export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
+const runImmediately = (action: () => void) => action()
+
+export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, openCard = null, installSlot, focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
   const { t } = useTranslation()
   const [moveDialogCardId, setMoveDialogCardId] = useState<Id | null>(null)
   const root = useRef<HTMLElement>(null)
@@ -88,11 +95,13 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
     return result
   }, [onMoveCard, t])
   const requestStatusDeletion = useCallback((status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => {
-    setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus })
-  }, [])
+    const request = openCard?.statusId === status.id ? onRequestDestructiveAction : runImmediately
+    request(() => setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus }))
+  }, [onRequestDestructiveAction, openCard?.statusId])
   const requestCardDeletion = useCallback((card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => {
-    setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus })
-  }, [])
+    const request = openCard?.id === card.id ? onRequestDestructiveAction : runImmediately
+    request(() => setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus }))
+  }, [onRequestDestructiveAction, openCard?.id])
   const statuses = useMemo(() => board.statuses.map(({ cards: _cards, ...status }) => status), [board.statuses])
   const [deletingProject, setDeletingProject] = useState(false)
   const [creatingStatus, setCreatingStatus] = useState(false)
@@ -104,7 +113,7 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
       onReturn={() => void onReturn()}
       creation={{ disabled: busy, label: t('addStatus'), triggerRef: addStatusTrigger, onSelect: () => setCreatingStatus(true) }}
       rename={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setRenamingProject(true) }}
-      deleteProject={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setDeletingProject(true) }}
+      deleteProject={{ disabled: busy, triggerRef: projectMenu, onSelect: () => onRequestDestructiveAction(() => setDeletingProject(true)) }}
     />
     <main ref={root} className="app-shell">
       {saveError && !deletingProject ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
@@ -119,6 +128,7 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
           index={index}
           total={board.statuses.length}
           statuses={statuses}
+          recentNotes={board.recentNotes}
           saveError={saveError}
           disabled={busy}
           onDeleteStatus={requestStatusDeletion}
@@ -137,6 +147,7 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
       {deleting ? <DeleteDialog kind={deleting.kind} name={deleting.name} blocked={deleting.kind === 'status' && !!board.statuses.find(status => status.id === deleting.id)?.cards.length} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}
       {creatingStatus ? <NameDialog returnFocus={addStatusTrigger} title={t('newStatus')} label={t('statusName')} button={t('createStatus')} onSubmit={onCreateStatus} onClose={() => setCreatingStatus(false)} /> : null}
       {renamingProject ? <NameDialog returnFocus={projectMenu} title={t('renameProject')} label={t('newName')} button={t('save')} initialName={board.name} onSubmit={onRenameProject} onClose={() => setRenamingProject(false)} /> : null}
+      {installSlot ? <div ref={installSlot} /> : null}
     </main>
   </>
 }
@@ -146,6 +157,7 @@ type StatusColumnProps = {
   index: number
   total: number
   statuses: Status[]
+  recentNotes: BoardView['recentNotes']
   saveError: boolean
   disabled: boolean
   onDeleteStatus: (status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => void
@@ -159,7 +171,7 @@ type StatusColumnProps = {
   onMoveCard: (cardId: Id, placement: CardPlacement, focus?: boolean) => Promise<MoveCardStateResult>
 }
 
-const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, saveError, disabled, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
+const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, recentNotes, saveError, disabled, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const { ref: dropRef } = useStatusDrop(status.id)
@@ -193,6 +205,7 @@ const StatusColumn = memo(function StatusColumn({ projectId, status, index, tota
       card={card}
       onDelete={onDeleteCard}
       statuses={statuses}
+      notes={recentNotes[card.id]}
       saveError={saveError}
       onMoveDialogChange={onMoveDialogChange}
       peers={status.cards}

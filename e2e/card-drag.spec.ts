@@ -134,7 +134,7 @@ for (const width of [320, 390, 1280, 1440]) for (const en of [false, true]) {
   })
 }
 
-test('uses library autoscroll to reach an offscreen empty column and a long page', async ({ page }) => {
+test('uses library autoscroll to reach an offscreen empty column and a long board', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 700 }); await setup(page)
   const scroller = page.locator('.status-columns')
   await start(page, card(page, 'A1'))
@@ -151,10 +151,11 @@ test('uses library autoscroll to reach an offscreen empty column and a long page
     await expect(page.getByRole('dialog')).toBeHidden()
   }
   await start(page, card(page, 'Both'))
-  const before = await page.evaluate(() => scrollY), count = await writes(page)
+  const boardScroller = page.locator('.board-workspace > main')
+  const before = await boardScroller.evaluate(node => node.scrollTop), count = await writes(page)
   const source = await card(page, 'Both').boundingBox()
   await page.mouse.move(source!.x + 35, 695, { steps: 15 })
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(before + 100)
+  await expect.poll(() => boardScroller.evaluate(node => node.scrollTop)).toBeGreaterThan(before + 100)
   await page.keyboard.press('Escape'); await page.mouse.up()
   await expect(page.locator('.card-placement-marker')).toHaveCount(0)
   expect(await writes(page)).toBe(count)
@@ -179,12 +180,12 @@ test('keeps native touch swipes before hold, then drags without opening on relea
     await swipe(300, bounds!.y + 25, -210, 0)
     await expect.poll(() => page.locator('.status-columns').evaluate(element => element.scrollLeft)).toBeGreaterThan(20)
     await page.locator('.status-columns').evaluate(element => { element.scrollLeft = 0 })
-    await page.evaluate(() => scrollTo(0, 0))
+    await page.locator('.board-workspace > main').evaluate(node => { node.scrollTop = 0 })
     bounds = await card(page, 'A2').boundingBox()
     await swipe(bounds!.x + 30, bounds!.y + 25, 0, -160)
-    await expect.poll(() => page.evaluate(() => scrollY)).toBeGreaterThan(0)
+    await expect.poll(() => page.locator('.board-workspace > main').evaluate(node => node.scrollTop)).toBeGreaterThan(0)
     expect(await writes(page)).toBe(initial); await expect(page).toHaveURL(boardUrl)
-    await page.evaluate(() => scrollTo(0, 0)); await card(page, 'A2').scrollIntoViewIfNeeded()
+    await page.locator('.board-workspace > main').evaluate(node => { node.scrollTop = 0 }); await card(page, 'A2').scrollIntoViewIfNeeded()
     bounds = await card(page, 'A2').boundingBox()
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: bounds!.x + 30, y: bounds!.y + 25 }] })
     await page.waitForTimeout(300)

@@ -46,7 +46,7 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
       await form.getByLabel(label.name).fill(nextName)
       if (toggle) await form.getByLabel(label.urgent, { exact: true }).uncheck()
       await form.getByRole('button', { name: label.save, exact: true }).click()
-      await expect(page.getByRole('heading', { name: nextName, level: 1, exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { name: nextName, level: 2, exact: true })).toBeVisible()
       await page.getByRole('button', { name: en ? 'Back to board' : 'Назад к доске', exact: true }).click()
       await expect(page.getByRole('heading', { name: 'Priority', exact: true })).toBeVisible()
     }

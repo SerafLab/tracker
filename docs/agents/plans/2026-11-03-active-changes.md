@@ -24,3 +24,18 @@ Branches/worktrees and exact feature bases are appended as created. Role-specifi
 | Apply status set | codex/nov04-apply-status-set; /private/tmp/traker-nov04-apply-status-set | 991ab2f | runner review_headings; independent of panel/catalogue code, native extension remains later |
 
 Original user worktree remains untouched. Baseline253 unit+3probe+125browser PASS. Several concurrent jsdom suites exhausted local resources; VITEST_MAX_WORKERS=2 bounds parallelism without reducing required checks. All local test servers use distinct ports4280(integration),4281(panel),4282(headings),4283(catalogue),4284(presets). Every npm ci retains prepare/pre-push setup; sandbox escalation is needed for git config and local server binding.
+
+## Execution record (resumed in Claude Code 2026-11-04)
+
+The previous session ended mid-merge of the card panel. Roles follow agent-routing.md with Claude models: runner — sonnet/medium, reviewer — opus/high (read-only by instruction only). Ports: 4281 panel, 4284 status sets, 4287 recent notes.
+
+| Function | Branch / worktree | Exact base | State / accepted commit |
+|---|---|---|---|
+| Card panel | codex/nov03-card-panel; /private/tmp/traker-nov03-card-panel | a4fa010 | Merge conflict resolved a0b597e (catalogue() summaries + boardSnapshot reset). Reviewer rejected the unspecified fixed AppBar; fixes 3cbf05e, d559731, 28c4ee1, 29b2947 merged (b781ffe, c147d90, 7139ba7). Accepted with minor notes at 7139ba7: 268 unit + 3 probe + 163 browser PASS. Follow-up in progress: desktop install entry over panel, agent delete_card test |
+| Apply status set | codex/nov04-apply-status-set; /private/tmp/traker-nov04-apply-status-set | 991ab2f | 3ce3be5 + cb475a9 (focus after apply, not_found → catalogue). Accepted with minor notes; feature 265 unit + 135 browser PASS. Integrates last. Spec sync: drop ADDED requirements identical to main; "Saved preset names…" becomes MODIFIED |
+| Recent notes | codex/nov04-recent-notes; /private/tmp/traker-nov04-recent-notes | 7139ba7 | Runner started |
+| Column boundaries | codex/nov04-column-boundaries; /private/tmp/traker-nov04-columns | 9c8f10c | e3d9f77 committed earlier, not yet reviewed or merged |
+
+User decision 2026-11-04: on a project board, with or without a card panel, the application bar stays fixed and the board scrolls inside a viewport-bounded workspace; catalogue, full card page and service states keep the bar scrolling with the document (MODIFIED "Responsive application bar presentation" in add-card-details, commits 2f49a80, 0788970).
+
+Spec sync notes: add-card-details re-ADDs requirements already in openspec/specs/card-details; convert them to MODIFIED (or drop identical ones) before archive.

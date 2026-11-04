@@ -108,7 +108,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(first.locator('.card-badge')).toHaveCount(4)
     if (width < 1280) {
       expect(await page.locator('.install-help').evaluate(element => getComputedStyle(element).position)).toBe('static')
-      expect(await page.locator('.install-help').evaluate(element => element.getBoundingClientRect().top >= document.querySelector('main')!.getBoundingClientRect().bottom)).toBe(true)
+      expect(await page.locator('.install-help').evaluate(element => element.closest('main') !== null && element.getBoundingClientRect().top >= document.querySelector('.status-columns')!.getBoundingClientRect().bottom)).toBe(true)
     }
     await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur() })
     await page.screenshot({ path: testInfo.outputPath(`calm-${language}-${width}.png`), fullPage: true })
@@ -166,10 +166,13 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
       await page.evaluate(() => window.scrollTo(0, 0))
       await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
       await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
-      await page.keyboard.press('PageDown')
-      await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(100)
-      await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeHidden()
-      // Reopening after the viewport change must still give a correctly placed menu.
+      await page.locator('.board-workspace > main').evaluate(element => { element.scrollTop = 250 })
+      await expect.poll(() => page.locator('.board-workspace > main').evaluate(element => element.scrollTop)).toBeGreaterThan(100)
+      const settingsAfterScroll = page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})
+      await expect(settingsAfterScroll).toBeVisible()
+      expect(await settingsAfterScroll.evaluate(element => { const box = element.getBoundingClientRect(); return box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth })).toBe(true)
+      await page.keyboard.press('Escape')
+      // Nested board scrolling leaves the anchored bar settings available.
       await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
       await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
       await page.keyboard.press('Escape')

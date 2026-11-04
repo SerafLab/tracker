@@ -16,7 +16,7 @@ for (const width of [320, 1280]) {
     }
     const name = 'ОченьДлинноеНазваниеКарточкиБезПробелов'.repeat(4)
     const first = page.locator('.status-column').filter({ has: page.getByRole('heading', { name: 'Первый', exact: true }) })
-    await first.locator('.add-card').click()
+    await first.locator('.add-card-header').click()
     await page.getByLabel('Название карточки').fill(name)
     await page.getByRole('button', { name: 'Создать карточку' }).click()
     await expect(page.getByRole('dialog')).toBeHidden()

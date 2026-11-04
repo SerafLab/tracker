@@ -13,7 +13,7 @@ async function createBoard(page: Page, en = false) {
     await page.getByRole('dialog').getByRole('button', { name: en ? 'Create status' : 'Создать статус', exact: true }).click()
     await expect(page.getByRole('dialog')).toBeHidden()
   }
-  await page.locator('.status-column').filter({ has: page.getByRole('heading', { name: 'Todo', exact: true }) }).locator('.add-card').click()
+  await page.locator('.status-column').filter({ has: page.getByRole('heading', { name: 'Todo', exact: true }) }).locator('.add-card-header').click()
   const dialog = page.getByRole('dialog'); await dialog.getByRole('textbox').fill('Detail card')
   await dialog.getByRole('checkbox', { name: en ? 'Important' : 'Важная', exact: true }).check()
   await dialog.getByRole('button', { name: en ? 'Create card' : 'Создать карточку', exact: true }).click()

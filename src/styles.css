@@ -190,7 +190,7 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .column-heading { display: flex; align-items: baseline; flex: 1; gap: .5625rem; min-width: 0; }
 .column-title { margin: .375rem 0 0; font-size: .875rem; line-height: 1.3125rem; font-weight: 650; overflow-wrap: anywhere; text-wrap: pretty; }
 .card-count { position: relative; color: var(--text-muted); font-size: .75rem; line-height: 1.3125rem; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.card-list { display: grid; align-content: start; gap: .75rem; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: .25rem; margin: -.25rem; }
+.card-list { display: grid; align-content: start; gap: .75rem; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; padding: .25rem; margin: -.25rem; }
 .work-card { display: grid; gap: .8125rem; min-width: 0; padding: 1.0625rem 1rem .5625rem; transition: border-color .16s ease; }
 .card-name { min-width: 0; font-size: .9375rem; font-weight: 530; line-height: 1.5; overflow-wrap: anywhere; }
 .add-card { justify-content: flex-start; width: 100%; margin: .75rem 0 0; padding: 0; border: 0; gap: .75rem; font-weight: 450; }

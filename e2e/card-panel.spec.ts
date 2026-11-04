@@ -155,8 +155,9 @@ test('a card link opened in a new tab is a page and returns explicitly to its pr
 
 for (const width of [390, 1440]) test(`preserves the board scroll container when opening, expanding and closing a later card at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 }); await seededBoard(page)
-  const main = page.locator('.board-workspace > main'), columns = page.locator('.status-columns')
   const card = page.locator('.card-detail-link[href$="/card/panel-card-18"]')
+  // The bounded board scrolls inside the card's list, which must survive opening, expanding and closing.
+  const main = page.locator('.card-list').filter({ has: card }), columns = page.locator('.status-columns')
   await card.scrollIntoViewIfNeeded()
   const before = await main.evaluate(node => node.scrollTop)
   expect(before).toBeGreaterThan(500)
@@ -317,6 +318,8 @@ for (const width of [320, 390, 1280, 1440]) for (const panel of [false, true]) t
       const box = document.querySelector('.install-help')!.getBoundingClientRect()
       return Array.from(document.querySelectorAll('.work-card, .status-columns button, .status-columns a')).filter(node => {
         const r = node.getBoundingClientRect()
+        const clip = node.closest('.card-list')?.getBoundingClientRect()
+        if (clip && (r.bottom <= clip.top || r.top >= clip.bottom)) return false
         return r.width > 0 && r.left < box.right && r.right > box.left && r.top < box.bottom && r.bottom > box.top
       }).length
     })

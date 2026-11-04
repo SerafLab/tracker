@@ -364,3 +364,23 @@ test('Back after a panel card is deleted returns to the board entry instead of r
   await expect(page).toHaveURL(/tracker\/$|#$|tracker\/#?$/)
   expect(index).toBeGreaterThan(await page.evaluate(() => history.state?.easyTrackIndex ?? -1))
 })
+
+for (const width of [1280, 1440]) test(`the install entry never overlaps the panel controls when the panel is scrolled to the bottom at ${width}px`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 420 }); await seededBoard(page)
+  await page.getByRole('link', { name: 'Card 0', exact: true }).click()
+  const panel = page.locator('.card-panel')
+  await expect(panel).toBeVisible()
+  await panel.evaluate(node => { node.scrollTop = node.scrollHeight })
+  const overlaps = await page.evaluate(() => {
+    const box = document.querySelector('.install-help')!.getBoundingClientRect()
+    const panelBox = document.querySelector('.card-panel')!.getBoundingClientRect()
+    // The entry must stay out of the panel area entirely, not only clear of today's controls.
+    if (box.left < panelBox.right && box.right > panelBox.left && box.top < panelBox.bottom && box.bottom > panelBox.top) return -1
+    return Array.from(document.querySelectorAll('.card-panel button, .card-panel a, .card-panel textarea, .card-panel input')).filter(node => {
+      const r = node.getBoundingClientRect()
+      return r.width > 0 && r.left < box.right && r.right > box.left && r.top < box.bottom && r.bottom > box.top
+    }).length
+  })
+  expect(overlaps).toBe(0)
+  await expect(page.locator('.install-help')).toHaveCount(1)
+})

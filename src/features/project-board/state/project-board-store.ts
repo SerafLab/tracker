@@ -235,7 +235,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
             return 'missing'
           }
           if (!details) {
-            set({ workspace: { kind: 'card-missing', project: board } })
+            set({ boardSnapshot: board, workspace: { kind: 'card-missing', project: board } })
             return 'shown'
           }
           if (remember && canMutate()) await rememberProject(projectId)

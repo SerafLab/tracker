@@ -271,6 +271,7 @@ async function deleteFromBoard(user: ReturnType<typeof userEvent.setup>, name: s
 
 it('closes the panel and returns to the board URL when the open card is deleted from the board', async () => {
   const { user } = await setup('#project/p')
+  const boardIndex = history.state?.easyTrackIndex
   await openPanel(user)
   const length = history.length
   await deleteFromBoard(user, 'Card')
@@ -278,6 +279,8 @@ it('closes the panel and returns to the board URL when the open card is deleted 
   await waitFor(() => expect(screen.queryByRole('region', { name: 'Подробности карточки' })).toBeNull())
   await waitFor(() => expect(location.hash).toBe('#project/p'))
   expect(history.length).toBe(length)
+  // Back removed the panel entry instead of duplicating the board entry.
+  await waitFor(() => expect(history.state?.easyTrackIndex).toBe(boardIndex))
   expect(screen.queryByText('Карточка недоступна')).toBeNull()
   expect(await screen.findByRole('heading', { level: 1, name: 'Project' })).toBeInTheDocument()
   await waitFor(() => expect(document.activeElement).not.toBe(document.body))

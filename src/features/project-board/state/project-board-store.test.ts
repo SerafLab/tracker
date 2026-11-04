@@ -499,3 +499,14 @@ it('never pairs details with a stale board snapshot from another project', async
   expect(store.getState().boardSnapshot).toBeNull()
   expect(store.getState().workspace.kind).not.toBe('card')
 })
+
+it('replaces a previous project snapshot with the board of a missing card', async () => {
+  const other = { ...board, id: 'other', name: 'Другой проект' }
+  const api = useCases({ board: vi.fn(async (id: string) => id === 'other' ? other : board), cardDetails: vi.fn().mockResolvedValue(undefined) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showBoard('other')
+  expect(store.getState().boardSnapshot).toEqual(other)
+  expect(await store.getState().showCard('project', 'gone')).toBe('shown')
+  expect(store.getState().workspace).toEqual({ kind: 'card-missing', project: board })
+  expect(store.getState().boardSnapshot).toEqual(board)
+})

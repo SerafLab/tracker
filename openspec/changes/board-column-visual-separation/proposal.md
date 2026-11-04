@@ -21,5 +21,5 @@ None.
 
 ## Impact
 
-- Board presentation styles and status-column markup in `src/styles.css` and `src/features/project-board/presentation/project-board-view.tsx`.
+- Board presentation styles in `src/styles.css`; no markup change.
 - The `project-boards` OpenSpec capability.

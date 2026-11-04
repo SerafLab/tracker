@@ -445,3 +445,68 @@ it('allows only one of two concurrent set applications to write', async () => {
   expect(outcomes[1]).toMatchObject({ reason: { code: 'conflict' } })
   expect(await database.statuses.count()).toBe(2)
 })
+it('counts each project across its statuses without loading card payloads and refreshes confirmed totals', async () => {
+  const { database, repository: repo } = repository()
+  await repo.open()
+  const projects = ['empty', 'one', 'many', 'no-status'].map((id, i) => ({ id, name: id, createdAt: String(i) }))
+  await database.projects.bulkAdd(projects)
+  await database.statuses.bulkAdd([
+    { id: 'e', projectId: 'empty', name: 'Empty', position: 0 },
+    { id: 'a', projectId: 'one', name: 'One', position: 0 },
+    { id: 'b', projectId: 'many', name: 'First', position: 0 },
+    { id: 'c', projectId: 'many', name: 'Second', position: 1 },
+  ])
+  await database.cards.bulkAdd(['a', 'b', 'b', 'c'].map((statusId, i) => ({ id: `card-${i}`, statusId, name: 'Card', position: i, description: 'Long payload', important: false, urgent: false })))
+  const readingCards = vi.fn(card => card)
+  database.cards.hook('reading', readingCards)
+  expect(await repo.catalogue()).toEqual(projects.map((project, i) => ({ ...project, cardCount: [0, 1, 3, 0][i] })))
+  expect(readingCards).not.toHaveBeenCalled()
+  expect(await repo.projects()).toEqual(projects)
+  await repo.deleteCard('card-1')
+  expect((await repo.catalogue())[2].cardCount).toBe(2)
+})
+
+describe('board view recent notes', () => {
+  async function seeded() {
+    const { database, repository: repo } = repository()
+    await repo.createProject({ id: 'p', name: 'P', createdAt: '2026-11-01T00:00:00Z' }, [], true)
+    await repo.createStatus({ id: 's', projectId: 'p', name: 'S' })
+    for (const id of ['c0', 'c1', 'c5', 'c6', 'tie']) await repo.createCard({ id, statusId: 's', name: id, description: '', important: false, urgent: false })
+    await repo.createProject({ id: 'q', name: 'Q', createdAt: '2026-11-01T00:00:01Z' }, [], false)
+    await repo.createStatus({ id: 't', projectId: 'q', name: 'T' })
+    await repo.createCard({ id: 'foreign', statusId: 't', name: 'foreign', description: '', important: false, urgent: false })
+    const note = (cardId: string, n: number, createdAt = `2026-11-02T00:00:0${n}Z`, id = `${cardId}-n${n}`) => repo.createNote({ id, cardId, text: `${cardId} text ${n}`, createdAt })
+    await note('c1', 1)
+    for (let n = 1; n <= 5; n++) await note('c5', n)
+    for (let n = 6; n >= 1; n--) await note('c6', n)
+    await note('foreign', 1)
+    return { database, repo, note }
+  }
+  it('returns up to five newest notes per card, oldest first, without foreign or empty entries', async () => {
+    const { repo } = await seeded()
+    const view = (await repo.boardView('p'))!
+    expect(view.recentNotes.c0).toBeUndefined()
+    expect(view.recentNotes.c1.map(n => n.id)).toEqual(['c1-n1'])
+    expect(view.recentNotes.c5.map(n => n.id)).toEqual(['c5-n1', 'c5-n2', 'c5-n3', 'c5-n4', 'c5-n5'])
+    expect(view.recentNotes.c6.map(n => n.id)).toEqual(['c6-n2', 'c6-n3', 'c6-n4', 'c6-n5', 'c6-n6'])
+    expect(view.recentNotes.foreign).toBeUndefined()
+    expect(Object.keys((await repo.boardView('q'))!.recentNotes)).toEqual(['foreign'])
+    expect(view.statuses[0].cards[0]).not.toHaveProperty('notes')
+    expect(await repo.boardView('missing')).toBeUndefined()
+  })
+  it('orders equal creation dates by id and keeps the newest five at the boundary', async () => {
+    const { repo, note } = await seeded()
+    for (const id of ['f', 'b', 'e', 'a', 'd', 'c']) await note('tie', 0, '2026-11-03T00:00:00Z', `t-${id}`)
+    expect((await repo.boardView('p'))!.recentNotes.tie.map(n => n.id)).toEqual(['t-b', 't-c', 't-d', 't-e', 't-f'])
+  })
+  it('orders by creation, not edit time, and reflects edits and deletions', async () => {
+    const { repo } = await seeded()
+    await repo.updateNote('c6', 'c6-n2', 'edited oldest visible', '2026-11-09T00:00:00Z')
+    let notes = (await repo.boardView('p'))!.recentNotes.c6
+    expect(notes.map(n => n.id)).toEqual(['c6-n2', 'c6-n3', 'c6-n4', 'c6-n5', 'c6-n6'])
+    expect(notes[0].text).toBe('edited oldest visible')
+    await repo.deleteNote('c6', 'c6-n6')
+    notes = (await repo.boardView('p'))!.recentNotes.c6
+    expect(notes.map(n => n.id)).toEqual(['c6-n1', 'c6-n2', 'c6-n3', 'c6-n4', 'c6-n5'])
+  })
+})

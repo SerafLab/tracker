@@ -1,6 +1,8 @@
 import { CommandError, type CardAttributes, type RepositoryAgentCommand, type AgentCommandResult, type AgentSavedData } from '../../application/agent-command'
+import { Dexie } from 'dexie'
 import { moveByOffset, placeCardInGroup, placeCard } from '../../domain/order'
-import type { Card, CardPlacement, CardPlacementResult, CardDetails, CardInput, Note, Id, Project, ProjectBoard, Status, WorkspacePreference } from '../../domain/model'
+import type { Card, CardPlacement, CardPlacementResult, CardDetails, CardInput, Note, Id, Project, ProjectBoard, BoardView, Status, WorkspacePreference } from '../../domain/model'
+import { RECENT_NOTE_LIMIT } from '../../domain/model'
 import type { DeleteStatusResult, NewCard, NewStatus, ProjectBoardRepository } from '../../application/repository'
 import { ProjectBoardDatabase } from './database'
 
@@ -96,6 +98,17 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
 
   async open() { await this.db.open() }
   async projects() { return this.db.projects.orderBy('createdAt').toArray() }
+  async catalogue() {
+    return this.db.transaction('r', this.db.projects, this.db.statuses, this.db.cards, async () => {
+      const projects = await this.projects()
+      return Promise.all(projects.map(async project => {
+        const statusIds = await this.db.statuses.where('projectId').equals(project.id).primaryKeys()
+        const counts = await Promise.all(statusIds.map(id => this.db.cards.where('statusId').equals(id).count()))
+        const cardCount = counts.reduce((sum, count) => sum + count, 0)
+        return { ...project, cardCount }
+      }))
+    })
+  }
   async preference(): Promise<WorkspacePreference | undefined> { return this.db.workspace.get('workspace') }
   async setLastProject(id?: Id) { await this.db.workspace.put({ id: 'workspace', lastProjectId: id }) }
 
@@ -144,6 +157,19 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
           cards: await this.db.cards.where('statusId').equals(status.id).sortBy('position'),
         }))),
       }
+    })
+  }
+
+  async boardView(projectId: Id): Promise<BoardView | undefined> {
+    return this.db.transaction('r', this.db.projects, this.db.statuses, this.db.cards, this.db.notes, async () => {
+      const board = await this.board(projectId)
+      if (!board) return undefined
+      const recentNotes: Record<Id, Note[]> = {}
+      await Promise.all(board.statuses.flatMap(status => status.cards).map(async card => {
+        const notes = await this.db.notes.where('[cardId+createdAt]').between([card.id, Dexie.minKey], [card.id, Dexie.maxKey]).reverse().limit(RECENT_NOTE_LIMIT).toArray()
+        if (notes.length) recentNotes[card.id] = notes.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+      }))
+      return { ...board, recentNotes }
     })
   }
 

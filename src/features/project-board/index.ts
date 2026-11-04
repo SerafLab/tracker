@@ -9,3 +9,5 @@ export { ActionDialog } from './presentation/controls'
 export { CommandError } from './application/agent-command'
 export type { AgentCommand, AgentCommandResult, AgentSavedData, CardAttributes } from './application/agent-command'
 export type { ProjectBoardStore } from './state/project-board-store'
+
+export type { ProjectSummary } from './domain/model'

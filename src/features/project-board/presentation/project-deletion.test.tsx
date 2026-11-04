@@ -179,6 +179,7 @@ it('does not expose project deletion in card-page language settings', async () =
   const { repo, user } = await setup({ board: true })
   await user.click(screen.getByRole('link', { name: 'Card' }))
   await screen.findByRole('form', { name: 'Поля карточки' })
+  await user.click(screen.getByRole('button', { name: 'Открыть на всю страницу' }))
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
   expect(screen.getByRole('combobox', { name: 'Язык приложения' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Удалить проект' })).not.toBeInTheDocument()

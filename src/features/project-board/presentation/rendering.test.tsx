@@ -2,7 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { ProjectBoardView } from './project-board-view'
-import type { ProjectBoard } from '../domain/model'
+import type { BoardView } from '../domain/model'
 
 // Menu renders reveal renders of their owning columns/cards without replacing
 // those components or introducing an artificial memo boundary in the test.
@@ -20,8 +20,8 @@ vi.mock('./controls', async importOriginal => {
 afterEach(cleanup)
 
 it('isolates board dialogs, column dialogs and a card move dialog from unchanged cards and columns', async () => {
-  const board: ProjectBoard = {
-    id: 'p', name: 'Project', createdAt: 'now',
+  const board: BoardView = {
+    id: 'p', name: 'Project', createdAt: 'now', recentNotes: {},
     statuses: ['A', 'B'].map((name, position) => ({
       id: name, name, projectId: 'p', position,
       cards: [{ id: `card-${name}`, statusId: name, name: `Card ${name}`, position: 0, description: '', important: false, urgent: false }],

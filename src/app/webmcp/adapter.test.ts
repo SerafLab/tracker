@@ -41,7 +41,7 @@ it('retains the confirmed snapshot on commit failure and reports saved:true with
   expect(await runtime.call('create_card', { sessionId, requestId: 1, statusId: status.id, name: 'Rejected' })).toMatchObject({ error: { code: 'storage_unavailable' } })
   expect(onSaved).not.toHaveBeenCalled()
   const committed = vi.spyOn(repo, 'createCard')
-  vi.spyOn(repo, 'board').mockRejectedValueOnce(Error('view failed'))
+  vi.spyOn(repo, 'boardView').mockRejectedValueOnce(Error('view failed'))
   const result = await runtime.call('create_card', { sessionId, requestId: 2, statusId: status.id, name: 'Saved' })
   expect(result).toMatchObject({ ok: true, data: { saved: true, card: { name: 'Saved' }, warning: { code: 'view_refresh_failed' } } })
   expect(store.getState().workspace).toMatchObject({ kind: 'board', board: { statuses: [{ cards: [{ name: 'Card' }] }] } })
@@ -53,15 +53,15 @@ it('retains the confirmed snapshot on commit failure and reports saved:true with
 })
 it('shares pending protection with ordinary UI writes through commit and refresh and refuses stale connections', async () => {
   const { runtime, repo, store, status, stale } = await setup(), sessionId = runtime.sessionId
-  const commit = deferred<void>(), read = deferred<Awaited<ReturnType<typeof repo.board>>>()
+  const commit = deferred<void>(), read = deferred<Awaited<ReturnType<typeof repo.boardView>>>()
   const actual = repo.createCard.bind(repo)
   vi.spyOn(repo, 'createCard').mockImplementationOnce(async card => { await commit.promise; return actual(card) })
-  const board = await repo.board(status.projectId)
-  vi.spyOn(repo, 'board').mockImplementationOnce(() => read.promise)
+  const board = await repo.boardView(status.projectId)
+  vi.spyOn(repo, 'boardView').mockImplementationOnce(() => read.promise)
   const pending = store.getState().createCard(status.projectId, status.id, { name: 'UI', description: '', important: false, urgent: false })
   const input = { sessionId, requestId: 1, statusId: status.id, name: 'Agent' }
   expect(await runtime.call('create_card', input)).toMatchObject({ error: { code: 'conflict' } })
-  commit.resolve(); await vi.waitFor(() => expect(repo.board).toHaveBeenCalled())
+  commit.resolve(); await vi.waitFor(() => expect(repo.boardView).toHaveBeenCalled())
   expect(await runtime.call('create_card', input)).toMatchObject({ error: { code: 'conflict' } })
   read.resolve(board); await pending
   stale()
@@ -94,12 +94,12 @@ it('holds the shared store lease across runtime replacement until the dispatched
 it('does not cancel a newer navigation read when a background commit completes', async () => {
   const { runtime, repo, store, status, api } = await setup(), sessionId = runtime.sessionId
   const other = await api.createProject({ name: 'Other', initialStatusNames: [] })
-  const board = (await repo.board(other.id))!
+  const board = (await repo.boardView(other.id))!
   const pending = deferred<void>(), read = deferred<typeof board>(), actual = repo.executeAgentCommand.bind(repo)
   vi.spyOn(repo, 'executeAgentCommand').mockImplementationOnce(async command => { await pending.promise; return actual(command) })
   const first = runtime.call('create_card', { sessionId, requestId: 1, statusId: status.id, name: 'Background' })
   await vi.waitFor(() => expect(store.getState().agentPending).toBe(true))
-  vi.spyOn(repo, 'board').mockImplementationOnce(() => read.promise)
+  vi.spyOn(repo, 'boardView').mockImplementationOnce(() => read.promise)
   const navigation = store.getState().showBoard(other.id)
   pending.resolve(); expect(await first).toMatchObject({ ok: true })
   read.resolve(board)

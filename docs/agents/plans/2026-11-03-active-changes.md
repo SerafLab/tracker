@@ -13,3 +13,14 @@ Shared contracts: keep Dexie v3 description/notes and accepted CardPlacement int
 All accepted deltas must retain existing project deletion, DnD semantics and native tool behavior when synced. Board visual delta must not reintroduce removed move arrows. Repeated proposals for existing features are reconciled against current requirements; tasks are completed only after their actual behavior/checks pass. Required acceptance includes RU/EN and 320/390/1280/1440 layouts, history, draft retention, indexed note limits, summary counts, atomic status sets, native contract tests, full npm run check and independent review. One PR with synchronized specs and archived completed changes; required GitHub checks, squash merge and Pages deployment before delivery is reported.
 
 Branches/worktrees and exact feature bases are appended as created. Role-specific requested models are unavailable; inherited available model is used.
+
+## Execution record (continued 2026-11-04)
+
+| Function | Branch / worktree | Exact base | State / accepted commit |
+|---|---|---|---|
+| AppBar headings | codex/nov03-headings; /private/tmp/traker-nov03-headings | a4fa010 | 0682615 independently reviewed, merged893f50c, full combined check254 unit+3probe+127browser PASS; synced/archived4046463 |
+| Catalogue tiles | codex/nov03-catalogue; /private/tmp/traker-nov03-catalogue | a4fa010 | 35ddc2d independently reviewed, feature258 unit+3probe+133browser PASS; merged awaiting combined check |
+| Card panel | codex/nov03-card-panel; /private/tmp/traker-nov03-card-panel | a4fa010 | runner resume_panel; independent reviewer resume_catalogue; scroll-container and cross-project read-race regressions in progress |
+| Apply status set | codex/nov04-apply-status-set; /private/tmp/traker-nov04-apply-status-set | 991ab2f | runner review_headings; independent of panel/catalogue code, native extension remains later |
+
+Original user worktree remains untouched. Baseline253 unit+3probe+125browser PASS. Several concurrent jsdom suites exhausted local resources; VITEST_MAX_WORKERS=2 bounds parallelism without reducing required checks. All local test servers use distinct ports4280(integration),4281(panel),4282(headings),4283(catalogue),4284(presets). Every npm ci retains prepare/pre-push setup; sandbox escalation is needed for git config and local server binding.

@@ -172,11 +172,11 @@ describe('project board', () => {
     await fill(user, 'Новый проект', 'Доска', 'Создать проект'); await screen.findByRole('heading', { name: 'Доска' })
     await addStatus(user, 'Первый'); await addStatus(user, 'Второй')
     await addCard(user, screen.getByRole('heading', { name: 'Первый' }).closest('article')!, 'Карточка')
-    await user.click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
+    await user.click(await screen.findByRole('button', { name: /^(Настройки|Settings)$/ }))
     await user.selectOptions(screen.getByRole('combobox', { name: 'Язык приложения' }), 'en')
     const card = screen.getByText('Карточка').closest('li')!
     expect(card.querySelector('.card-move-arrows')).not.toBeInTheDocument()
-    await user.click(within(card).getByRole('button', { name: 'Card actions for Карточка' }))
+    await user.click(await within(card).findByRole('button', { name: 'Card actions for Карточка' }))
     expect(screen.getByRole('menuitem', { name: 'Move to…' })).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: 'Move to…' }))
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Move' }))

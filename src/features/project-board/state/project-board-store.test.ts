@@ -487,7 +487,7 @@ it('blocks duplicate set applications and native writes until the confirmed boar
   expect(api.applyStatusSet).toHaveBeenCalledOnce()
   pending.resolve()
   expect(await applying).toBe('saved')
-  expect(api.board).toHaveBeenCalledTimes(2)
+  expect(api.boardView).toHaveBeenCalledTimes(2)
   expect(store.getState().applyingStatusSet).toBe(false)
 })
 it('retains a failed empty-board state and refreshes an authoritative conflict', async () => {
@@ -499,7 +499,7 @@ it('retains a failed empty-board state and refreshes an authoritative conflict',
   expect(store.getState().workspace).toEqual(previous)
   expect(store.getState().saveError).toBe(true)
   expect(await store.getState().applyStatusSet('project', ['First'])).toBe('conflict')
-  expect(api.board).toHaveBeenCalledTimes(2)
+  expect(api.boardView).toHaveBeenCalledTimes(2)
   expect(store.getState().saveError).toBe(false)
 })
 it('leaves a board whose project was deleted elsewhere for the catalogue', async () => {
@@ -511,7 +511,7 @@ it('leaves a board whose project was deleted elsewhere for the catalogue', async
   expect(store.getState().saveError).toBe(false)
 })
 it('does not repeat a committed set when only refreshing the board fails and refuses stale writes', async () => {
-  const api = useCases({ board: vi.fn().mockResolvedValueOnce(board).mockRejectedValueOnce(Error('read')) })
+  const api = useCases({ boardView: vi.fn().mockResolvedValueOnce(board).mockRejectedValueOnce(Error('read')) })
   const store = createProjectBoardStore(api)
   await store.getState().showBoard('project')
   expect(await store.getState().applyStatusSet('project', ['First'])).toBe('saved')

@@ -5,7 +5,7 @@ import { App } from './app'
 import type { ProjectBoardRepository } from '../features/project-board'
 
 const project = { id: 'a', name: 'Project A', createdAt: 'now' }
-const board = { ...project, statuses: [] }
+const board = { ...project, statuses: [], recentNotes: {} }
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>(yes => { resolve = yes })
@@ -15,7 +15,7 @@ function repository(overrides: Partial<ProjectBoardRepository> = {}) {
   return {
     open: vi.fn().mockResolvedValue(undefined), catalogue: vi.fn().mockResolvedValue([{ ...project, cardCount: 0 }]), projects: vi.fn().mockResolvedValue([project]),
     preference: vi.fn().mockResolvedValue(undefined), setLastProject: vi.fn().mockResolvedValue(undefined),
-    board: vi.fn().mockResolvedValue(board), ...overrides,
+    board: vi.fn().mockResolvedValue(board), boardView: vi.fn().mockResolvedValue(board), ...overrides,
   } as unknown as ProjectBoardRepository
 }
 async function hash(value: string) {
@@ -32,7 +32,7 @@ it('loads each selected project and catalogue once', async () => {
   render(<App repository={repo} />)
   await user.click(await screen.findByRole('button', { name: project.name }))
   await screen.findByRole('heading', { name: project.name })
-  expect(repo.board).toHaveBeenCalledExactlyOnceWith(project.id)
+  expect(repo.boardView).toHaveBeenCalledExactlyOnceWith(project.id)
   vi.mocked(repo.catalogue).mockClear()
   await user.click(screen.getByRole('button', { name: /Все проекты/ }))
   await screen.findByRole('button', { name: project.name })
@@ -44,7 +44,7 @@ it('restores the last project with one board read', async () => {
   render(<App repository={repo} />)
   await screen.findByRole('heading', { name: project.name })
   expect(location.hash).toBe('#project/a')
-  expect(repo.board).toHaveBeenCalledExactlyOnceWith('a')
+  expect(repo.boardView).toHaveBeenCalledExactlyOnceWith('a')
   expect(repo.catalogue).not.toHaveBeenCalled()
 })
 
@@ -62,9 +62,9 @@ it('does not restore the last project when navigating back to an empty hash', as
 it('ignores an outdated missing board without resetting a newer route', async () => {
   const pending = deferred<undefined>()
   history.replaceState(null, '', '/#project/missing')
-  const repo = repository({ board: vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(board) })
+  const repo = repository({ boardView: vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(board) })
   render(<App repository={repo} />)
-  await waitFor(() => expect(repo.board).toHaveBeenCalledWith('missing'))
+  await waitFor(() => expect(repo.boardView).toHaveBeenCalledWith('missing'))
   await hash('#project/a')
   await screen.findByRole('heading', { name: project.name })
   await act(async () => { pending.resolve(undefined) })
@@ -80,7 +80,7 @@ it('uses the latest route when storage finishes opening', async () => {
   await hash('#project/a')
   await act(async () => { pending.resolve() })
   await screen.findByRole('heading', { name: project.name })
-  expect(repo.board).toHaveBeenCalledExactlyOnceWith('a')
+  expect(repo.boardView).toHaveBeenCalledExactlyOnceWith('a')
   expect(repo.catalogue).not.toHaveBeenCalled()
 })
 
@@ -93,7 +93,7 @@ it('ignores a startup preference read superseded by navigation', async () => {
   await screen.findByRole('heading', { name: project.name })
   await act(async () => { pending.resolve({ id: 'workspace', lastProjectId: 'old' }) })
   expect(location.hash).toBe('#project/a')
-  expect(repo.board).toHaveBeenCalledExactlyOnceWith('a')
+  expect(repo.boardView).toHaveBeenCalledExactlyOnceWith('a')
 })
 
 it('opens the catalogue for a malformed encoded project route', async () => {
@@ -101,16 +101,16 @@ it('opens the catalogue for a malformed encoded project route', async () => {
   const repo = repository()
   render(<App repository={repo} />)
   await screen.findByRole('button', { name: project.name })
-  expect(repo.board).not.toHaveBeenCalled()
+  expect(repo.boardView).not.toHaveBeenCalled()
 })
 
 
 it('keeps a new hash set before the previous missing-board continuation runs', async () => {
   const pending = deferred<undefined>()
   history.replaceState(null, '', '/#project/missing')
-  const repo = repository({ board: vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(board) })
+  const repo = repository({ boardView: vi.fn().mockReturnValueOnce(pending.promise).mockResolvedValue(board) })
   render(<App repository={repo} />)
-  await waitFor(() => expect(repo.board).toHaveBeenCalledWith('missing'))
+  await waitFor(() => expect(repo.boardView).toHaveBeenCalledWith('missing'))
   await act(async () => {
     location.hash = '#project/a'
     pending.resolve(undefined)
@@ -131,5 +131,5 @@ it('keeps a new hash set before the previous preference continuation runs', asyn
   })
   await screen.findByRole('heading', { name: project.name })
   expect(location.hash).toBe('#project/a')
-  expect(repo.board).toHaveBeenCalledExactlyOnceWith('a')
+  expect(repo.boardView).toHaveBeenCalledExactlyOnceWith('a')
 })

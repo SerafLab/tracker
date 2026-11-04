@@ -3,10 +3,11 @@ import { createBrowserAdapter } from './webmcp/adapter'
 import { useWebMcp } from './webmcp/use-webmcp'
 import { ToolError } from './webmcp/error'
 import { LocaleProvider } from '../i18n/provider'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionDialog, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type DraftGuard, type Id, type ProjectBoardRepository } from '../features/project-board'
-import { InstallGuidance } from './pwa/install-guidance'
+import { InstallGuidanceView, useInstallState } from './pwa/install-guidance'
 import { PwaUpdateRegistration } from './pwa/update-registration'
 import { usePersistentStorage } from './pwa/persistent-storage'
 import { RestartRequired } from './pwa/restart-required'
@@ -38,14 +39,9 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const [cardPresentation, setCardPresentation] = useState<CardPresentation>('page')
   const [panelIsolated, setPanelIsolated] = useState(false)
   const presentation = useRef<CardPresentation>('page')
-  // One install entry: it sits in the bounded board's scroll area when a board is shown, otherwise after the page content.
+  // One install entry: portalled into the bounded board's scroll area when a board is shown, otherwise inline after the page content.
   const [installSlot, setInstallSlot] = useState<HTMLElement | null>(null)
-  const installHome = useRef<HTMLDivElement>(null)
-  const installEntry = useRef<HTMLDivElement>(null)
-  useLayoutEffect(() => {
-    const entry = installEntry.current, target = installSlot ?? installHome.current
-    if (entry && target && entry.parentNode !== target) target.appendChild(entry)
-  }, [installSlot])
+  const installState = useInstallState()
   const [runtime] = useState(() => {
     const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { staleConnection.current = true; setRestartRequired(true) })
     const repository = suppliedRepository ?? new DexieProjectBoardRepository(database!)
@@ -210,8 +206,10 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   }, [])
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
   const onProjectDeleted = async (id: Id) => { if (routeFromHash()?.projectId === id) await navigate.current('', false) }
+  const installEntry = <div inert={panelIsolated} aria-hidden={panelIsolated || undefined}><InstallGuidanceView state={installState} /></div>
+  const installPlacement = installSlot ? createPortal(installEntry, installSlot) : installEntry
   if (restartRequired) return <RestartRequired onRestart={reloadApp} />
-  return <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} installSlot={setInstallSlot} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><div ref={installHome}><div ref={installEntry} inert={panelIsolated} aria-hidden={panelIsolated || undefined}><InstallGuidance /></div></div><div inert={panelIsolated} aria-hidden={panelIsolated || undefined}><PwaUpdateRegistration requestUpdate={requestLeave} /></div>
+  return <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} installSlot={setInstallSlot} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} />{installPlacement}<div inert={panelIsolated} aria-hidden={panelIsolated || undefined}><PwaUpdateRegistration requestUpdate={requestLeave} /></div>
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
 }

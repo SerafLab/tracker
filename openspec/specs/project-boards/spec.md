@@ -49,7 +49,7 @@ The system SHALL allow the user to create and rename statuses within the open pr
 - **THEN** the available rename and ordering actions are identifiable and operable without drag-and-drop
 
 ### Requirement: Cards always belong to a status
-Система SHALL позволять создавать карточку с непустым названием в выбранном статусе, редактировать её на странице карточки и переносить в любой другой статус перетаскиванием либо через «Переместить в…» в меню. Каждая карточка SHALL принадлежать ровно одному статусу. Новая карточка и перенос через меню SHALL помещаться в конец группы одинаковых признаков; перетаскивание SHALL выбирать место внутри этой группы с сохранением приоритетного порядка групп. Перенос SHALL сохранять название, описание, оба признака и заметки. Стрелки перемещения SHALL отсутствовать; вторичные действия SHALL сохранять семантические подписи.
+Система SHALL позволять создавать карточку с непустым названием в выбранном статусе, редактировать её в подробностях карточки (панели или полной странице) и переносить в любой другой статус перетаскиванием либо через «Переместить в…» в меню. Каждая карточка SHALL принадлежать ровно одному статусу. Новая карточка и перенос через меню SHALL помещаться в конец группы одинаковых признаков; перетаскивание SHALL выбирать место внутри этой группы с сохранением приоритетного порядка групп. Перенос SHALL сохранять название, описание, оба признака и заметки. Стрелки перемещения SHALL отсутствовать; вторичные действия SHALL сохранять семантические подписи.
 
 #### Scenario: User moves a card between statuses
 - **WHEN** пользователь переносит карточку из «Найдено» в «Договорились о просмотре»
@@ -73,7 +73,7 @@ The system SHALL allow the user to create and rename statuses within the open pr
 
 #### Scenario: User opens a card action menu
 - **WHEN** пользователь открывает меню карточки на доске с несколькими статусами
-- **THEN** доступны редактирование на странице карточки, удаление, «Переместить в…» и возможные шаги внутри группы; форма перемещения обозначает выбранную карточку и предлагает все другие статусы, кроме текущего
+- **THEN** доступны редактирование в подробностях карточки, удаление, «Переместить в…» и возможные шаги внутри группы; форма перемещения обозначает выбранную карточку и предлагает все другие статусы, кроме текущего
 
 #### Scenario: User chooses a nonadjacent status
 - **WHEN** пользователь выбирает несоседний статус в форме перемещения и подтверждает
@@ -287,7 +287,7 @@ The system SHALL dismiss an open project, status, or card action menu when the u
 - **THEN** место вставки показано между группами выше и ниже по приоритету, а отпущенная карточка занимает именно это место без изменения признаков
 
 ### Requirement: Single primary creation entry in catalogue and board
-The system SHALL offer one primary creation entry in the application bar for the current workspace screen: project creation in the catalogue and status creation on a board. That entry SHALL open the existing focused creation dialog or mobile sheet. Empty-state content SHALL explain the next step without duplicating the creation form or button.
+The system SHALL offer one primary creation entry in the application bar for the current workspace screen: project creation in the catalogue and status creation on a board. That entry SHALL open the existing focused creation dialog or mobile sheet. Empty-state content SHALL explain the next step without duplicating the creation form or button; the status-set selection offered on a board without statuses is a separate action and is not such a duplicate.
 
 #### Scenario: User opens an empty catalogue
 - **WHEN** no projects exist
@@ -657,7 +657,7 @@ The system SHALL fit all four status columns of a four-status board at viewport 
 - **THEN** предпросмотр отражает последнее успешно сохранённое описание либо исчезает после очистки; несохранённый текст на доске не появляется
 
 ### Requirement: Recent note preview on board cards
-На карточке доски система SHALL показывать последнюю сохранённую заметку, если она есть. Каждый предпросмотр SHALL занимать не более трёх строк текста. «Последние» SHALL определяться порядком создания заметок, а не временем редактирования. Текст и веб-ссылки SHALL оставаться обычным текстом; нажатие на текст SHALL открывать страницу карточки с полной историей.
+На карточке доски система SHALL показывать последнюю сохранённую заметку, если она есть. Каждый предпросмотр SHALL занимать не более трёх строк текста. «Последние» SHALL определяться порядком создания заметок, а не временем редактирования. Текст и веб-ссылки SHALL оставаться обычным текстом; нажатие на текст SHALL открывать подробности карточки с полной историей так же, как нажатие на карточку.
 
 #### Scenario: Card has no notes
 - **WHEN** у карточки нет заметок
@@ -673,7 +673,7 @@ The system SHALL fit all four status columns of a four-status board at viewport 
 
 #### Scenario: Preview contains a web link
 - **WHEN** пользователь нажимает на текст веб-ссылки в предпросмотре
-- **THEN** открывается страница карточки, на которой ссылку можно открыть отдельно
+- **THEN** открываются подробности карточки, в которых ссылку можно открыть отдельно
 
 ### Requirement: Expand recent notes independently
 Если у карточки больше одной заметки, система SHALL предоставлять отдельную доступную кнопку раскрытия. Раскрытая карточка SHALL показывать не более пяти последних заметок, включая первоначально видимую, в порядке от старых к новым; каждая SHALL занимать не более трёх строк. Повторное нажатие SHALL сворачивать список до одной последней заметки. Кнопка SHALL не открывать страницу карточки и не мешать её остальным контролам.

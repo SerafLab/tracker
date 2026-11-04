@@ -1,5 +1,5 @@
 import { CommandError } from '../../features/project-board'
-import { inputSchemas, dataSchemas, readTools, type ToolName, type ToolResult, type ErrorCode, type ConnectionState } from './schemas'
+import { contractVersion, inputSchemas, dataSchemas, readTools, type ToolName, type ToolResult, type ErrorCode, type ConnectionState } from './schemas'
 
 import { ToolError } from './error'
 export { ToolError } from './error'
@@ -54,7 +54,7 @@ export function createToolRuntime(dependencies: RuntimeDependencies, options: { 
       if (!parsed.success) return failure('invalid_argument', 'Arguments must match the tool schema, with nonempty names and no unknown fields')
       const input = parsed.data as Record<string, unknown>
       if (!active) return failure('disconnected')
-      if (tool === 'get_connection') return { ok: true, sessionId, data: { contractVersion: 1, state: dependencies.state(), route: dependencies.route(), lastMutationSequence: highWater } }
+      if (tool === 'get_connection') return { ok: true, sessionId, data: { contractVersion, state: dependencies.state(), route: dependencies.route(), lastMutationSequence: highWater } }
       if (input.sessionId !== sessionId) return failure('disconnected', 'This call targets another or expired document session')
       try { ready() } catch (error) { return errorResult(error) }
       if (signal?.aborted) return failure('disconnected', 'Call canceled before dispatch')

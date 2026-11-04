@@ -6,7 +6,7 @@ import { LocaleProvider } from '../i18n/provider'
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionDialog, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type DraftGuard, type Id, type ProjectBoardRepository } from '../features/project-board'
+import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type DraftGuard, type Id, type ProjectBoardRepository } from '../features/project-board'
 import { InstallGuidanceView, useInstallState } from './pwa/install-guidance'
 import { PwaUpdateRegistration } from './pwa/update-registration'
 import { usePersistentStorage } from './pwa/persistent-storage'
@@ -26,6 +26,8 @@ const indexFromState = (): number | undefined => typeof history.state?.easyTrack
 
 function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp = () => location.reload() }: { repository?: ProjectBoardRepository; databaseName?: string; reloadApp?: () => void }) {
   const { t } = useTranslation()
+  const translate = useRef(t)
+  translate.current = t
   const requestPersistentStorage = usePersistentStorage()
   const staleConnection = useRef(false)
   const [restartRequired, setRestartRequired] = useState(false)
@@ -172,6 +174,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     isDirty: () => !!draftGuard.current?.isDirty() || !!pendingRef.current || pendingSave.current,
     reads: runtime.useCases,
     onSaved: requestPersistentStorage,
+    statusNames: id => presetStatusNames(id === 'none' ? 'empty' : id, translate.current),
     async showWorkspace(projectId) {
       const assertClean = () => {
         if (staleConnection.current) throw new ToolError('restart_required')

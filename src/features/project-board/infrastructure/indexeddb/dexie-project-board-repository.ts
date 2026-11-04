@@ -33,7 +33,12 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
       switch (command.kind) {
         case 'create_project':
           projectId = command.project.id
-          data = { saved: true, project: await this.createProject(command.project, [], false) }
+          data = { saved: true, project: { ...await this.createProject(command.project, command.statuses, false), statuses: command.statuses } }
+          break
+        case 'apply_status_set':
+          projectId = (await project(command.projectId)).id
+          await this.applyStatusSet(projectId, command.statuses)
+          data = { saved: true, board: (await this.board(projectId))! }
           break
         case 'rename_project':
           projectId = (await project(command.projectId)).id

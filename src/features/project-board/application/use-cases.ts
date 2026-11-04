@@ -23,7 +23,15 @@ export function createProjectBoardUseCases(dependencies: {
     executeAgentCommand: (command: AgentCommand) => {
       let prepared: RepositoryAgentCommand
       switch (command.kind) {
-        case 'create_project': prepared = { kind: command.kind, project: { id: createId(), name: name(command.name), createdAt: now() } }; break
+        case 'create_project': {
+          const project = { id: createId(), name: name(command.name), createdAt: now() }
+          prepared = { kind: command.kind, project, statuses: command.statusNames.map(name).map((statusName, position) => ({ id: createId(), projectId: project.id, name: statusName, position })) }
+          break
+        }
+        case 'apply_status_set':
+          if (!command.statusNames.length) throw new Error('Набор статусов обязателен')
+          prepared = { kind: command.kind, projectId: command.projectId, statuses: command.statusNames.map(name).map((statusName, position) => ({ id: createId(), projectId: command.projectId, name: statusName, position })) }
+          break
         case 'create_status': prepared = { kind: command.kind, status: { id: createId(), projectId: command.projectId, name: name(command.name) } }; break
         case 'create_card': prepared = { kind: command.kind, card: { id: createId(), statusId: command.statusId, name: name(command.name), description: '', important: command.important, urgent: command.urgent } }; break
         default: prepared = 'name' in command ? { ...command, name: name(command.name) } : command

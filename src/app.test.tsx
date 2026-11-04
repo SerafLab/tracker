@@ -363,7 +363,7 @@ it.each(['.add-card-header', '.add-card'])('returns creation focus to %s after s
       await user.click(trigger)
       await fill(user, 'Название карточки', 'Saved from selected entry', 'Создать карточку')
       await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      expect(trigger).toHaveFocus()
+      await waitFor(() => expect(trigger).toHaveFocus())
     }
   }
 })

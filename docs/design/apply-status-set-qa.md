@@ -1,0 +1,9 @@
+# Applying a status set to an existing project
+
+Verified on 2026-11-04 in `codex/nov04-apply-status-set`, based on `991ab2f`.
+
+The existing project-creation sets and their stable IDs remain unchanged. An existing board with no statuses now offers the five nonempty sets, their localized preview and an explicit apply action. The application generates independent IDs and positions; a single IndexedDB transaction checks project existence and the absence of statuses and writes the full set. The transaction shares its stores with manual status creation, so concurrent creation or another application cannot slip between checking and writing. Workspace preference and other projects/cards are preserved. A failed write retains the selection and permits retry; an authoritative conflict refreshes the saved board. A failed read after commit never reports the mutation as unsaved or repeats it.
+
+Targeted checks cover normalized names/IDs/order, missing and nonempty projects, rollback of a partially successful bulk write, retry, real IndexedDB serialization across connections, duplicate UI submissions, stale storage, background native-write exclusion and read failure after commit. Browser scenarios cover Russian/English at 320, 390, 1280 and 1440 px, keyboard interaction, write-error retry, complete ordered results, offline reload, an older Russian project receiving English names, and a manual-status conflict without partial additions. The empty-board form is inert while a modal dialog is open; language settings remain separately named.
+
+Actual images inspected: the Russian empty-board apply form at 320 px and the English form at 1440 px, each with the Development set preview and keyboard focus on Apply. All five names, the select and the action remain readable and operable without overlap or horizontal page overflow. Other matrix sizes were checked by browser assertions rather than opening every saved image. Screenshots remain test artifacts.

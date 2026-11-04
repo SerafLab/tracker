@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest'
 import { ProjectBoardDatabase } from './database'
 import { DexieProjectBoardRepository } from './dexie-project-board-repository'
+import type { Status } from '../../domain/model'
 import { createProjectBoardUseCases } from '../../application/use-cases'
 
 const databases: ProjectBoardDatabase[] = []
@@ -16,7 +17,7 @@ async function setup() {
 }
 it('executes ID-based commands with confirmed transaction results, empty background creation, and unchanged preference', async () => {
   const { api, project, statuses, repo } = await setup()
-  const created = await api.executeAgentCommand({ kind: 'create_project', name: ' Same ' })
+  const created = await api.executeAgentCommand({ kind: 'create_project', name: ' Same ', statusNames: [] })
   expect(created.data).toMatchObject({ saved: true, project: { name: 'Same' } })
   expect((await api.board(created.projectId))?.statuses).toEqual([])
   expect((await api.preference())?.lastProjectId).toBe(project.id)
@@ -73,7 +74,7 @@ it('distinguishes missing targets and nonempty deletion and rolls back failed co
   await expect(api.executeAgentCommand({ kind: 'delete_status', statusId: statuses[0].id })).rejects.toMatchObject({ code: 'status_not_empty' })
   vi.spyOn(db.statuses, 'bulkAdd').mockRejectedValueOnce(Error('quota'))
   const before = await api.projects()
-  await expect(api.executeAgentCommand({ kind: 'create_project', name: 'Fail' })).rejects.toThrow('quota')
+  await expect(api.executeAgentCommand({ kind: 'create_project', name: 'Fail', statusNames: [] })).rejects.toThrow('quota')
   expect(await api.projects()).toEqual(before)
   if ('card' in result.data) {
     await api.createNote(result.data.card.id, 'Cascade')
@@ -81,4 +82,36 @@ it('distinguishes missing targets and nonempty deletion and rolls back failed co
     expect(await db.notes.count()).toBe(0)
   }
   expect((await api.executeAgentCommand({ kind: 'delete_status', statusId: statuses[0].id })).data).toEqual({ saved: true, deletedId: statuses[0].id })
+})
+it('creates a project with its ordered independent statuses atomically, without changing the preference', async () => {
+  const { api, project, db } = await setup()
+  const created = await api.executeAgentCommand({ kind: 'create_project', name: 'Set', statusNames: [' A ', 'B', 'C'] })
+  expect(created.data).toMatchObject({ saved: true, project: { name: 'Set', statuses: [{ name: 'A', position: 0 }, { name: 'B', position: 1 }, { name: 'C', position: 2 }] } })
+  expect((await api.board(created.projectId))?.statuses.map(status => status.name)).toEqual(['A', 'B', 'C'])
+  expect(new Set(await db.statuses.toCollection().primaryKeys()).size).toBe(await db.statuses.count())
+  expect((await api.preference())?.lastProjectId).toBe(project.id)
+  const before = await db.projects.count()
+  expect(() => api.executeAgentCommand({ kind: 'create_project', name: 'Bad', statusNames: ['A', '  '] })).toThrow()
+  expect(await db.projects.count()).toBe(before)
+})
+it('applies a set only to an existing empty project, atomically, returning the board', async () => {
+  const { api, project, db } = await setup()
+  const empty = await api.executeAgentCommand({ kind: 'create_project', name: 'Empty', statusNames: [] })
+  const applied = await api.executeAgentCommand({ kind: 'apply_status_set', projectId: empty.projectId, statusNames: ['A', 'B'] })
+  expect(applied.data).toMatchObject({ saved: true, board: { id: empty.projectId, statuses: [{ name: 'A', position: 0, cards: [] }, { name: 'B', position: 1, cards: [] }] } })
+  const count = await db.statuses.count()
+  await expect(api.executeAgentCommand({ kind: 'apply_status_set', projectId: empty.projectId, statusNames: ['C'] })).rejects.toMatchObject({ code: 'conflict' })
+  await expect(api.executeAgentCommand({ kind: 'apply_status_set', projectId: project.id, statusNames: ['C'] })).rejects.toMatchObject({ code: 'conflict' })
+  await expect(api.executeAgentCommand({ kind: 'apply_status_set', projectId: 'missing', statusNames: ['C'] })).rejects.toMatchObject({ code: 'not_found' })
+  expect(await db.statuses.count()).toBe(count)
+  expect((await api.preference())?.lastProjectId).toBe(project.id)
+})
+it('leaves no partial set when a status write fails', async () => {
+  const { api, repo, db } = await setup()
+  const empty = await api.executeAgentCommand({ kind: 'create_project', name: 'Empty', statusNames: [] })
+  const actual = db.statuses.bulkAdd.bind(db.statuses)
+  vi.spyOn(db.statuses, 'bulkAdd').mockImplementationOnce((async (items: readonly Status[]) => { await actual([items[0]]); throw new Error('quota') }) as never)
+  await expect(api.executeAgentCommand({ kind: 'apply_status_set', projectId: empty.projectId, statusNames: ['A', 'B'] })).rejects.toThrow('quota')
+  expect(await db.statuses.where('projectId').equals(empty.projectId).count()).toBe(0)
+  void repo
 })

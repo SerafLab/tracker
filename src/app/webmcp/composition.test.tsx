@@ -20,7 +20,7 @@ async function fixture() {
   history.replaceState(null, '', '/#project/p')
   const view = render(<StrictMode><App repository={repo} /></StrictMode>)
   await screen.findByRole('heading', { name: 'Project' })
-  await waitFor(() => expect(tools.size).toBe(14))
+  await waitFor(() => expect(tools.size).toBe(15))
   const connection = await tools.get('get_connection')!.execute({}) as { sessionId: string }
   let requestId = 0
   const call = async (tool: ToolName, fields = {}) => {
@@ -32,7 +32,7 @@ async function fixture() {
 }
 it('native-contract fixture applies actual checked board/catalogue navigation, keeps route/session across mutations and rejects missing destinations', async () => {
   const { call, tools, connection } = await fixture()
-  expect(await call('create_project', { name: 'Background' })).toMatchObject({ ok: true, data: { saved: true } })
+  expect(await call('create_project', { name: 'Background', statusSetId: 'none' })).toMatchObject({ ok: true, data: { saved: true } })
   expect(location.hash).toBe('#project/p')
   expect(await call('show_workspace', { projectId: 'missing' })).toMatchObject({ error: { code: 'not_found' } })
   expect(location.hash).toBe('#project/p')
@@ -72,7 +72,22 @@ it('native-contract fixture revokes old handles at pagehide and requires a fresh
   expect(tools.size).toBe(0)
   expect(await old.execute({ sessionId: connection.sessionId })).toMatchObject({ error: { code: 'disconnected' } })
   await act(async () => { dispatchEvent(new PageTransitionEvent('pageshow', { persisted: true })) })
-  await waitFor(() => expect(tools.size).toBe(14))
+  await waitFor(() => expect(tools.size).toBe(15))
   expect(await tools.get('list_projects')!.execute({ sessionId: connection.sessionId })).toMatchObject({ error: { code: 'disconnected' } })
   expect(await tools.get('get_connection')!.execute({})).not.toMatchObject({ sessionId: connection.sessionId })
+})
+it('native-contract fixture saves set names in the current UI language and order, and fills an empty project without navigating', async () => {
+  const { call, user, repo } = await fixture()
+  const names = async (id: string) => (await repo.board(id))!.statuses.map(status => status.name)
+  const ru = await call('create_project', { name: 'RU', statusSetId: 'development' }) as { data: { project: { id: string; statuses: { name: string }[] } } }
+  expect(ru.data.project.statuses.map(status => status.name)).toEqual(['Запланировано', 'На паузе', 'В разработке', 'На проверке', 'Готово'])
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  await user.selectOptions(screen.getByRole('combobox', { name: 'Язык приложения' }), 'en')
+  const en = await call('create_project', { name: 'EN', statusSetId: 'job-search' }) as { data: { project: { id: string } } }
+  expect(await names(en.data.project.id)).toEqual(['Interested', 'Applied', 'Interviews', 'Offer', 'Rejected'])
+  expect(await names(ru.data.project.id)).toHaveLength(5)
+  const bare = await call('create_project', { name: 'Bare', statusSetId: 'none' }) as { data: { project: { id: string } } }
+  expect(await call('apply_status_set', { projectId: bare.data.project.id, statusSetId: 'simple' })).toMatchObject({ ok: true, data: { board: { statuses: [{ name: 'To do' }, { name: 'In progress' }, { name: 'Done' }] } } })
+  expect(await call('apply_status_set', { projectId: bare.data.project.id, statusSetId: 'simple' })).toMatchObject({ error: { code: 'conflict' } })
+  expect(location.hash).toBe('#project/p')
 })

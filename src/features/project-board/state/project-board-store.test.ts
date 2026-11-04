@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
+import { CommandError } from '../application/agent-command'
 import { createProjectBoardStore } from './project-board-store'
 import type { ProjectBoardUseCases } from '../application/use-cases'
 
@@ -7,7 +8,7 @@ function useCases(overrides: Partial<ProjectBoardUseCases> = {}): ProjectBoardUs
   return {
     executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
     open: vi.fn(), catalogue: vi.fn().mockResolvedValue([]), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(), board: vi.fn().mockResolvedValue(board), boardView: vi.fn().mockResolvedValue(board),
-    createProject: vi.fn(), deleteProject: vi.fn(), renameProject: vi.fn(), createStatus: vi.fn(), renameStatus: vi.fn(), moveStatus: vi.fn(),
+    applyStatusSet: vi.fn(), createProject: vi.fn(), deleteProject: vi.fn(), renameProject: vi.fn(), createStatus: vi.fn(), renameStatus: vi.fn(), moveStatus: vi.fn(),
     createCard: vi.fn(), updateCard: vi.fn(), moveCard: vi.fn(), deleteCard: vi.fn(), deleteStatus: vi.fn().mockResolvedValue('deleted'), ...overrides,
   }
 }
@@ -473,6 +474,53 @@ it.each(['resolve', 'reject'] as const)('ignores stale post-placement refresh %s
   expect(api.moveCard).toHaveBeenCalledOnce()
 })
 
+it('blocks duplicate set applications and native writes until the confirmed board is refreshed', async () => {
+  const pending = deferred<void>()
+  const api = useCases({ applyStatusSet: vi.fn(() => pending.promise) })
+  const store = createProjectBoardStore(api)
+  await store.getState().openStorage()
+  await store.getState().showBoard('project')
+  const applying = store.getState().applyStatusSet('project', ['First'])
+  expect(store.getState().applyingStatusSet).toBe(true)
+  expect(() => store.getState().assertAgentReady()).toThrow('pending')
+  expect(await store.getState().applyStatusSet('project', ['First'])).toBe('failed')
+  expect(api.applyStatusSet).toHaveBeenCalledOnce()
+  pending.resolve()
+  expect(await applying).toBe('saved')
+  expect(api.boardView).toHaveBeenCalledTimes(2)
+  expect(store.getState().applyingStatusSet).toBe(false)
+})
+it('retains a failed empty-board state and refreshes an authoritative conflict', async () => {
+  const api = useCases({ applyStatusSet: vi.fn().mockRejectedValueOnce(Error('quota')).mockRejectedValueOnce(new CommandError('conflict')) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showBoard('project')
+  const previous = store.getState().workspace
+  expect(await store.getState().applyStatusSet('project', ['First'])).toBe('failed')
+  expect(store.getState().workspace).toEqual(previous)
+  expect(store.getState().saveError).toBe(true)
+  expect(await store.getState().applyStatusSet('project', ['First'])).toBe('conflict')
+  expect(api.boardView).toHaveBeenCalledTimes(2)
+  expect(store.getState().saveError).toBe(false)
+})
+it('leaves a board whose project was deleted elsewhere for the catalogue', async () => {
+  const api = useCases({ applyStatusSet: vi.fn().mockRejectedValue(new CommandError('not_found')), projects: vi.fn().mockResolvedValue([]) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showBoard('project')
+  expect(await store.getState().applyStatusSet('project', ['First'])).toBe('missing')
+  expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: [] })
+  expect(store.getState().saveError).toBe(false)
+})
+it('does not repeat a committed set when only refreshing the board fails and refuses stale writes', async () => {
+  const api = useCases({ boardView: vi.fn().mockResolvedValueOnce(board).mockRejectedValueOnce(Error('read')) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showBoard('project')
+  expect(await store.getState().applyStatusSet('project', ['First'])).toBe('saved')
+  expect(api.applyStatusSet).toHaveBeenCalledOnce()
+  expect(store.getState().workspace.kind).toBe('unavailable')
+  const stale = createProjectBoardStore(api, () => false)
+  expect(await stale.getState().applyStatusSet('project', ['First'])).toBe('failed')
+  expect(api.applyStatusSet).toHaveBeenCalledOnce()
+})
 it('loads current catalogue summaries each time the catalogue is reopened', async () => {
   const first = [{ id: 'p', name: 'P', createdAt: 'now', cardCount: 0 }]
   const second = [{ ...first[0], cardCount: 5 }]

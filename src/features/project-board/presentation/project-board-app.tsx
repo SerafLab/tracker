@@ -63,6 +63,7 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
   }, [workspace.kind, workspace.kind === 'card' ? workspace.details.card.id : undefined])
   const agentPending = useStore(store, state => state.agentPending)
   const agentRefreshError = useStore(store, state => state.agentRefreshError)
+  const applyingStatusSet = useStore(store, state => state.applyingStatusSet)
   const placementPending = useStore(store, state => state.placementPending)
   const placementRefreshError = useStore(store, state => state.placementRefreshError)
   const saveError = useStore(store, state => state.saveError)
@@ -107,8 +108,9 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
   const board = workspace.kind === 'board' ? workspace.board : boardSnapshot
   return <div ref={root} className={panelOpen ? 'workspace-with-panel' : 'workspace-layout'}>
     <div className="board-workspace" role="region" hidden={!!details && !panelOpen} inert={panelOpen && narrow} aria-label={t('boardRegion')}>
-    {board ? <ProjectBoardView onRequestDestructiveAction={requestLeave} installSlot={details && !panelOpen ? undefined : installSlot} openCard={details ? { id: details.card.id, statusId: details.card.statusId } : null} key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError} placementPending={placementPending} busy={agentPending || agentRefreshError || placementPending || !!placementRefreshError} refreshFailed={!!placementRefreshError} onRetryRefresh={() => store.getState().retryPlacementRefresh()}
+    {board ? <ProjectBoardView onRequestDestructiveAction={requestLeave} installSlot={details && !panelOpen ? undefined : installSlot} openCard={details ? { id: details.card.id, statusId: details.card.statusId } : null} key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError} placementPending={placementPending} busy={applyingStatusSet || agentPending || agentRefreshError || placementPending || !!placementRefreshError} refreshFailed={!!placementRefreshError} onRetryRefresh={() => store.getState().retryPlacementRefresh()}
     onReturn={navigateToCatalogue}
+    onApplyStatusSet={async names => { const result = await store.getState().applyStatusSet(board.id, names); if (result === 'saved') onMutationSaved?.(); if (result === 'saved' || result === 'conflict') setCreatedProjectId(board.id); return result }}
     onDeleteProject={async () => {
       const saved = await store.getState().deleteProject(board.id)
       if (saved) { setFocusCatalogueCreation(true); onMutationSaved?.(); await onProjectDeleted(board.id) }

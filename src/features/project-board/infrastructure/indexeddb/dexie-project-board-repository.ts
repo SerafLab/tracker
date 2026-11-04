@@ -33,7 +33,12 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
       switch (command.kind) {
         case 'create_project':
           projectId = command.project.id
-          data = { saved: true, project: await this.createProject(command.project, [], false) }
+          data = { saved: true, project: { ...await this.createProject(command.project, command.statuses, false), statuses: command.statuses } }
+          break
+        case 'apply_status_set':
+          projectId = (await project(command.projectId)).id
+          await this.applyStatusSet(projectId, command.statuses)
+          data = { saved: true, board: (await this.board(projectId))! }
           break
         case 'rename_project':
           projectId = (await project(command.projectId)).id
@@ -119,6 +124,15 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
       if (remember) await this.setLastProject(project.id)
     })
     return project
+  }
+
+  async applyStatusSet(projectId: Id, statuses: Status[]): Promise<void> {
+    await this.db.transaction('rw', this.db.projects, this.db.statuses, async () => {
+      if (!await this.db.projects.get(projectId)) throw new CommandError('not_found')
+      if (await this.db.statuses.where('projectId').equals(projectId).count()) throw new CommandError('conflict')
+      if (!statuses.length || statuses.some(status => status.projectId !== projectId || !status.name.trim())) throw new CommandError('conflict')
+      await this.db.statuses.bulkAdd(statuses)
+    })
   }
 
   async deleteProject(id: Id): Promise<void> {

@@ -1,0 +1,98 @@
+import { expect, test } from '@playwright/test'
+
+for (const language of ['ru', 'en'] as const) for (const width of [320, 390, 1280, 1440]) {
+  test(`applies a complete localized set to an existing empty project with retry in ${language} at ${width}px`, async ({ page, context }, testInfo) => {
+    await page.setViewportSize({ width, height: 740 })
+    await page.addInitScript(locale => {
+      localStorage.setItem('easytrack.locale', locale)
+      const add = IDBObjectStore.prototype.add
+      ;(window as unknown as { failStatusSet: boolean }).failStatusSet = true
+      IDBObjectStore.prototype.add = function (...args) {
+        if (this.name === 'statuses' && (window as unknown as { failStatusSet: boolean }).failStatusSet) throw Error('Test unavailable write')
+        return add.apply(this, args)
+      }
+    }, language)
+    const en = language === 'en', createName = en ? 'Create project' : 'Создать проект'
+    await page.goto('/tracker/')
+    await page.getByRole('button', { name: createName, exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await dialog.getByRole('textbox').fill('Existing empty project')
+    await dialog.getByRole('combobox').selectOption('empty')
+    await dialog.getByRole('button', { name: createName, exact: true }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Existing empty project')
+    await page.reload()
+    const form = page.getByRole('form', { name: en ? 'Apply status set' : 'Применить набор' })
+    await expect(form).toBeVisible()
+    const select = form.getByRole('combobox', { name: en ? 'Status set' : 'Набор статусов' })
+    await expect(select.getByRole('option')).toHaveCount(5)
+    await expect(select.getByRole('option', { name: en ? 'No statuses' : 'Без статусов' })).toHaveCount(0)
+    await select.focus()
+    await select.selectOption('development')
+    const names = en ? ['Planned', 'On hold', 'In development', 'In review', 'Done'] : ['Запланировано', 'На паузе', 'В разработке', 'На проверке', 'Готово']
+    await expect(form.getByRole('listitem')).toHaveText(names)
+    await page.keyboard.press('Tab')
+    const apply = form.getByRole('button', { name: en ? 'Apply status set' : 'Применить набор' })
+    await expect(apply).toBeFocused()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: testInfo.outputPath(`apply-status-set-${language}-${width}.png`), fullPage: true })
+    await page.keyboard.press('Enter')
+    await expect(form.getByRole('alert')).toContainText(en ? 'Could not save' : 'Не удалось сохранить')
+    await expect(select).toHaveValue('development')
+    await expect(page.locator('.status-column')).toHaveCount(0)
+    await page.evaluate(() => { (window as unknown as { failStatusSet: boolean }).failStatusSet = false })
+    await apply.click()
+    await expect(form).toHaveCount(0)
+    await expect(page.getByRole('button', { name: en ? 'Add status' : 'Добавить статус' })).toBeFocused()
+    await expect(page.locator('.column-title')).toHaveText(names)
+    await expect(page.locator('.work-card')).toHaveCount(0)
+    await page.evaluate(async () => { await navigator.serviceWorker.ready })
+    await context.setOffline(true)
+    await page.reload()
+    await expect(page.locator('.column-title')).toHaveText(names)
+    await expect(page.getByRole('form', { name: en ? 'Apply status set' : 'Применить набор' })).toHaveCount(0)
+  })
+}
+
+test('uses the current language when an older empty project receives a set', async ({ page }) => {
+  await page.goto('/tracker/')
+  await page.getByRole('button', { name: 'Создать проект', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox').fill('Создан по-русски')
+  await dialog.getByRole('combobox').selectOption('empty')
+  await dialog.getByRole('button', { name: 'Создать проект', exact: true }).click()
+  await page.getByRole('button', { name: 'Настройки', exact: true }).click()
+  await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en')
+  await page.keyboard.press('Escape')
+  const form = page.getByRole('form', { name: 'Apply status set' })
+  await form.getByRole('combobox').selectOption('documents')
+  await form.getByRole('button').click()
+  await expect(page.locator('.column-title')).toHaveText(['To prepare', 'Submitted', 'Awaiting response', 'Completed'])
+  await page.reload()
+  await expect(page.locator('.column-title')).toHaveText(['To prepare', 'Submitted', 'Awaiting response', 'Completed'])
+})
+
+test('refreshes a conflicting manual status without adding any part of the set', async ({ page }) => {
+  await page.goto('/tracker/')
+  await page.getByRole('button', { name: 'Создать проект', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox').fill('Conflict')
+  await dialog.getByRole('combobox').selectOption('empty')
+  await dialog.getByRole('button', { name: 'Создать проект', exact: true }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Conflict')
+  await page.evaluate(async () => {
+    const projectId = decodeURIComponent(location.hash.split('/')[1])
+    const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
+    await new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction('statuses', 'readwrite')
+      transaction.objectStore('statuses').add({ id: 'manual-race', projectId, name: 'Manual', position: 0 })
+      transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error)
+    })
+    db.close()
+  })
+  await page.getByRole('form', { name: 'Применить набор' }).getByRole('button').click()
+  await expect(page.locator('.column-title')).toHaveText(['Manual'])
+  await expect(page.getByRole('form', { name: 'Применить набор' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Добавить статус' })).toBeFocused()
+  await page.reload()
+  await expect(page.locator('.column-title')).toHaveText(['Manual'])
+})

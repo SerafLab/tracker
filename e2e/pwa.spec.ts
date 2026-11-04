@@ -119,7 +119,7 @@ for (const width of [1280, 320]) {
     await expect(page.getByRole('combobox')).toHaveCount(0)
     await page.keyboard.press('Escape')
     await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
-    const selector = page.getByRole('combobox')
+    const selector = page.getByRole('combobox', { name: /^(Язык приложения|Application language)$/ })
     await selector.focus()
     await selector.selectOption('en')
     await expect(selector).toBeFocused()

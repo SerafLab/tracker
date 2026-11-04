@@ -1,9 +1,41 @@
 # Spec Delta
 
+## MODIFIED Requirements
+
+### Requirement: Discoverable task operation tools
+The system SHALL expose typed native WebMCP page tools in supported browser-hosts for project/board reads, project creation with an explicit status set, status-set application to an empty project, status creation and renaming, status movement, empty-status deletion and card creation, attribute updates, movement and deletion. A task SHALL mean an existing card without new completion semantics. Ordinary stdio MCP clients SHALL NOT be advertised as supported consumers.
+
+#### Scenario: Agent discovers supported actions
+- **WHEN** a supported host discovers the selected EasyTrack document's tools
+- **THEN** it receives descriptions and native argument schemas for get_connection, list_projects, get_board, create_project, apply_status_set, rename_project, create_status, rename_status, move_status, delete_status, create_card, update_card, move_card, delete_card and show_workspace (contract version 2); versioned result contracts are documented and validated
+
+#### Scenario: Unsupported operations remain absent
+- **WHEN** the host discovers the task tools
+- **THEN** project deletion, note CRUD, description editing, arbitrary card anchors/reorder, batch and disconnect tools are not advertised
+
+#### Scenario: Agent adds a task
+- **WHEN** the agent supplies an existing status identifier, a nonempty card name and optional independent priority flags
+- **THEN** creation returns the saved card with its identifier, status, name, flags, empty description and priority position; omitted flags default to false
+
+#### Scenario: Agent inspects tasks
+- **WHEN** the agent lists projects and reads a selected board
+- **THEN** it receives stable identifiers, names, ordered statuses and ordered cards including stored descriptions, without adding note-history tools
+
+### Requirement: Agent creation preserves workspace context
+create_project SHALL accept a name and a required statusSetId and SHALL NOT select a set implicitly. create_card SHALL initialize description to an empty string. Background creation SHALL preserve the current workspace route and last-opened-project preference; explicit show_workspace SHALL own navigation. Existing UI project creation SHALL retain its selected status set and navigation behavior.
+
+#### Scenario: Agent creates from the catalogue
+- **WHEN** the agent creates a named project while the catalogue is displayed
+- **THEN** the named project is saved with the chosen set's statuses (none for an empty project), the catalogue refreshes without opening it, and reload does not unexpectedly restore that project
+
+#### Scenario: Agent creates while a board is open
+- **WHEN** the agent creates a project while another project is open
+- **THEN** the displayed project, route and previous last-opened-project preference remain unchanged
+
 ## ADDED Requirements
 
 ### Requirement: Explicit native status-set selection
-Native create_project SHALL require statusSetId equal to simple, search, documents, development, job-search or none. It SHALL atomically save the named project and independent statuses in the selected set order using current UI language, and return the saved project with ordered statuses. none SHALL create no statuses. Background creation SHALL preserve route and last-opened-project preference. The native contract SHALL be version 2.
+Native create_project SHALL require statusSetId equal to simple, search, documents, development, job-search or none. It SHALL atomically save the named project and independent statuses in the selected set order using the current interface language, and return the saved project with ordered statuses. none SHALL create no statuses. The native contract SHALL be version 2.
 
 #### Scenario: Set choice is missing or invalid
 - **WHEN** create_project has no valid statusSetId
@@ -11,11 +43,11 @@ Native create_project SHALL require statusSetId equal to simple, search, documen
 
 #### Scenario: Agent explicitly creates without statuses
 - **WHEN** create_project names none
-- **THEN** a project with no statuses is saved without changing the visible route or preference
+- **THEN** a project with no statuses is saved
 
 #### Scenario: Agent chooses a localized set
 - **WHEN** create_project supplies a nonempty built-in set ID
-- **THEN** the current UI language determines saved status names, in the exact same order as the UI preview
+- **THEN** the application's interface-language setting determines saved status names, in the exact same order as the UI preview
 
 ### Requirement: Native status-set application
 Native apply_status_set SHALL accept projectId and one of the five nonempty set IDs. Existence, empty-status condition and all status writes SHALL be one transaction. Success SHALL return the saved board without implicit navigation; failure SHALL preserve existing data.

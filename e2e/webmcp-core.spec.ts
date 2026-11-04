@@ -15,7 +15,7 @@ async function fixture(page: Page) {
     Object.assign(window, { webmcpFixture: { names: () => [...tools.keys()], capture: (name: string) => tools.get(name)!.execute, loseNextReply: () => { loseReply = true }, async call(name: string, input: unknown) { const lose = loseReply; loseReply = false; const result = await tools.get(name)!.execute(input); if (lose) throw Error('Injected lost host reply after execution'); return result } } })
   })
   await page.goto('/tracker/')
-  await expect.poll(() => page.evaluate(() => (window as any).webmcpFixture.names().length)).toBe(14)
+  await expect.poll(() => page.evaluate(() => (window as any).webmcpFixture.names().length)).toBe(15)
   await expect.poll(async () => (await connection(page)).data.state).toBe('ready')
   let sessionId = (await connection(page)).sessionId, requestId = 0
   return {
@@ -33,11 +33,17 @@ for (const locale of ['ru', 'en']) test(`native-contract fixture covers every ta
   await page.addInitScript(locale => localStorage.setItem('easytrack.locale', locale), locale)
   const host = await fixture(page)
   expect((await host.call('list_projects')).data.projects).toEqual([])
-  const first = await host.call('create_project', { name: 'Same' }), projectId = first.data.project.id
+  const first = await host.call('create_project', { name: 'Same', statusSetId: 'none' }), projectId = first.data.project.id
   expect(first).toMatchObject({ ok: true, data: { saved: true } })
   expect(page.url()).not.toContain('#project')
-  const other = await host.call('create_project', { name: 'Same' })
+  const other = await host.call('create_project', { name: 'Same', statusSetId: 'none' })
+  const set = await host.call('create_project', { name: 'Set', statusSetId: 'simple' })
+  expect(set.data.project.statuses.map((status: { name: string }) => status.name)).toEqual(locale === 'en' ? ['To do', 'In progress', 'Done'] : ['Нужно сделать', 'В процессе', 'Готово'])
+  expect(page.url()).not.toContain('#project')
   expect(other.data.project.id).not.toBe(projectId)
+  expect((await host.call('apply_status_set', { projectId: other.data.project.id, statusSetId: 'search' })).data.board.statuses).toHaveLength(4)
+  expect(await host.call('apply_status_set', { projectId: other.data.project.id, statusSetId: 'search' })).toMatchObject({ error: { code: 'conflict' } })
+  expect(await host.call('apply_status_set', { projectId: other.data.project.id, statusSetId: 'none' })).toMatchObject({ error: { code: 'invalid_argument' } })
   expect((await host.call('get_board', { projectId })).data.board.statuses).toEqual([])
   const one = (await host.call('create_status', { projectId, name: 'One' })).data.status
   const two = (await host.call('create_status', { projectId, name: 'Two' })).data.status
@@ -83,7 +89,7 @@ for (const locale of ['ru', 'en']) test(`native-contract fixture covers every ta
   })
   const oldSession = host.session()
   await context.setOffline(true); await page.reload()
-  await expect.poll(() => page.evaluate(() => (window as any).webmcpFixture.names().length)).toBe(14)
+  await expect.poll(() => page.evaluate(() => (window as any).webmcpFixture.names().length)).toBe(15)
   await expect.poll(async () => (await connection(page)).data.state).toBe('ready')
   expect((await raw(page, 'list_projects', { sessionId: oldSession })).error.code).toBe('disconnected')
   await host.rebind()
@@ -99,7 +105,7 @@ for (const locale of ['ru', 'en']) test(`native-contract fixture covers every ta
 
 test('native-contract fixture protects dirty drafts, retains mounted editor on refresh failure and recovers only by reading', async ({ page }) => {
   const host = await fixture(page)
-  const projectId = (await host.call('create_project', { name: 'Project' })).data.project.id
+  const projectId = (await host.call('create_project', { name: 'Project', statusSetId: 'none' })).data.project.id
   const statusId = (await host.call('create_status', { projectId, name: 'Status' })).data.status.id
   const cardId = (await host.call('create_card', { statusId, name: 'Card' })).data.card.id
   await host.call('show_workspace', { projectId })
@@ -129,7 +135,7 @@ test('native-contract fixture protects dirty drafts, retains mounted editor on r
 
 test('native-contract fixture isolates tabs/sessions and deduplicates identical requests without another history entry', async ({ page, context }) => {
   const host = await fixture(page)
-  const projectId = (await host.call('create_project', { name: 'P' })).data.project.id
+  const projectId = (await host.call('create_project', { name: 'P', statusSetId: 'none' })).data.project.id
   const second = await context.newPage(), other = await fixture(second)
   expect((await raw(second, 'list_projects', { sessionId: host.session() })).error.code).toBe('disconnected')
   const args = { sessionId: host.session(), requestId: 20, projectId }
@@ -140,7 +146,7 @@ test('native-contract fixture isolates tabs/sessions and deduplicates identical 
   expect((await raw(page, 'show_workspace', { ...args, projectId: 'other' })).error.code).toBe('conflict')
   expect((await other.call('list_projects')).data.projects[0].id).toBe(projectId)
   await page.evaluate(() => (window as any).webmcpFixture.loseNextReply())
-  const lost = { sessionId: host.session(), requestId: 21, name: 'Lost acknowledgement' }
+  const lost = { sessionId: host.session(), requestId: 21, name: 'Lost acknowledgement', statusSetId: 'none' }
   await expect(raw(page, 'create_project', lost)).rejects.toThrow('Injected lost host reply')
   const saved = (await raw(page, 'list_projects', { sessionId: host.session() })).data.projects
   expect(saved.filter((project: any) => project.name === 'Lost acknowledgement')).toHaveLength(1)
@@ -155,7 +161,7 @@ test('native-contract fixture isolates tabs/sessions and deduplicates identical 
 
 test('native-contract fixture revokes old handles and blocks both tool and UI writes after storage versionchange', async ({ page }) => {
   const host = await fixture(page), oldSession = host.session()
-  await host.call('create_project', { name: 'Retained' })
+  await host.call('create_project', { name: 'Retained', statusSetId: 'none' })
   await page.evaluate(() => { (window as any).oldFixtureCall = (window as any).webmcpFixture.capture('create_project') })
   await page.evaluate(() => new Promise<void>((resolve, reject) => {
     const request = indexedDB.open('personal-project-tracker', 40)
@@ -164,16 +170,16 @@ test('native-contract fixture revokes old handles and blocks both tool and UI wr
   }))
   await expect(page.getByRole('heading', { name: 'Нужно перезапустить EasyTrack' })).toBeVisible()
   await expect.poll(async () => (await connection(page)).data.state).toBe('restart_required')
-  expect(await page.evaluate(input => (window as any).oldFixtureCall(input), { sessionId: oldSession, requestId: 2, name: 'Blocked old handle' })).toMatchObject({ error: { code: 'disconnected' } })
+  expect(await page.evaluate(input => (window as any).oldFixtureCall(input), { sessionId: oldSession, requestId: 2, name: 'Blocked old handle', statusSetId: 'none' })).toMatchObject({ error: { code: 'disconnected' } })
   await host.rebind()
-  expect(await host.call('create_project', { name: 'Blocked fresh handle' })).toMatchObject({ error: { code: 'restart_required' } })
+  expect(await host.call('create_project', { name: 'Blocked fresh handle', statusSetId: 'none' })).toMatchObject({ error: { code: 'restart_required' } })
   await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toHaveCount(0)
 })
 
 test('native-contract fixture: delete_card on the open panel card closes the panel to the board, and is refused with a dirty draft', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   const host = await fixture(page)
-  const projectId = (await host.call('create_project', { name: 'Project' })).data.project.id
+  const projectId = (await host.call('create_project', { name: 'Project', statusSetId: 'none' })).data.project.id
   const statusId = (await host.call('create_status', { projectId, name: 'Status' })).data.status.id
   const firstId = (await host.call('create_card', { statusId, name: 'First' })).data.card.id
   const secondId = (await host.call('create_card', { statusId, name: 'Second' })).data.card.id

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createToolRuntime, ToolError, type RuntimeDependencies } from './runtime'
-import { dataSchemas, inputSchemas, type ConnectionState } from './schemas'
+import { dataSchemas, inputSchemas, statusSetIds, type ConnectionState } from './schemas'
 import { registerPageTools, type NativeTool } from './registration'
 const sessionId = 'session'
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(yes => { resolve = yes }); return { promise, resolve } }
@@ -15,6 +15,7 @@ describe('native contract schemas', () => {
     expect(Object.keys(inputSchemas)).toEqual(Object.keys(dataSchemas))
     expect(inputSchemas.create_card.parse({ sessionId, requestId: 1, statusId: 's', name: 'N' })).toMatchObject({ important: false, urgent: false })
     for (const raw of [ { sessionId, requestId: 0, name: 'N' }, { sessionId, requestId: Number.MAX_SAFE_INTEGER + 1, name: 'N' }, { sessionId, requestId: 1, name: '  ' }, { sessionId, requestId: 1, name: 'N', initialStatusNames: [] }, { sessionId, requestId: 1, name: 'N' }, { sessionId, requestId: 1, name: 'N', statusSetId: 'Simple' }, { sessionId, requestId: 1, name: 'N', statusSetId: 'empty' } ]) expect(inputSchemas.create_project.safeParse(raw).success).toBe(false)
+    expect(statusSetIds).toEqual(['simple', 'search', 'documents', 'development', 'job-search'])
     expect(inputSchemas.create_project.safeParse({ sessionId, requestId: 1, name: 'N', statusSetId: 'job-search' }).success).toBe(true)
     expect(inputSchemas.apply_status_set.safeParse({ sessionId, requestId: 1, projectId: 'p', statusSetId: 'simple' }).success).toBe(true)
     for (const raw of [{ statusSetId: 'none' }, {}, { statusSetId: 'unknown' }, { statusSetId: 'simple', name: 'x' }]) expect(inputSchemas.apply_status_set.safeParse({ sessionId, requestId: 1, projectId: 'p', ...raw }).success).toBe(false)

@@ -44,7 +44,7 @@ Project — `{id,name,createdAt}`. Status — `{id,projectId,name,position}`. Ca
 Успех всегда имеет envelope `{ok:true,sessionId,data}`. Например:
 
 ```json
-{"ok":true,"sessionId":"session","data":{"contractVersion":1,"state":"ready","route":"","lastMutationSequence":0}}
+{"ok":true,"sessionId":"session","data":{"contractVersion":2,"state":"ready","route":"","lastMutationSequence":0}}
 ```
 
 route — текущий hash: `''` для каталога, `#project/<encodedId>` для доски либо `#project/<encodedId>/card/<encodedCardId>` для страницы карточки. show_workspace выбирает каталог или доску; url — полный фактический адрес этой же вкладки. Host отдельно делает именно эту вкладку видимой после успешного show. При dirty fields/note draft или pending/recovery возвращается conflict без принудительного discard; force-параметра нет.
@@ -55,7 +55,7 @@ route — текущий hash: `''` для каталога, `#project/<encodedI
 {"sessionId":"session","requestId":1,"name":"Новый проект","statusSetId":"simple"}
 ```
 
-Это вход create_project. Контракт версии 2 несовместим с версией 1 (без наложенного перегруза и старого пути): statusSetId обязателен, набор выбирает пользователь, агент его не угадывает. Идентификаторы наборов стабильны; названия берутся из того же локализованного каталога, что и интерфейс, на текущем языке браузера (none соответствует «Без статусов» в UI). Проект и статусы сохраняются одной транзакцией с remember:false; apply_status_set использует ту же атомарную операцию репозитория, что и форма пустой доски. Транспорт остаётся прежним native WebMCP: Node relay, stdio и loopback не используются.
+Это вход create_project. Контракт версии 2 несовместим с версией 1 (без наложенного перегруза и старого пути): statusSetId обязателен, набор выбирает пользователь, агент его не угадывает. Идентификаторы наборов стабильны; названия берутся из того же локализованного каталога, что и интерфейс, на текущем языке интерфейса приложения (настройка языка приложения) (none соответствует «Без статусов» в UI). Проект и статусы сохраняются одной транзакцией с remember:false; apply_status_set использует ту же атомарную операцию репозитория, что и форма пустой доски. Транспорт остаётся прежним native WebMCP: Node relay, stdio и loopback не используются.
 
 ```json
 {"sessionId":"session","requestId":2,"cardId":"card","name":"Новое название","important":true,"urgent":false}

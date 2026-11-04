@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { statusPresets, type StatusPresetId } from '../../features/project-board'
 
 const id = z.string().min(1).regex(/\S/)
 const name = z.string().min(1).regex(/\S/)
@@ -7,8 +8,9 @@ const mutation = { ...session, requestId: z.number().int().positive().max(Number
 const flags = { important: z.boolean(), urgent: z.boolean() }
 const expected = z.strictObject({ statusId: id, ...flags })
 export const contractVersion = 2
-export const statusSetIds = ['simple', 'search', 'documents', 'development', 'job-search'] as const
-export type StatusSetId = typeof statusSetIds[number]
+// Derived from the UI catalogue so a new set cannot silently diverge; the UI's empty entry is `none` here.
+export type StatusSetId = Exclude<StatusPresetId, 'empty'>
+export const statusSetIds = statusPresets.filter(preset => preset.id !== 'empty').map(preset => preset.id) as [StatusSetId, ...StatusSetId[]]
 const statusSet = z.enum(statusSetIds)
 export const inputSchemas = {
   get_connection: z.strictObject({}),

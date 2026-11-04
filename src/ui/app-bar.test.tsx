@@ -94,3 +94,45 @@ it('only dismisses offscreen settings on document scrolling, not resizing or nes
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   } finally { vi.unstubAllGlobals() }
 })
+
+it('only focuses truncated headings and remeasures title, resize and font changes', async () => {
+  let available = 200
+  const callbacks = new Set<() => void>()
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.tagName === 'H1' ? available : 0 })
+  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.tagName === 'H1' ? this.textContent!.length * 10 : 0 })
+  vi.stubGlobal('ResizeObserver', class {
+    callback: () => void
+    constructor(callback: () => void) { this.callback = callback; callbacks.add(callback) }
+    observe() {}
+    disconnect() { callbacks.delete(this.callback) }
+  })
+  const fonts = Object.assign(new EventTarget(), { ready: Promise.resolve() })
+  Object.defineProperty(document, 'fonts', { configurable: true, value: fonts })
+  try {
+    const view = render(<LocaleProvider><AppBar title="Short" onReturn={() => {}} /></LocaleProvider>)
+    const heading = screen.getByRole('heading', { level: 1 })
+    expect(heading).not.toHaveAttribute('tabindex')
+    expect(document.querySelector('.page-title-hint')).not.toBeInTheDocument()
+    view.rerender(<LocaleProvider><AppBar title={'Long title '.repeat(10)} onReturn={() => {}} /></LocaleProvider>)
+    expect(heading).toHaveAttribute('tabindex', '0')
+    expect(heading).toHaveTextContent('Long title '.repeat(10).trim())
+    const hint = document.querySelector('.page-title-hint')!
+    expect(hint).toHaveAttribute('aria-hidden', 'true')
+    expect(heading.contains(hint)).toBe(false)
+    const user = userEvent.setup()
+    await user.tab(); await user.tab(); expect(heading).toHaveFocus()
+    available = 2000
+    act(() => { for (const resize of callbacks) resize() })
+    expect(heading).not.toHaveAttribute('tabindex')
+    available = 100
+    fireEvent(window, new Event('resize'))
+    expect(heading).toHaveAttribute('tabindex', '0')
+    available = 2000
+    act(() => fonts.dispatchEvent(new Event('loadingdone')))
+    expect(heading).not.toHaveAttribute('tabindex')
+    view.unmount()
+    expect(callbacks.size).toBe(0)
+  } finally {
+    vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(document, 'fonts')
+  }
+})

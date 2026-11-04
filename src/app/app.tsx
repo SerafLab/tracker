@@ -83,7 +83,8 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       const isCurrent = () => active && request === startedAt && location.hash === expectedHash
       if (!await storageReady || !isCurrent()) return
       presentation.current = history.state?.easyTrackPresentation === 'panel' ? 'panel' : 'page'
-      setCardPresentation(presentation.current)
+      // Only a card route needs its presentation before it renders; leaving a card keeps the panel until the destination is shown.
+      const applyPresentation = () => { if (isCurrent()) setCardPresentation(presentation.current) }
       let route = routeFromHash()
       if (!route && restoreLastProject) {
         let id: Id | undefined
@@ -97,10 +98,12 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       }
       if (route) {
         if (route.cardId) {
+          applyPresentation()
           const result = await runtime.store.getState().showCard(route.projectId, route.cardId, true)
           if (result !== 'missing' || !isCurrent()) return
         } else {
           const shown = await runtime.store.getState().showBoard(route.projectId, true)
+          applyPresentation()
           if (shown || !isCurrent()) return
         }
         history.replaceState({ ...history.state, easyTrackIndex: position.index }, '', location.pathname + location.search)
@@ -109,6 +112,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       const catalogue = runtime.store.getState().showCatalogue()
       await runtime.store.getState().clearLastProject()
       await catalogue
+      applyPresentation()
     }
     const acceptPosition = (next: HistoryPosition) => { position = next; void showRoute() }
     const onHistory = () => {
@@ -191,10 +195,11 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const closeCard = async (projectId: Id) => {
     requestLeave(() => presentation.current === 'panel' ? history.back() : navigate.current(routeFor(projectId)))
   }
+  const closeMissingCard = useCallback(async (projectId: Id) => { await navigate.current(routeFor(projectId), true, { replace: true }) }, [])
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
   const onProjectDeleted = async (id: Id) => { if (routeFromHash()?.projectId === id) await navigate.current('', false) }
   if (restartRequired) return <RestartRequired onRestart={reloadApp} />
-  return <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} onExpandCard={expandCard} onCloseCard={closeCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><div inert={panelIsolated} aria-hidden={panelIsolated || undefined}><InstallGuidance /><PwaUpdateRegistration requestUpdate={requestLeave} /></div>
+  return <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><div inert={panelIsolated} aria-hidden={panelIsolated || undefined}><InstallGuidance /><PwaUpdateRegistration requestUpdate={requestLeave} /></div>
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
 }

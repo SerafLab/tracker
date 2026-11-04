@@ -46,10 +46,10 @@ export const CardView = memo(function CardView({ card, peers, statuses, disabled
     onContextMenuCapture={event => { if (drag.isDragSource) event.preventDefault() }}
     onClickCapture={event => { if (drag.suppressClick(event.detail)) { event.preventDefault(); event.stopPropagation() } }}>
     <div className="card-heading">
-      <a className="card-name card-detail-link" draggable={false} aria-disabled={disabled || undefined} href={`#project/${encodeURIComponent(projectId)}/card/${encodeURIComponent(card.id)}`} onClick={event => {
+      <a className="card-detail-link" draggable={false} aria-label={card.name} aria-disabled={disabled || undefined} href={`#project/${encodeURIComponent(projectId)}/card/${encodeURIComponent(card.id)}`} onClick={event => {
         if (disabled) { event.preventDefault(); return }
         if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); void onOpen(card.id) }
-      }}>{card.name}</a>
+      }}><span className="card-name">{card.name}</span>{card.description.trim() ? <span className="card-description-preview">{card.description}</span> : null}</a>
       <ActionMenu disabled={disabled} triggerRef={menuTrigger} label={t('cardActions', { name: card.name })} actions={[
         { label: t('edit'), onSelect: () => void onOpen(card.id) },
         ...(otherStatuses.length ? [{ label: t('moveToOther'), onSelect: () => { setDestination(otherStatuses[0].id); setMoving(true) } }] : []),

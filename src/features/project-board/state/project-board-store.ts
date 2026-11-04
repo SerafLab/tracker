@@ -19,6 +19,7 @@ export type ShowCardResult = 'shown' | 'missing' | 'unavailable' | 'superseded'
 
 export type ProjectBoardState = {
   workspace: Workspace
+  boardSnapshot: ProjectBoard | null
   storageState: 'opening' | 'ready' | 'storage_unavailable'
   agentPending: boolean
   agentRefreshError: boolean
@@ -68,8 +69,15 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
     }
     const refreshBoard = async (id: Id, startedAt: number) => {
       if (navigation === startedAt && currentProjectId === id) {
-        if (currentCardId) await get().showCard(id, currentCardId)
-        else await get().showBoard(id)
+        if (currentCardId) {
+          const cardId = currentCardId, refreshRequest = ++request
+          try {
+            const [details, board] = await Promise.all([useCases.cardDetails(id, cardId), useCases.board(id)])
+            if (navigation !== startedAt || request !== refreshRequest) return
+            if (!board) throw new Error('board_not_found')
+            set({ boardSnapshot: board, workspace: details ? { kind: 'card', details } : { kind: 'card-missing', project: board } })
+          } catch { if (navigation === startedAt && request === refreshRequest) set({ agentRefreshError: true }) }
+        } else await get().showBoard(id)
       }
     }
     const preserveConfirmedState = async (operation: () => Promise<unknown>) => {
@@ -106,7 +114,9 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
           if (!board) throw new Error('board_not_found')
           refreshed = { kind: 'board', board }
         } else if (workspace.kind === 'card') {
-          const details = await useCases.cardDetails(workspace.details.project.id, workspace.details.card.id)
+          const [details, board] = await Promise.all([useCases.cardDetails(workspace.details.project.id, workspace.details.card.id), useCases.board(workspace.details.project.id)])
+          if (!board) throw new Error('board_not_found')
+          if (navigation === startedAt && request === refreshRequest) set({ boardSnapshot: board })
           if (details) refreshed = { kind: 'card', details }
           else refreshed = { kind: 'card-missing', project: workspace.details.project }
         }
@@ -119,6 +129,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
     }
     const state: ProjectBoardState = {
       workspace: { kind: 'loading' },
+      boardSnapshot: null,
       storageState: 'opening',
       agentPending: false,
       agentRefreshError: false,
@@ -152,8 +163,9 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         try {
           const board = await useCases.board(id)
           if (!board) throw new Error('board_not_found')
-          if (request !== startedAt || currentProjectId !== id || currentCardId) return false
-          set({ workspace: { kind: 'board', board }, placementRefreshError: null, agentRefreshError: false })
+          if (request !== startedAt || currentProjectId !== id) return false
+          set({ boardSnapshot: board, ...(!currentCardId ? { workspace: { kind: 'board' as const, board } } : {}), placementRefreshError: null, agentRefreshError: false })
+          if (currentCardId) await refreshBoard(id, navigation)
           return true
         } catch { return false }
         finally { set({ placementPending: false }) }
@@ -188,7 +200,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         currentCardId = undefined
         try {
           const projects = await useCases.projects()
-          if (request === startedAt) set({ workspace: { kind: 'catalogue', projects } })
+          if (request === startedAt) set({ boardSnapshot: null, workspace: { kind: 'catalogue', projects } })
         } catch {
           if (request === startedAt) set({ workspace: { kind: 'unavailable' } })
         }
@@ -203,7 +215,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
           if (request !== startedAt || !board) return false
           if (remember && canMutate()) await rememberProject(id)
           if (request !== startedAt) return false
-          set({ workspace: { kind: 'board', board }, placementRefreshError: null, agentRefreshError: false })
+          set({ boardSnapshot: board, workspace: { kind: 'board', board }, placementRefreshError: null, agentRefreshError: false })
           return true
         } catch {
           if (request === startedAt) set({ workspace: { kind: 'unavailable' } })
@@ -216,18 +228,19 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         currentProjectId = projectId
         currentCardId = cardId
         try {
-          const details = await useCases.cardDetails(projectId, cardId)
+          const [details, board] = await Promise.all([useCases.cardDetails(projectId, cardId), useCases.board(projectId)])
           if (request !== startedAt) return 'superseded'
+          if (!board) {
+            set({ boardSnapshot: null })
+            return 'missing'
+          }
           if (!details) {
-            const board = await useCases.board(projectId)
-            if (request !== startedAt) return 'superseded'
-            if (!board) return 'missing'
             set({ workspace: { kind: 'card-missing', project: board } })
             return 'shown'
           }
           if (remember && canMutate()) await rememberProject(projectId)
           if (request !== startedAt) return 'superseded'
-          set({ workspace: { kind: 'card', details } })
+          set({ boardSnapshot: board, workspace: { kind: 'card', details } })
           return 'shown'
         } catch {
           if (request !== startedAt) return 'superseded'
@@ -287,7 +300,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       async renameProject(id, name) {
         const startedAt = navigation
         const workspace = get().workspace
-        const wasOpen = workspace.kind === 'board' && workspace.board.id === id
+        const wasOpen = (workspace.kind === 'board' && workspace.board.id === id) || (workspace.kind === 'card' && workspace.details.project.id === id)
         if (await preserveConfirmedState(() => useCases.renameProject(id, name))) {
           if (navigation === startedAt) {
             if (wasOpen) await refreshBoard(id, startedAt)
@@ -340,7 +353,15 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         const current = get().workspace
         if (current.kind === 'card' && current.details.card.id === cardId && current.details.project.id === projectId) {
           set({ workspace: { kind: 'card', details: { ...current.details, card: { ...current.details.card, ...input, name: input.name.trim() } } } })
-        } else await refreshBoard(projectId, startedAt)
+        }
+        // Re-read priority order after commit; a failed read must not repeat the saved write.
+        if (navigation !== startedAt || currentProjectId !== projectId) return true
+        const refreshRequest = ++request
+        try {
+          const board = await useCases.board(projectId)
+          if (!board) throw new Error('board_not_found')
+          if (navigation === startedAt && request === refreshRequest) set({ boardSnapshot: board, ...(get().workspace.kind === 'board' ? { workspace: { kind: 'board' as const, board } } : {}) })
+        } catch { if (navigation === startedAt && request === refreshRequest) set({ agentRefreshError: true }) }
         return true
       },
       async deleteCard(projectId, cardId) {
@@ -356,12 +377,15 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         let result: CardPlacementResult
         try { result = await useCases.moveCard(cardId, placement) }
         catch { set({ placementPending: false, ...(navigation === startedAt ? { saveError: true } : {}) }); return 'failed' }
-        if (navigation === startedAt && currentProjectId === projectId && !currentCardId) {
+        if (navigation === startedAt && currentProjectId === projectId) {
           const refreshRequest = ++request
           try {
             const board = await useCases.board(projectId)
             if (!board) throw new Error('board_not_found')
-            if (navigation === startedAt && request === refreshRequest) set({ workspace: { kind: 'board', board } })
+            if (navigation === startedAt && request === refreshRequest) {
+              set({ boardSnapshot: board, ...(!currentCardId ? { workspace: { kind: 'board' as const, board } } : {}) })
+              if (currentCardId) await refreshBoard(projectId, startedAt)
+            }
           } catch {
             if (navigation === startedAt && request === refreshRequest) {
               set({ placementPending: false, placementRefreshError: projectId })

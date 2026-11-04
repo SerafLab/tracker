@@ -129,7 +129,7 @@ it('creates, edits without a no-op date, refuses blank notes, confirms deletion 
   await user.click(screen.getByRole('button', { name: 'Редактировать заметку' }))
   await user.click(screen.getByRole('button', { name: 'Сохранить заметку' }))
   expect((await repo.cardDetails('p', 'c'))!.notes[0].updatedAt).toBeUndefined()
-  await user.click(screen.getByRole('button', { name: 'Редактировать заметку' })); note = screen.getByLabelText('Редактировать заметку')
+  await user.click(screen.getByRole('button', { name: 'Редактировать заметку' })); note = screen.getByRole('textbox', { name: 'Редактировать заметку' })
   await user.clear(note); await user.type(note, 'Changed note')
   await user.click(screen.getByRole('button', { name: 'Сохранить заметку' }))
   expect((await repo.cardDetails('p', 'c'))!.notes[0].updatedAt).toBeTruthy()
@@ -160,7 +160,7 @@ it('saves a note without saving pending card fields, and guards editor switches'
   expect(screen.getByLabelText('Новая заметка')).toHaveValue('Pending note')
   await user.click(screen.getByRole('button', { name: 'Редактировать заметку' }))
   dialog = screen.getByRole('dialog'); await user.click(within(dialog).getByRole('button', { name: 'Выйти без сохранения' }))
-  expect(screen.getByLabelText('Редактировать заметку')).toHaveValue('Saved note')
+  expect(screen.getByRole('textbox', { name: 'Редактировать заметку' })).toHaveValue('Saved note')
 })
 
 it('keeps separately committed fields after a failed save-on-leave note and retries without duplicating writes', async () => {

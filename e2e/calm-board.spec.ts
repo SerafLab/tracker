@@ -12,7 +12,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await page.getByRole('dialog').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await expect(page.getByRole('heading', { name: en ? 'Add your first status' : 'Добавьте первый статус' })).toBeVisible()
-    for (const name of ['Найдено — длинное название для переноса', 'Связаться', 'Просмотр', 'Решение — длинное название для переноса']) {
+    for (const name of ['Найдено — длинное название для переноса', 'Связаться', 'Просмотр', 'Решение — длинное название статуса с несколькими дополнительными словами для проверки четырёх строк и выравнивания карточек']) {
       await page.getByRole('button', { name: en ? 'Add status' : 'Добавить статус', exact: true }).click()
       await page.getByRole('dialog').getByRole('textbox').fill(name)
       await page.getByRole('dialog').getByRole('button', { name: en ? 'Create status' : 'Создать статус', exact: true }).click()
@@ -65,7 +65,9 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
         pageOverflow: document.documentElement.scrollWidth > window.innerWidth,
         boardOverflow: element.scrollWidth > element.clientWidth,
         widths: columns.map(column => column.getBoundingClientRect().width),
-        openColumns: columns.every(column => getComputedStyle(column).backgroundColor === 'rgba(0, 0, 0, 0)' && getComputedStyle(column).borderTopWidth === '0px'),
+        boundedColumns: columns.every(column => getComputedStyle(column).borderTopWidth === '1px'),
+        listStarts: columns.map(column => column.querySelector('.card-list')!.getBoundingClientRect().top),
+        longestLines: Math.max(...columns.map(column => { const title = column.querySelector('.column-title')!; return title.getBoundingClientRect().height / parseFloat(getComputedStyle(title).lineHeight) })),
         createAfterCards: create.getBoundingClientRect().top >= cards.at(-1)!.getBoundingClientRect().bottom,
         headingsClear: columns.every(column => {
           const title = column.querySelector('.column-heading')!.getBoundingClientRect()
@@ -93,7 +95,9 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     expect(geometry.boardOverflow).toBe(width < 1280)
     expect(geometry.widths).toHaveLength(4)
     expect(Math.min(...geometry.widths)).toBeGreaterThanOrEqual(260)
-    expect(geometry.openColumns).toBe(true)
+    expect(geometry.boundedColumns).toBe(true)
+    expect(geometry.longestLines).toBeGreaterThanOrEqual(4)
+    expect(Math.max(...geometry.listStarts) - Math.min(...geometry.listStarts)).toBeLessThan(1)
     expect(geometry.createAfterCards).toBe(true)
     for (const target of geometry.targets) { expect(target.width).toBeGreaterThanOrEqual(44); expect(target.height).toBeGreaterThanOrEqual(44) }
     await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()

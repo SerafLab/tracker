@@ -15,6 +15,7 @@ export type Workspace =
 export type DeleteStatusStateResult = DeleteStatusResult | 'failed'
 export type ProjectDeletionSummary = { statusCount: number; cardCount: number }
 export type MoveCardStateResult = CardPlacementResult | 'failed' | 'refresh-failed'
+export type ApplyStatusSetResult = 'saved' | 'conflict' | 'failed'
 export type ShowCardResult = 'shown' | 'missing' | 'unavailable' | 'superseded'
 
 export type ProjectBoardState = {
@@ -26,6 +27,8 @@ export type ProjectBoardState = {
   beginAgentOperation(): () => void
   executeAgentCommand(command: AgentCommand): Promise<AgentSavedData & { warning?: { code: 'view_refresh_failed'; message: string } }>
   retryAgentRefresh(): Promise<boolean>
+  applyingStatusSet: boolean
+  applyStatusSet(projectId: Id, statusNames: string[]): Promise<ApplyStatusSetResult>
   saveError: boolean
   placementPending: boolean
   placementRefreshError: Id | null
@@ -73,7 +76,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       }
     }
     const preserveConfirmedState = async (operation: () => Promise<unknown>) => {
-      if (!canMutate() || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return false
+      if (!canMutate() || get().applyingStatusSet || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return false
       const startedAt = navigation
       try {
         await operation()
@@ -137,9 +140,30 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         } finally { release() }
       },
       async retryAgentRefresh() {
-        if (!canMutate() || get().agentPending || get().placementPending || pendingUiWrites) return false
+        if (!canMutate() || get().applyingStatusSet || get().agentPending || get().placementPending || pendingUiWrites) return false
         set({ agentPending: true })
         try { return await refreshCurrent() } finally { set({ agentPending: false }) }
+      },
+      applyingStatusSet: false,
+      async applyStatusSet(projectId, statusNames) {
+        if (!canMutate() || get().applyingStatusSet || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return 'failed'
+        const startedAt = navigation
+        ++pendingUiWrites
+        set({ applyingStatusSet: true, saveError: false })
+        try {
+          try { await useCases.applyStatusSet(projectId, statusNames) }
+          catch (error) {
+            if (error instanceof CommandError && error.code === 'conflict') {
+              await refreshBoard(projectId, startedAt)
+              return 'conflict'
+            }
+            if (navigation === startedAt) set({ saveError: true })
+            return 'failed'
+          }
+          // The write committed. A failed read must never invite writing the set again.
+          await refreshBoard(projectId, startedAt)
+          return 'saved'
+        } finally { --pendingUiWrites; set({ applyingStatusSet: false }) }
       },
       saveError: false,
       placementPending: false,
@@ -263,7 +287,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         return true
       },
       async createProject(input) {
-        if (!canMutate() || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return undefined
+        if (!canMutate() || get().applyingStatusSet || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return undefined
         try {
           const project = await useCases.createProject(input)
           set({ saveError: false })
@@ -311,7 +335,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
       },
       async deleteStatus(projectId, statusId) {
         const startedAt = navigation
-        if (!canMutate() || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return 'failed'
+        if (!canMutate() || get().applyingStatusSet || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return 'failed'
         try {
           const result = await useCases.deleteStatus(statusId)
           if (navigation === startedAt) set({ saveError: false })
@@ -350,7 +374,7 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         return true
       },
       async moveCard(projectId, cardId, placement) {
-        if (!canMutate() || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return 'failed'
+        if (!canMutate() || get().applyingStatusSet || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError) return 'failed'
         const startedAt = navigation
         set({ placementPending: true, saveError: false })
         let result: CardPlacementResult

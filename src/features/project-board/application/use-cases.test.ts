@@ -6,7 +6,7 @@ function repository(): ProjectBoardRepository {
   return {
     executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
     open: vi.fn(), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(),
-    createProject: vi.fn().mockImplementation(project => Promise.resolve(project)), deleteProject: vi.fn(), renameProject: vi.fn(),
+    applyStatusSet: vi.fn(), createProject: vi.fn().mockImplementation(project => Promise.resolve(project)), deleteProject: vi.fn(), renameProject: vi.fn(),
     board: vi.fn(), createStatus: vi.fn().mockImplementation(status => Promise.resolve({ ...status, position: 0 })),
     renameStatus: vi.fn(), moveStatus: vi.fn(), createCard: vi.fn().mockImplementation(card => Promise.resolve({ ...card, position: 0 })),
     updateCard: vi.fn(), moveCard: vi.fn(), deleteCard: vi.fn(), deleteStatus: vi.fn().mockResolvedValue('deleted'),
@@ -117,4 +117,17 @@ it('deletes exactly the requested project ID through the repository boundary', a
   expect(port.deleteProject).toHaveBeenCalledExactlyOnceWith('selected-project')
   vi.mocked(port.deleteProject).mockRejectedValueOnce(Error('quota'))
   await expect(api.deleteProject('selected-project')).rejects.toThrow('quota')
+})
+
+it('prepares a nonempty set with independent IDs, normalized names and stable positions', async () => {
+  const port = repository()
+  const api = createProjectBoardUseCases({ repository: port, createId: vi.fn().mockReturnValueOnce('first').mockReturnValueOnce('second'), now: () => 'unused' })
+  await api.applyStatusSet('project', ['  First  ', 'Second'])
+  expect(port.applyStatusSet).toHaveBeenCalledExactlyOnceWith('project', [
+    { id: 'first', projectId: 'project', name: 'First', position: 0 },
+    { id: 'second', projectId: 'project', name: 'Second', position: 1 },
+  ])
+  expect(() => api.applyStatusSet('project', [])).toThrow('Набор статусов обязателен')
+  expect(() => api.applyStatusSet('project', ['Valid', '   '])).toThrow('Название обязательно')
+  expect(port.applyStatusSet).toHaveBeenCalledOnce()
 })

@@ -24,6 +24,7 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   const workspace = useStore(store, state => state.workspace)
   const agentPending = useStore(store, state => state.agentPending)
   const agentRefreshError = useStore(store, state => state.agentRefreshError)
+  const applyingStatusSet = useStore(store, state => state.applyingStatusSet)
   const placementPending = useStore(store, state => state.placementPending)
   const placementRefreshError = useStore(store, state => state.placementRefreshError)
   const saveError = useStore(store, state => state.saveError)
@@ -68,8 +69,9 @@ export function ProjectBoardApp({ store, navigateToProject, navigateToCatalogue,
   }
 
   const { board } = workspace
-  return <ProjectBoardView key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError} placementPending={placementPending} busy={agentPending || agentRefreshError || placementPending || !!placementRefreshError} refreshFailed={!!placementRefreshError} onRetryRefresh={() => store.getState().retryPlacementRefresh()}
+  return <ProjectBoardView key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError} placementPending={placementPending} busy={applyingStatusSet || agentPending || agentRefreshError || placementPending || !!placementRefreshError} refreshFailed={!!placementRefreshError} onRetryRefresh={() => store.getState().retryPlacementRefresh()}
     onReturn={navigateToCatalogue}
+    onApplyStatusSet={async names => { const result = await store.getState().applyStatusSet(board.id, names); if (result === 'saved') onMutationSaved?.(); return result }}
     onDeleteProject={async () => {
       const saved = await store.getState().deleteProject(board.id)
       if (saved) { setFocusCatalogueCreation(true); onMutationSaved?.(); await onProjectDeleted(board.id) }

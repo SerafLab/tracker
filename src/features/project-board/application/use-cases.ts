@@ -42,6 +42,11 @@ export function createProjectBoardUseCases(dependencies: {
       const project = { id: createId(), name: projectName, createdAt: now() }
       return repository.createProject(project, statusNames.map((statusName, position) => ({ id: createId(), projectId: project.id, name: statusName, position })), true)
     },
+    applyStatusSet: (projectId: Id, initialStatusNames: string[]) => {
+      if (!initialStatusNames.length) throw new Error('Набор статусов обязателен')
+      const names = initialStatusNames.map(name)
+      return repository.applyStatusSet(projectId, names.map((statusName, position) => ({ id: createId(), projectId, name: statusName, position })))
+    },
     cardDetails: (projectId: Id, cardId: Id) => repository.cardDetails(projectId, cardId),
     createNote: (cardId: Id, text: string) => {
       if (!text.trim()) throw new Error('Текст заметки обязателен')

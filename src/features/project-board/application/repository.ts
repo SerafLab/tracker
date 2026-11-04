@@ -13,6 +13,7 @@ export interface ProjectBoardRepository {
   preference(): Promise<WorkspacePreference | undefined>
   setLastProject(id?: Id): Promise<void>
   createProject(project: Project, initialStatuses: Status[], remember: boolean): Promise<Project>
+  applyStatusSet(projectId: Id, statuses: Status[]): Promise<void>
   deleteProject(id: Id): Promise<void>
   renameProject(id: Id, name: string): Promise<void>
   board(projectId: Id): Promise<ProjectBoard | undefined>

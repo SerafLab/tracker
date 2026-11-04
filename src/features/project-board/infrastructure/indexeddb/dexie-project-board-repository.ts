@@ -108,6 +108,15 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
     return project
   }
 
+  async applyStatusSet(projectId: Id, statuses: Status[]): Promise<void> {
+    await this.db.transaction('rw', this.db.projects, this.db.statuses, async () => {
+      if (!await this.db.projects.get(projectId)) throw new CommandError('not_found')
+      if (await this.db.statuses.where('projectId').equals(projectId).count()) throw new CommandError('conflict')
+      if (!statuses.length || statuses.some(status => status.projectId !== projectId || !status.name.trim())) throw new CommandError('conflict')
+      await this.db.statuses.bulkAdd(statuses)
+    })
+  }
+
   async deleteProject(id: Id): Promise<void> {
     await this.db.transaction('rw', [this.db.projects, this.db.statuses, this.db.cards, this.db.notes, this.db.workspace], async () => {
       if (!await this.db.projects.get(id)) return

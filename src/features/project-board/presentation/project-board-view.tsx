@@ -7,8 +7,9 @@ import { CardView } from './card-view'
 import { BoardDrag, usePlacementMarker, useStatusDrop } from './board-drag'
 import { BoardIcon } from './board-icon'
 import { ActionMenu, CardDialog, NameDialog } from './controls'
+import { ApplyStatusSetForm } from './apply-status-set-form'
 import { DeleteDialog } from './delete-dialog'
-import type { MoveCardStateResult, DeleteStatusStateResult } from '../state/project-board-store'
+import type { ApplyStatusSetResult, MoveCardStateResult, DeleteStatusStateResult } from '../state/project-board-store'
 
 type BoardProps = {
   focusCreation: boolean
@@ -19,6 +20,7 @@ type BoardProps = {
   placementPending: boolean
   refreshFailed: boolean
   onRetryRefresh: () => Promise<boolean>
+  onApplyStatusSet: (names: string[]) => Promise<ApplyStatusSetResult>
   onReturn: () => Promise<void>
   onDeleteProject: () => Promise<boolean>
   onRenameProject: (name: string) => Promise<void>
@@ -32,7 +34,7 @@ type BoardProps = {
   onMoveCard: (cardId: Id, placement: CardPlacement) => Promise<MoveCardStateResult>
 }
 
-export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
+export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onApplyStatusSet, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
   const { t } = useTranslation()
   const [moveDialogCardId, setMoveDialogCardId] = useState<Id | null>(null)
   const root = useRef<HTMLElement>(null)
@@ -108,7 +110,7 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
     />
     <main ref={root} className="app-shell">
       {saveError && !deletingProject ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
-      {board.statuses.length === 0 ? <section className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p></section> : null}
+      {board.statuses.length === 0 ? <section inert={modalOpen} aria-hidden={modalOpen || undefined} className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p><ApplyStatusSetForm busy={busy} onApply={onApplyStatusSet} /></section> : null}
       <p className="placement-status" role="status" aria-live="polite">{placementPending ? t('placementSaving') : notice}</p>
       {refreshFailed ? <div className="save-error" role="alert"><p>{t('placementRefreshFailed')}</p><button className="button button-secondary" disabled={placementPending} onClick={() => void onRetryRefresh().then(saved => { if (saved) setNotice(t('placementSaved')) })}>{t('retryBoardRead')}</button></div> : null}
       <BoardDrag board={board} disabled={busy} onPlace={moveCard}>

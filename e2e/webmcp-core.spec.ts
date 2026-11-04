@@ -64,6 +64,8 @@ for (const locale of ['ru', 'en']) test(`native-contract fixture covers every ta
   await page.getByLabel(locale === 'en' ? 'New note' : 'Новая заметка').fill('Personal note')
   await page.getByRole('button', { name: locale === 'en' ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await expect(page.locator('.note-list')).toContainText('Personal note')
+  // The confirmed note write keeps UI mutations pending until the board preview is reread.
+  await expect(page.locator('.card-note-list')).toContainText('Personal note')
   const updated = await host.call('update_card', { cardId: card.id, name: 'Updated', important: true, urgent: false })
   expect(updated.data.card.description).toBe('Saved detailed text')
   await expect(page.getByRole('heading', { name: 'Updated', exact: true })).toBeVisible()

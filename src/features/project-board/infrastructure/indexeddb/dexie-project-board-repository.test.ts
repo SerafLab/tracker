@@ -396,3 +396,24 @@ it.each(['target', 'source', 'reorder'] as const)('rolls back %s placement write
   expect(await fresh.moveCard('a', placement)).toBe('saved')
   expect((await fresh.board('p'))!.statuses.flatMap(status => status.cards).filter(card => card.id === 'a')).toHaveLength(1)
 })
+
+it('counts each project across its statuses without loading card payloads and refreshes confirmed totals', async () => {
+  const { database, repository: repo } = repository()
+  await repo.open()
+  const projects = ['empty', 'one', 'many', 'no-status'].map((id, i) => ({ id, name: id, createdAt: String(i) }))
+  await database.projects.bulkAdd(projects)
+  await database.statuses.bulkAdd([
+    { id: 'e', projectId: 'empty', name: 'Empty', position: 0 },
+    { id: 'a', projectId: 'one', name: 'One', position: 0 },
+    { id: 'b', projectId: 'many', name: 'First', position: 0 },
+    { id: 'c', projectId: 'many', name: 'Second', position: 1 },
+  ])
+  await database.cards.bulkAdd(['a', 'b', 'b', 'c'].map((statusId, i) => ({ id: `card-${i}`, statusId, name: 'Card', position: i, description: 'Long payload', important: false, urgent: false })))
+  const readingCards = vi.fn(card => card)
+  database.cards.hook('reading', readingCards)
+  expect(await repo.catalogue()).toEqual(projects.map((project, i) => ({ ...project, cardCount: [0, 1, 3, 0][i] })))
+  expect(readingCards).not.toHaveBeenCalled()
+  expect(await repo.projects()).toEqual(projects)
+  await repo.deleteCard('card-1')
+  expect((await repo.catalogue())[2].cardCount).toBe(2)
+})

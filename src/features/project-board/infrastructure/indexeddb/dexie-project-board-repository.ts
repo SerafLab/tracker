@@ -96,6 +96,17 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
 
   async open() { await this.db.open() }
   async projects() { return this.db.projects.orderBy('createdAt').toArray() }
+  async catalogue() {
+    return this.db.transaction('r', this.db.projects, this.db.statuses, this.db.cards, async () => {
+      const projects = await this.projects()
+      return Promise.all(projects.map(async project => {
+        const statusIds = await this.db.statuses.where('projectId').equals(project.id).primaryKeys()
+        const counts = await Promise.all(statusIds.map(id => this.db.cards.where('statusId').equals(id).count()))
+        const cardCount = counts.reduce((sum, count) => sum + count, 0)
+        return { ...project, cardCount }
+      }))
+    })
+  }
   async preference(): Promise<WorkspacePreference | undefined> { return this.db.workspace.get('workspace') }
   async setLastProject(id?: Id) { await this.db.workspace.put({ id: 'workspace', lastProjectId: id }) }
 

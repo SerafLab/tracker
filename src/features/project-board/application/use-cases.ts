@@ -33,6 +33,7 @@ export function createProjectBoardUseCases(dependencies: {
     updateCardAttributes: (id: Id, attributes: CardAttributes) => repository.updateCardAttributes(id, { ...attributes, name: name(attributes.name) }),
     open: () => repository.open(),
     projects: () => repository.projects(),
+    catalogue: () => repository.catalogue(),
     preference: () => repository.preference(),
     setLastProject: (id?: Id) => repository.setLastProject(id),
     board: (projectId: Id) => repository.board(projectId),

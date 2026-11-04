@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { AppBar } from '../../../ui/app-bar'
 import { useEffect, useRef, useState, type RefObject } from 'react'
 import { useModalOpen } from '../../../ui/modal-state'
-import type { CreateProjectInput, Id, Project } from '../domain/model'
+import type { CreateProjectInput, Id, Project, ProjectSummary } from '../domain/model'
 import type { ProjectDeletionSummary } from '../state/project-board-store'
 import { ActionMenu, NameDialog } from './controls'
 import { ProjectCreateDialog } from './project-create-dialog'
@@ -10,7 +10,7 @@ import { DeleteDialog, type ProjectSummaryState } from './delete-dialog'
 
 type ProjectTrigger = RefObject<HTMLButtonElement | null>
 export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, onRename, onReadSummary, onDelete, focusCreation = false, onCreationFocused }: {
-  projects: Project[]
+  projects: ProjectSummary[]
   saveError: boolean
   onCreate: (input: CreateProjectInput) => Promise<boolean>
   onOpen: (id: Id) => Promise<void>
@@ -66,14 +66,14 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
 }
 
 function CatalogueProject({ project, onOpen, onRename, onDelete }: {
-  project: Project
+  project: ProjectSummary
   onOpen: (id: Id) => Promise<void>
   onRename: (project: Project) => void
   onDelete: (project: Project, trigger: ProjectTrigger) => void
 }) {
   const { t } = useTranslation()
   const menu = useRef<HTMLButtonElement>(null)
-  return <li className="project-card surface-card" data-project-id={project.id}><button className="project-open" onClick={() => void onOpen(project.id)}>{project.name}</button><ActionMenu triggerRef={menu} label={t('projectActions', { name: project.name })} actions={[
+  return <li className="project-card surface-card" data-project-id={project.id}><button className="project-open" onClick={() => void onOpen(project.id)}>{project.name}</button><span className="project-card-count">{t('cardCount', { count: project.cardCount })}</span><ActionMenu triggerRef={menu} label={t('projectActions', { name: project.name })} actions={[
     { label: t('rename'), onSelect: () => onRename(project) },
     { label: t('deleteProject'), onSelect: () => onDelete(project, menu) },
   ]} /></li>

@@ -5,7 +5,7 @@ import type { ProjectBoardRepository } from './repository'
 function repository(): ProjectBoardRepository {
   return {
     executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
-    open: vi.fn(), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(),
+    open: vi.fn(), catalogue: vi.fn().mockResolvedValue([]), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(),
     createProject: vi.fn().mockImplementation(project => Promise.resolve(project)), deleteProject: vi.fn(), renameProject: vi.fn(),
     board: vi.fn(), createStatus: vi.fn().mockImplementation(status => Promise.resolve({ ...status, position: 0 })),
     renameStatus: vi.fn(), moveStatus: vi.fn(), createCard: vi.fn().mockImplementation(card => Promise.resolve({ ...card, position: 0 })),
@@ -117,4 +117,13 @@ it('deletes exactly the requested project ID through the repository boundary', a
   expect(port.deleteProject).toHaveBeenCalledExactlyOnceWith('selected-project')
   vi.mocked(port.deleteProject).mockRejectedValueOnce(Error('quota'))
   await expect(api.deleteProject('selected-project')).rejects.toThrow('quota')
+})
+
+it('reads catalogue summaries through their own query without changing native project reads', async () => {
+  const port = repository(), summaries = [{ id: 'p', name: 'P', createdAt: 'now', cardCount: 3 }]
+  vi.mocked(port.catalogue).mockResolvedValue(summaries)
+  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => 'unused' })
+  expect(await api.catalogue()).toEqual(summaries)
+  expect(port.catalogue).toHaveBeenCalledOnce()
+  expect(port.projects).not.toHaveBeenCalled()
 })

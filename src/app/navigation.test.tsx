@@ -13,7 +13,7 @@ function deferred<T>() {
 }
 function repository(overrides: Partial<ProjectBoardRepository> = {}) {
   return {
-    open: vi.fn().mockResolvedValue(undefined), projects: vi.fn().mockResolvedValue([project]),
+    open: vi.fn().mockResolvedValue(undefined), catalogue: vi.fn().mockResolvedValue([{ ...project, cardCount: 0 }]), projects: vi.fn().mockResolvedValue([project]),
     preference: vi.fn().mockResolvedValue(undefined), setLastProject: vi.fn().mockResolvedValue(undefined),
     board: vi.fn().mockResolvedValue(board), ...overrides,
   } as unknown as ProjectBoardRepository
@@ -33,10 +33,10 @@ it('loads each selected project and catalogue once', async () => {
   await user.click(await screen.findByRole('button', { name: project.name }))
   await screen.findByRole('heading', { name: project.name })
   expect(repo.board).toHaveBeenCalledExactlyOnceWith(project.id)
-  vi.mocked(repo.projects).mockClear()
+  vi.mocked(repo.catalogue).mockClear()
   await user.click(screen.getByRole('button', { name: /Все проекты/ }))
   await screen.findByRole('button', { name: project.name })
-  expect(repo.projects).toHaveBeenCalledOnce()
+  expect(repo.catalogue).toHaveBeenCalledOnce()
 })
 
 it('restores the last project with one board read', async () => {
@@ -45,7 +45,7 @@ it('restores the last project with one board read', async () => {
   await screen.findByRole('heading', { name: project.name })
   expect(location.hash).toBe('#project/a')
   expect(repo.board).toHaveBeenCalledExactlyOnceWith('a')
-  expect(repo.projects).not.toHaveBeenCalled()
+  expect(repo.catalogue).not.toHaveBeenCalled()
 })
 
 it('does not restore the last project when navigating back to an empty hash', async () => {
@@ -70,7 +70,7 @@ it('ignores an outdated missing board without resetting a newer route', async ()
   await act(async () => { pending.resolve(undefined) })
   expect(location.hash).toBe('#project/a')
   expect(screen.getByRole('heading', { name: project.name })).toBeInTheDocument()
-  expect(repo.projects).not.toHaveBeenCalled()
+  expect(repo.catalogue).not.toHaveBeenCalled()
 })
 
 it('uses the latest route when storage finishes opening', async () => {
@@ -81,7 +81,7 @@ it('uses the latest route when storage finishes opening', async () => {
   await act(async () => { pending.resolve() })
   await screen.findByRole('heading', { name: project.name })
   expect(repo.board).toHaveBeenCalledExactlyOnceWith('a')
-  expect(repo.projects).not.toHaveBeenCalled()
+  expect(repo.catalogue).not.toHaveBeenCalled()
 })
 
 it('ignores a startup preference read superseded by navigation', async () => {
@@ -117,7 +117,7 @@ it('keeps a new hash set before the previous missing-board continuation runs', a
   })
   await screen.findByRole('heading', { name: project.name })
   expect(location.hash).toBe('#project/a')
-  expect(repo.projects).not.toHaveBeenCalled()
+  expect(repo.catalogue).not.toHaveBeenCalled()
 })
 
 it('keeps a new hash set before the previous preference continuation runs', async () => {

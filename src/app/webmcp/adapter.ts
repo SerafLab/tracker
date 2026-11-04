@@ -1,7 +1,7 @@
 import type { AgentCommand, ProjectBoardStore } from '../../features/project-board'
 import type { RuntimeDependencies } from './runtime'
 import { ToolError } from './error'
-import type { ConnectionState, ToolName } from './schemas'
+import type { ConnectionState, StatusSetId, ToolName } from './schemas'
 
 type Dependencies = {
   store: ProjectBoardStore
@@ -11,6 +11,8 @@ type Dependencies = {
   showWorkspace(projectId?: string): Promise<{ route: string; url: string }>
   reads: { projects(): Promise<unknown>; board(projectId: string): Promise<unknown> }
   onSaved(): void
+  /** Localized names of a built-in set, from the same catalogue and language as the UI. */
+  statusNames(id: StatusSetId | 'none'): string[]
 }
 export function createBrowserAdapter(dependencies: Dependencies): RuntimeDependencies {
   const { store } = dependencies
@@ -36,8 +38,9 @@ export function createBrowserAdapter(dependencies: Dependencies): RuntimeDepende
         try { return await dependencies.showWorkspace(input.projectId as string | undefined) } finally { release() }
       }
       // Metadata is validated by the native contract and never enters repository commands.
-      const { sessionId: _session, requestId: _request, confirm: _confirm, ...fields } = input
-      const data = await store.getState().executeAgentCommand({ ...fields, kind: tool } as AgentCommand)
+      const { sessionId: _session, requestId: _request, confirm: _confirm, statusSetId, ...fields } = input
+      const statusNames = statusSetId ? { statusNames: dependencies.statusNames(statusSetId as StatusSetId | 'none') } : {}
+      const data = await store.getState().executeAgentCommand({ ...fields, ...statusNames, kind: tool } as AgentCommand)
       dependencies.onSaved()
       return data
     },

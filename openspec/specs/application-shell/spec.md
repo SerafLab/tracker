@@ -7,7 +7,7 @@
 ## Requirements
 
 ### Requirement: Shared application bar across states
-The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, card-detail, loading, storage-unavailable, and restart-required screens. The heading SHALL be the page's primary heading. The settings panel opened from the bar SHALL contain the sole accessible language selector.
+The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, full card page, loading, storage-unavailable, and restart-required screens. The heading SHALL be the page's primary heading. With a card panel open, the application bar SHALL retain the board context and the panel SHALL identify its own card. The settings panel opened from the bar SHALL contain the sole accessible language selector.
 
 #### Scenario: User navigates from catalogue to board
 - **WHEN** the user opens a project from the catalogue
@@ -25,8 +25,12 @@ The system SHALL show one application bar containing the EasyTrack brand, the cu
 - **WHEN** пользователь открывает страницу карточки
 - **THEN** общий AppBar показывает сохранённое название карточки как единственный основной заголовок и настройки с единственным выбором языка; редактирование черновика не меняет заголовок до сохранения
 
+#### Scenario: User opens a card panel
+- **WHEN** пользователь открывает карточку с доски
+- **THEN** общий AppBar сохраняет заголовок и действия доски, а панель имеет собственный доступный заголовок с сохранённым названием карточки
+
 ### Requirement: Contextual navigation and primary action
-The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The card-detail page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming, or project-deletion actions. Card-page navigation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming, and project-deletion actions.
+The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The full card page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming or project-deletion actions. The card panel SHALL provide close and full-page actions while retaining board navigation. Leaving either card presentation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming and project-deletion actions.
 
 #### Scenario: User works in the catalogue
 - **WHEN** the catalogue is displayed, whether empty or populated
@@ -42,14 +46,18 @@ The application bar SHALL show an icon-only plus for project creation in the cat
 
 #### Scenario: User encounters a service state
 - **WHEN** the application is loading, its storage is unavailable, or a restart is required
-- **THEN** the application bar has no creation, project-renaming, or project-deletion action, its settings panel provides language selection, and the state message retains its relevant guidance or recovery action
+- **THEN** the application bar has no creation, project-renaming or project-deletion action, its settings panel provides language selection, and the state message retains its relevant guidance or recovery action
 
 #### Scenario: User navigates from a card page
 - **WHEN** пользователь открывает страницу карточки
 - **THEN** доступен возврат к её доске, бренд ведёт в каталог через защиту черновиков, настройки содержат выбор языка, а создание статуса, переименование и удаление проекта отсутствуют
 
+#### Scenario: User navigates from a card panel
+- **WHEN** пользователь открывает панель карточки на доске
+- **THEN** доступны закрытие панели и «Открыть на всю страницу», а действия доски и бренд проходят через защиту черновиков при уходе с карточки
+
 ### Requirement: Responsive application bar presentation
-The application bar SHALL be a visually distinct, full-width light surface with a bottom boundary and content aligned with the main content width. It SHALL scroll with the document. At a 320 px viewport, the brand, heading, settings gear and creation plus when applicable SHALL remain visible and operable without horizontal page overflow or hiding the plus in a menu.
+The application bar SHALL be a visually distinct, full-width light surface with a bottom boundary and content aligned with the main content width. In the catalogue, on the full card page and in service states it SHALL scroll with the document. On a project board, with or without an open card panel, the board workspace SHALL be bounded by the available viewport height below the application bar, using the dynamic viewport height on mobile browsers; the application bar SHALL remain at the top while the board content scrolls inside the workspace, and the page itself SHALL not scroll. On narrow screens the installation-guidance entry SHALL follow the board content inside the bounded workspace. At a 320 px viewport, the brand, heading, settings gear and creation plus when applicable SHALL remain visible and operable without horizontal page overflow or hiding the plus in a menu.
 
 #### Scenario: User works on a narrow screen
 - **WHEN** the catalogue or board is viewed at a width of 320 or 390 px
@@ -60,19 +68,31 @@ The application bar SHALL be a visually distinct, full-width light surface with 
 - **THEN** the brand, heading, creation plus and settings gear occupy a single layout row in that order
 
 #### Scenario: User scrolls the page
-- **WHEN** the user scrolls below the top of a long catalogue or board
+- **WHEN** the user scrolls below the top of a long catalogue or full card page
 - **THEN** the application bar moves with the document rather than remaining fixed above the content
 
+#### Scenario: User scrolls a board
+- **WHEN** the user scrolls a board's content vertically, with or without an open card panel, at 320, 390, 1280 or 1440 px
+- **THEN** the board workspace scrolls inside the viewport-bounded area, the application bar stays at the top of the viewport, and the document itself does not scroll
+
 ### Requirement: Calm application bar hierarchy
-The system SHALL retain a warm light application bar with a restrained green creation plus and a visually secondary settings gear. The heading SHALL remain the single primary heading. Long titles SHALL wrap without hiding or overlapping the brand or controls. The same visual tokens SHALL apply to service screens.
+The system SHALL retain a warm light application bar with a restrained green creation plus and a visually secondary settings gear. The heading SHALL remain the single primary heading. Every application-bar heading SHALL occupy one line; text that exceeds the available width SHALL end with an ellipsis without changing the bar height, hiding controls, or causing page-level horizontal overflow. The complete heading SHALL remain available to assistive technology and, when truncated, in a hint on pointer hover or keyboard focus. The same visual tokens SHALL apply to service screens.
 
 #### Scenario: User views the chosen board direction
 - **WHEN** a project board is displayed at 320, 390, 1280 or 1440 px
-- **THEN** the heading remains readable, the plus precedes the settings gear, all required controls remain operable, and the page has no horizontal overflow
+- **THEN** the heading remains on one line, the plus precedes the settings gear, all required controls remain operable, and the page has no horizontal overflow
 
 #### Scenario: User has a long project name
 - **WHEN** the current project name exceeds the available title width, including a name without spaces
-- **THEN** it wraps within the title area without hiding or overlapping the brand or creation and settings actions, and on narrow screens it uses the full second row
+- **THEN** it ends with an ellipsis within the title area, the application bar keeps the same height as with a short name at that viewport, and the brand and actions remain visible without overlap; on narrow screens the title retains the full second row
+
+#### Scenario: User discovers the complete project name
+- **WHEN** a visually truncated project heading is hovered or focused with the keyboard
+- **THEN** a hint shows the complete project name, while the primary heading exposes the complete text to assistive technology
+
+#### Scenario: Another application state has a long heading
+- **WHEN** a catalogue or service-state heading exceeds the available width
+- **THEN** that heading also occupies one line with an ellipsis and retains its complete semantic text
 
 ### Requirement: Non-overlapping mobile installation guidance entry
 The system SHALL place the installation-guidance entry after the workspace content in normal document flow on narrow screens so it does not cover cards or their controls. The entry SHALL remain accessible with its existing installation behavior.

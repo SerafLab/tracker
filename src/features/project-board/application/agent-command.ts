@@ -2,7 +2,8 @@ import type { Card, CardPlacement, Id, Project, ProjectBoard, Status } from '../
 
 export type CardAttributes = Pick<Card, 'name' | 'important' | 'urgent'>
 export type AgentCommand =
-  | { kind: 'create_project'; name: string }
+  | { kind: 'create_project'; name: string; statusNames: string[] }
+  | { kind: 'apply_status_set'; projectId: Id; statusNames: string[] }
   | { kind: 'rename_project'; projectId: Id; name: string }
   | { kind: 'create_status'; projectId: Id; name: string }
   | { kind: 'rename_status'; statusId: Id; name: string }
@@ -12,12 +13,14 @@ export type AgentCommand =
   | ({ kind: 'update_card'; cardId: Id } & CardAttributes)
   | { kind: 'move_card'; cardId: Id; statusId: Id; expected: CardPlacement['expected'] }
   | { kind: 'delete_card'; cardId: Id }
-export type RepositoryAgentCommand = Exclude<AgentCommand, { kind: 'create_project' | 'create_status' | 'create_card' }>
-  | { kind: 'create_project'; project: Project }
+export type RepositoryAgentCommand = Exclude<AgentCommand, { kind: 'create_project' | 'apply_status_set' | 'create_status' | 'create_card' }>
+  | { kind: 'create_project'; project: Project; statuses: Status[] }
+  | { kind: 'apply_status_set'; projectId: Id; statuses: Status[] }
   | { kind: 'create_status'; status: Omit<Status, 'position'> }
   | { kind: 'create_card'; card: Omit<Card, 'position'> }
 export type AgentSavedData = { saved: true } & (
-  | { project: Project }
+  | { project: Project & { statuses?: Status[] } }
+  | { board: ProjectBoard }
   | { status: Status }
   | { board: ProjectBoard; outcome: 'saved' | 'unchanged' }
   | { card: Card; outcome?: 'saved' | 'unchanged' }

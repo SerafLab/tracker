@@ -1,38 +1,41 @@
 # Card creation entry QA
 
-Checked on 2026-11-01 in `codex/status-header-card-creation`, starting at `3de01c2`. This report describes only the two creation entries; it does not revise the historical calm-board report.
+Checked on 2026-11-04 in `codex/nov04-header-card-creation`, starting at `d05bfa0` (accepted integration state with the viewport-bounded board workspace from `add-card-details` and the subgrid columns from `board-column-visual-separation`). This report covers the two creation entries, their visibility rule and the bounded per-list scrolling; it does not revise the historical `calm-board-qa.md`.
 
 ## Environment and results
 
-Node 24.21.0, Playwright 1.64.0, Chromium, production Vite/PWA build served at `http://127.0.0.1:4183/tracker/`. `npm ci` installed the mandatory `.githooks/pre-push` hook. Final `E2E_PORT=4183 npm run check` passed: architecture boundaries, 124 unit/UI tests, TypeScript and production build, 59 browser tests. No hook or check was bypassed.
+Chromium via Playwright, production Vite/PWA build on port 4289. Final command on the committed implementation: `E2E_PORT=4289 VITEST_MAX_WORKERS=2 npm run check`.
 
-The browser matrix covers RU and EN at 320, 390, 1280 and 1440 px, populated and empty statuses, wrapping names and an unbroken long name. Saved screenshots are real browser output from `e2e/calm-board.spec.ts`, copied from its test results. Representative narrow/wide boards, tooltips, long status and long list screenshots were visually inspected; automated geometry assertions cover every matrix cell.
+Result (exit 0, no hook or check bypassed): architecture boundaries OK; 28 unit/UI files, 281 tests passed; MCP transport probe passed; build OK; 185 browser tests passed (`185 passed (50.7s)`).
 
-| Width | Russian | English | Board result |
-| --- | --- | --- | --- |
-| 320 | [Board](card-creation-screenshots/calm-ru-320.png) | [Board](card-creation-screenshots/calm-en-320.png) | No page overflow; horizontal board scroll reaches all statuses |
-| 390 | [Board](card-creation-screenshots/calm-ru-390.png) | [Board](card-creation-screenshots/calm-en-390.png) | No page overflow; both entries remain available |
-| 1280 | [Board](card-creation-screenshots/calm-ru-1280.png) | [Board](card-creation-screenshots/calm-en-1280.png) | Four columns fit without board overflow |
-| 1440 | [Board](card-creation-screenshots/calm-ru-1440.png) | [Board](card-creation-screenshots/calm-en-1440.png) | Four columns fit without board overflow |
+Screenshots in `card-creation-screenshots/` are real browser output of `e2e/calm-board.spec.ts`. Geometry assertions cover every matrix cell; images were opened selectively.
 
-## Appearance and placement
+## Visually inspected
 
-Browser assertions confirm that the application-bar status plus, header card plus and footer square have identical 44 × 44 px boxes, background color, corner radius and SVG path. The footer is one button containing a noninteractive square and the localized label; it has no nested interactive element or extra Tab stop. Hovering anywhere on that button highlights the same square, and the shared button focus outline surrounds the whole action. Both entries use the existing button and accent styles.
+- `bounded-board-1280.png` (RU, 1280 x 800, statuses of 30, 25, 1 and 12 cards): four columns stay together at the left with the design gap, every header shows the green plus before the menu, only the card lists are cut at the same line above each bottom entry, the one-card status keeps its entry at the bottom, the install entry sits below the board and does not cover it.
+- `bounded-board-390.png` and `bounded-board-320.png` (RU, last status after horizontal scroll): the board ends above the install entry, the list scrolls inside the column, the lower entry is fully visible, no page overflow.
+- `calm-ru-1280.png` (RU, four statuses, long wrapped names): header plus, count and menu do not overlap the wrapped titles; list starts align across all columns; the test scrolled the first list, so its first card is cut by the list edge as intended.
+- `creation-tooltip-last-en-1440.png` (EN, last column, 1440 px): the localized "Add card" hint is readable below the header plus and not clipped.
+- `creation-long-list-en-Enter.png` (EN, 390 px, 15 cards): the header stays visible and the lower entry stays at the column bottom after a long list is reviewed.
 
-The header plus precedes the status menu. Long titles wrap in the remaining space, with a nonsqueezing count and 44 px buttons; measured heading/plus/menu rectangles do not overlap. The footer remains below the cards, including in an empty status. The previous `createAfterCards` assertion is retained.
+Not opened: the other RU/EN matrix images (`calm-*-320/390/1440`, `calm-en-1280`, `bounded-board-1440`, `creation-long-list-ru-Enter`, `creation-tooltip-first-ru-320`).
 
-The existing CSS hint remains readable inside the scroller, so another popover implementation was unnecessary. Hover and keyboard focus both reveal the localized hint; its measured bounds remain inside the scroller and viewport in the first and last columns, including after horizontal scroll:
+## Entries and visibility
 
-- First-column hint at 320 px: [RU](card-creation-screenshots/creation-tooltip-first-ru-320.png), [EN](card-creation-screenshots/creation-tooltip-first-en-320.png).
-- Last-column hint at 390 px: [RU](card-creation-screenshots/creation-tooltip-last-ru-390.png), [EN](card-creation-screenshots/creation-tooltip-last-en-390.png).
-- Unbroken long status at 320 px: [RU](card-creation-screenshots/creation-long-status-ru-320.png), [EN](card-creation-screenshots/creation-long-status-en-320.png).
+The header plus, the lower footer square and the application-bar status plus have identical 44 x 44 px boxes, color, radius and SVG path (matrix assertion). The footer is one button containing a noninteractive square and the label, so it is one Tab stop.
 
-## Behavior, keyboard and failures
+On a board with no cards every status shows the header plus and no lower entry; the global add-status plus remains. Creating the first card from a header shows lower entries in all statuses; deleting the last card hides them again. Covered by the unit test `offers the lower creation entry in every status only while the board has a card` and the browser test `header pluses remain on an empty board and lower entries follow the card count` (3 statuses, 1280 px). Visibility is derived from the loaded board, so deleting the last card through the native agent hides the entries the same way; no agent-specific test was added.
 
-UI tests exercise each source separately in empty and populated statuses. Each opens exactly one compact card form in its own status; save, Cancel and Escape restore focus to the source. Both forms retain the name and flags after validation/storage errors, show an error without adding a card, and support retry or closing back to the original source. Existing creation helpers deliberately select the footer; browser matrix creation alternates header and footer, preserving grouping and saved values.
+## Bounded board and scrolling
 
-The long-list browser scenario creates fourteen cards, then operates both entries with Enter and Space. It saves a fifteenth card through the footer, reopens and dismisses with Escape, and verifies restored focus without jumping to the header. Scroll change is bounded to normal content/layout adjustment; after footer actions, the header remains above the viewport. The footer can move down when a newly appended card increases the list; focus restoration uses `preventScroll` and does not force a jump to another entry.
+Browser test `only card lists scroll and lower entries stay at the bottom` at 320 x 568, 390 x 844, 1280 x 800 and 1440 x 900 (statuses of 30, 25, 1 and 12 cards): the document does not scroll; the board bottom is inside the workspace; on desktop the workspace does not scroll vertically; scrolling one list moves no other list, header or footer and does not change column height; the last card ends above the footer; keyboard focus on a deep card scrolls only its list; adding a card does not grow the board; shrinking the viewport by 120 px keeps every footer within the viewport height and the last column reachable horizontally; below 1280 px the single install entry follows the board in the same scroll area without overlapping it.
 
-Long-list screenshots after creation: [RU](card-creation-screenshots/creation-long-list-ru-Enter.png), [EN](card-creation-screenshots/creation-long-list-en-Enter.png).
+Browser test `creation entries stay at their column and keep focus at the end of a long list` (RU and EN, 390 px, 14 cards): Enter and Space on header and footer; after save, Cancel or Escape the opener is focused, `scrollY` stays 0, the list scroll and footer position change by less than 1 px, and both entries stay in the viewport. `createAfterCards` is retained for the footer.
 
-Specification sync and archival are reserved for the integration branch; implementation and its QA are complete in this feature branch.
+Drag and drop: `a card can be dropped into a scrolled list and the list autoscrolls during a drag` (1280 px) drops into a list scrolled by 600 px and verifies that holding near its lower edge scrolls that list. The existing drag specs were adapted: autoscroll now targets `.card-list` and a native touch swipe scrolls the list. Overscroll containment on `.card-list` is limited to the y axis, otherwise horizontal touch panning over a card did not chain to the board.
+
+Panel: the existing 1280/1440 board-beside-panel tests (four columns, aligned list starts, expanded note previews) pass; list scroll position survives opening, expanding and closing a card.
+
+## Remaining limits
+
+Below 20rem of available height the board stops shrinking and the workspace scrolls as a fallback. At 320 px only one column is visible, so other footers are checked by geometry, not on screen. A mobile browser bar was only emulated by resizing the viewport.

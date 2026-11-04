@@ -7,7 +7,7 @@
 ## Requirements
 
 ### Requirement: Project catalogue and board navigation
-The system SHALL present a distinct project catalogue and one open project board at a time. It SHALL let the user view locally stored projects, create a project with a non-empty name through a primary creation control, rename an existing project, and open a project. Duplicate project names SHALL be permitted. Creating a project SHALL initialize its statuses from the selected status set and open its board, and the board SHALL provide a clear control to return to the catalogue.
+The system SHALL present a distinct project catalogue and one open project board at a time. It SHALL let the user view locally stored projects in an adaptive tile grid, create a project with a non-empty name through a primary creation control, rename an existing project, and open a project. Each project tile SHALL show the project name and the total number of its cards across all statuses. Duplicate project names SHALL be permitted. Creating a project SHALL initialize its statuses from the selected status set and open its board, and the board SHALL provide a clear control to return to the catalogue.
 
 #### Scenario: User creates and opens projects
 - **WHEN** the user creates projects named "Поиск квартиры" and "Паспорт" and chooses one from the catalogue
@@ -20,6 +20,18 @@ The system SHALL present a distinct project catalogue and one open project board
 #### Scenario: User starts creating a project from a populated catalogue
 - **WHEN** the user activates the catalogue's primary project-creation control
 - **THEN** the interface exposes a focused form for the name and status-set selection without obscuring the creation action's purpose
+
+#### Scenario: User views projects in the catalogue
+- **WHEN** the catalogue contains one or more projects
+- **THEN** each project appears as a tile in an adaptive grid, with its name, its total card count across all statuses, and its rename action available
+
+#### Scenario: User views a project with no cards
+- **WHEN** a project has no cards in any of its statuses
+- **THEN** its tile shows a localized count of zero cards
+
+#### Scenario: User views the catalogue on a narrow screen
+- **WHEN** the catalogue is displayed on a narrow viewport
+- **THEN** project tiles remain readable and operable without horizontal page overflow
 
 ### Requirement: Configurable ordered statuses
 The system SHALL allow the user to create and rename statuses within the open project and change a status's position with explicit accessible controls. A newly created status SHALL be appended after the project's existing statuses. Duplicate status names SHALL be permitted. Secondary status operations MAY be progressively disclosed, provided their purpose remains reachable through semantic controls.
@@ -37,7 +49,7 @@ The system SHALL allow the user to create and rename statuses within the open pr
 - **THEN** the available rename and ordering actions are identifiable and operable without drag-and-drop
 
 ### Requirement: Cards always belong to a status
-Система SHALL позволять создавать карточку с непустым названием в выбранном статусе, редактировать её на странице карточки и переносить в любой другой статус перетаскиванием либо через «Переместить в…» в меню. Каждая карточка SHALL принадлежать ровно одному статусу. Новая карточка и перенос через меню SHALL помещаться в конец группы одинаковых признаков; перетаскивание SHALL выбирать место внутри этой группы с сохранением приоритетного порядка групп. Перенос SHALL сохранять название, описание, оба признака и заметки. Стрелки перемещения SHALL отсутствовать; вторичные действия SHALL сохранять семантические подписи.
+Система SHALL позволять создавать карточку с непустым названием в выбранном статусе, редактировать её в подробностях карточки (панели или полной странице) и переносить в любой другой статус перетаскиванием либо через «Переместить в…» в меню. Каждая карточка SHALL принадлежать ровно одному статусу. Новая карточка и перенос через меню SHALL помещаться в конец группы одинаковых признаков; перетаскивание SHALL выбирать место внутри этой группы с сохранением приоритетного порядка групп. Перенос SHALL сохранять название, описание, оба признака и заметки. Стрелки перемещения SHALL отсутствовать; вторичные действия SHALL сохранять семантические подписи.
 
 #### Scenario: User moves a card between statuses
 - **WHEN** пользователь переносит карточку из «Найдено» в «Договорились о просмотре»
@@ -61,7 +73,7 @@ The system SHALL allow the user to create and rename statuses within the open pr
 
 #### Scenario: User opens a card action menu
 - **WHEN** пользователь открывает меню карточки на доске с несколькими статусами
-- **THEN** доступны редактирование на странице карточки, удаление, «Переместить в…» и возможные шаги внутри группы; форма перемещения обозначает выбранную карточку и предлагает все другие статусы, кроме текущего
+- **THEN** доступны редактирование в подробностях карточки, удаление, «Переместить в…» и возможные шаги внутри группы; форма перемещения обозначает выбранную карточку и предлагает все другие статусы, кроме текущего
 
 #### Scenario: User chooses a nonadjacent status
 - **WHEN** пользователь выбирает несоседний статус в форме перемещения и подтверждает
@@ -87,7 +99,7 @@ The system SHALL allow the user to create and rename statuses within the open pr
 - **THEN** каждой карточке назначается пустое описание и пустая история, сохраняя проекты, связи, имена, имеющиеся признаки и порядок
 
 ### Requirement: Accessible, mobile-usable board controls
-Система SHALL предоставлять основные действия проектов, статусов и карточек через семантические контролы без необходимости перетаскивания. Постоянно видимое верхнее меню карточки SHALL предоставлять перенос в другой статус и возможные шаги перестановки внутри группы. После клавиатурного переноса или перестановки фокус SHALL возвращаться к меню той же карточки без дополнительной программной прокрутки. Формы создания, переименования и переноса SHALL открываться в компактном диалоге на широком экране и подходящей мобильной поверхности с управлением фокусом на узком; редактирование карточки SHALL использовать её доступную страницу. Все статусы и основные контролы SHALL оставаться достижимыми на узком экране, включая горизонтальную прокрутку доски.
+Система SHALL предоставлять основные действия проектов, статусов и карточек через семантические контролы без необходимости перетаскивания. Постоянно видимое верхнее меню карточки SHALL предоставлять перенос в другой статус и возможные шаги перестановки внутри группы. После клавиатурного переноса или перестановки фокус SHALL возвращаться к меню той же карточки без дополнительной программной прокрутки. Формы создания, переименования и переноса SHALL открываться в компактном диалоге на широком экране и подходящей мобильной поверхности с управлением фокусом на узком; редактирование карточки SHALL использовать её доступную панель или полную страницу. Все статусы и основные контролы SHALL оставаться достижимыми на узком экране, включая горизонтальную прокрутку доски.
 
 #### Scenario: User works on a narrow viewport
 - **WHEN** доска с несколькими статусами показана на узком экране
@@ -107,7 +119,7 @@ The system SHALL allow the user to create and rename statuses within the open pr
 
 #### Scenario: User opens card editing on mobile
 - **WHEN** пользователь выбирает редактирование карточки на узком экране
-- **THEN** открывается доступная страница карточки вместо диалога, а возврат на доску сохраняет доступ к карточкам
+- **THEN** подробности карточки открываются на весь экран вместо диалога, а возврат на доску сохраняет доступ к карточкам
 
 #### Scenario: User reorders cards through the menu
 - **WHEN** пользователь выбирает «Поднять выше» или «Опустить ниже» в меню карточки
@@ -198,7 +210,7 @@ The system SHALL dismiss an open project, status, or card action menu when the u
 - **THEN** значения обоих признаков остаются прежними без явного изменения пользователем
 
 ### Requirement: Unified card creation and editing form
-Система SHALL создавать карточку через компактную форму с обязательным названием и двумя подписанными переключателями признаков, назначая пустое описание. Редактирование SHALL открывать страницу карточки с сохранёнными названием, описанием и признаками и сохранять четыре поля одним действием. Обе формы SHALL быть доступны с клавиатуры и на узком экране, с подписями, ошибками и действиями на выбранном русском или английском языке.
+Система SHALL создавать карточку через компактную форму с обязательным названием и двумя подписанными переключателями признаков, назначая пустое описание. Редактирование SHALL открывать подробности карточки с сохранёнными названием, описанием и признаками и сохранять четыре поля одним действием без закрытия панели или страницы. Обе формы SHALL быть доступны с клавиатуры и на узком экране, с подписями, ошибками и действиями на выбранном русском или английском языке.
 
 #### Scenario: User opens card creation
 - **WHEN** пользователь открывает создание карточки в выбранном статусе
@@ -206,19 +218,19 @@ The system SHALL dismiss an open project, status, or card action menu when the u
 
 #### Scenario: User edits name and flags together
 - **WHEN** пользователь открывает редактирование из меню карточки, меняет название и оба признака и сохраняет
-- **THEN** страница первоначально показывает сохранённые значения, а успешное сохранение применяет название, описание и признаки вместе
+- **THEN** панель или полная страница первоначально показывает сохранённые значения, а успешное сохранение применяет название, описание и признаки вместе, оставляя подробности открытыми
 
 #### Scenario: User submits an empty card name
 - **WHEN** пользователь отправляет форму создания или редактирования с названием только из пробелов
 - **THEN** система показывает ошибку обязательного названия и не сохраняет ни название, ни описание, ни признаки, ни изменение порядка
 
 #### Scenario: User cancels card editing
-- **WHEN** пользователь меняет поля страницы и подтверждает выход без сохранения
+- **WHEN** пользователь меняет поля панели или страницы и подтверждает выход без сохранения
 - **THEN** название, описание, признаки и порядок карточки остаются прежними
 
 #### Scenario: User edits on a narrow screen with a keyboard
 - **WHEN** пользователь открывает форму карточки на узком экране и работает с клавиатуры
-- **THEN** название, описание при редактировании и оба подписанных переключателя читаемы и доступны с клавиатуры; форма создания получает фокус и возвращает его к созданию после закрытия, а страница редактирования поддерживает возврат на доску
+- **THEN** название, описание при редактировании и оба подписанных переключателя читаемы и доступны с клавиатуры; форма создания получает фокус и возвращает его к созданию после закрытия, а подробности поддерживают возврат на доску
 
 #### Scenario: User uses the English interface
 - **WHEN** пользователь открывает форму карточки при выбранном английском языке
@@ -275,7 +287,7 @@ The system SHALL dismiss an open project, status, or card action menu when the u
 - **THEN** место вставки показано между группами выше и ниже по приоритету, а отпущенная карточка занимает именно это место без изменения признаков
 
 ### Requirement: Single primary creation entry in catalogue and board
-The system SHALL offer one primary creation entry in the application bar for the current workspace screen: project creation in the catalogue and status creation on a board. That entry SHALL open the existing focused creation dialog or mobile sheet. Empty-state content SHALL explain the next step without duplicating the creation form or button.
+The system SHALL offer one primary creation entry in the application bar for the current workspace screen: project creation in the catalogue and status creation on a board. That entry SHALL open the existing focused creation dialog or mobile sheet. Empty-state content SHALL explain the next step without duplicating the creation form or button; the status-set selection offered on a board without statuses is a separate action and is not such a duplicate.
 
 #### Scenario: User opens an empty catalogue
 - **WHEN** no projects exist
@@ -347,7 +359,7 @@ The system SHALL report deletion as successful only after it has been saved in l
 - **THEN** весь проект, статусы, карточки, последний открытый проект и маршрут остаются прежними, диалог показывает ошибку и позволяет повторить попытку
 
 ### Requirement: Calm board and card presentation
-Система SHALL показывать статусы открытыми колонками на тёплом нейтральном фоне, отдельные светлые карточки и сдержанные зелёные действия. Заголовки статусов SHALL показывать компактный счётчик. Метки признаков SHALL оставаться читаемым текстом с различимыми символами или формами, без семантики завершения статусов. Меню карточки SHALL постоянно находиться справа от заголовка и оставаться доступным при длинном названии. Нижняя панель контролов, стрелки переноса и отдельная ручка перетаскивания SHALL отсутствовать.
+Система SHALL показывать статусы ограниченными колонками на тёплом нейтральном фоне, отдельные светлые карточки и сдержанные зелёные действия. Колонки SHALL иметь сдержанные визуальные границы. Заголовки статусов SHALL показывать компактный счётчик и занимать общую высоту, чтобы списки начинались на одной вертикальной позиции независимо от переносов названий. Метки признаков SHALL оставаться читаемым текстом с различимыми символами или формами, без семантики завершения статусов. Меню карточки SHALL постоянно находиться справа от заголовка и оставаться доступным при длинном названии. Нижняя панель контролов, стрелки переноса и отдельная ручка перетаскивания SHALL отсутствовать.
 
 #### Scenario: User compares cards across statuses
 - **WHEN** на доске показаны карточки всех четырёх комбинаций признаков
@@ -356,6 +368,10 @@ The system SHALL report deletion as successful only after it has been saved in l
 #### Scenario: A card has a long name
 - **WHEN** название карточки занимает несколько строк на широком или узком экране
 - **THEN** оно переносится, не перекрывая постоянно видимое меню справа, а метки находятся под заголовком
+
+#### Scenario: Status names wrap to different numbers of lines
+- **WHEN** a board has one status name that fits on one line and another that wraps to four lines
+- **THEN** the columns remain visually distinguishable and card lists in all statuses begin at the same vertical position
 
 ### Requirement: Useful desktop board width and contained mobile scrolling
 The system SHALL fit all four status columns of a four-status board at viewport widths 1280 and 1440 px without horizontal board scrolling. At 320 and 390 px, status columns SHALL retain readable cards and touch controls using horizontal scrolling contained within the board, with no horizontal page overflow. Long user names SHALL wrap without covering controls.
@@ -369,7 +385,7 @@ The system SHALL fit all four status columns of a four-status board at viewport 
 - **THEN** the user can horizontally scroll the board to every status while the page width remains within the viewport and controls remain operable
 
 ### Requirement: Card creation follows its status list
-Система SHALL показывать два входа создания карточки в каждом статусе: в заголовке перед меню действий и после списка, включая пустой. Верхний вход SHALL быть зелёным квадратным плюсом без видимой подписи, как добавление статуса; нижний SHALL сочетать такой же плюс с подписью в одной кнопке. Оба SHALL открывать одну форму в своём статусе и возвращать фокус к нажатому входу после закрытия без принудительной прокрутки к другому входу.
+Система SHALL показывать в каждом статусе вход создания карточки в заголовке перед меню действий: зелёный квадратный плюс без видимой подписи, как добавление статуса. Если на доске есть хотя бы одна карточка, система SHALL дополнительно показывать после списка каждого статуса, включая пустой, нижний вход: такой же плюс с подписью в одной кнопке. Оба входа SHALL открывать одну форму в своём статусе и возвращать фокус к нажатому входу после закрытия без принудительной прокрутки к другому входу. Если на доске нет карточек, верхние плюсы SHALL оставаться во всех статусах, нижние входы SHALL быть скрыты, а глобальный плюс добавления статуса SHALL оставаться доступным. Доска SHALL помещаться в доступную высоту экрана под верхней панелью; список карточек каждого статуса SHALL прокручиваться независимо, а нижний вход SHALL оставаться под списком. Если высоты недостаточно для списка минимальной удобной высоты, рабочая область доски SHALL прокручиваться, чтобы нижний вход оставался достижим прокруткой изнутри списка.
 
 #### Scenario: User creates a card after reviewing a status
 - **WHEN** пользователь достигает конца списка карточек статуса и активирует нижний вход создания
@@ -380,8 +396,20 @@ The system SHALL fit all four status columns of a four-status board at viewport 
 - **THEN** открывается та же форма создания карточки в этом статусе, что и с нижней кнопки, а закрытие возвращает фокус к верхнему плюсу
 
 #### Scenario: User sees both creation entries
-- **WHEN** на доске показан пустой или заполненный статус
-- **THEN** перед меню в заголовке виден зелёный квадратный плюс с теми же размером, символом и оформлением, что у добавления статуса; после списка виден такой же плюс с подписью «Добавить карточку» или «Add card» на выбранном языке, образующие одну кнопку и одну остановку Tab
+- **WHEN** на доске с хотя бы одной карточкой показан пустой или заполненный статус
+- **THEN** перед меню в заголовке виден зелёный квадратный плюс с теми же размером, символом и оформлением, что у добавления статуса, без видимой подписи; после списка виден такой же плюс с подписью «Добавить карточку» или «Add card» на выбранном языке, образующие одну кнопку и одну остановку Tab
+
+#### Scenario: User sees no lower entries on an empty board
+- **WHEN** ни в одном статусе нет карточек, включая случай, когда статусы существуют, но пусты
+- **THEN** верхние плюсы создания карточки остаются во всех статусах, нижние входы скрыты, а глобальный плюс добавления статуса остаётся доступным
+
+#### Scenario: User creates the first card
+- **WHEN** пользователь создаёт карточку на доске без карточек
+- **THEN** во всех статусах показаны оба входа создания
+
+#### Scenario: User deletes the last card
+- **WHEN** удаляется единственная оставшаяся на доске карточка, в том числе через нативного агента
+- **THEN** верхние плюсы остаются доступными, нижние входы снова скрыты, глобальный плюс добавления статуса остаётся доступным
 
 #### Scenario: User identifies the header action
 - **WHEN** пользователь наводит указатель на верхний плюс или переводит на него фокус клавиатурой
@@ -389,7 +417,7 @@ The system SHALL fit all four status columns of a four-status board at viewport 
 
 #### Scenario: User adds from the end of a long list
 - **WHEN** пользователь прокручивает длинный список до нижней кнопки, открывает форму и закрывает её после создания или отмены
-- **THEN** пользователю не требуется прокручивать к заголовку для добавления, фокус возвращается на нижнюю кнопку, а интерфейс не прокручивает доску к верхнему плюсу
+- **THEN** нижняя кнопка остаётся доступной под списком, фокус возвращается на неё, а интерфейс не прокручивает доску к заголовку
 
 #### Scenario: User creates a card using the keyboard
 - **WHEN** пользователь переводит фокус на любой из двух входов и нажимает Enter или Space
@@ -399,9 +427,17 @@ The system SHALL fit all four status columns of a four-status board at viewport 
 - **WHEN** доска с длинными названиями статусов показана на ширине 320, 390, 1280 или 1440 px
 - **THEN** названия переносятся, не перекрывая плюс, счётчик и меню; оба входа остаются доступны, зона верхней кнопки и квадратного плюса нижней кнопки составляет не менее 44 на 44 px, страница не получает горизонтальную прокрутку, а четыре статуса на 1280 и 1440 px помещаются без горизонтальной прокрутки доски
 
+#### Scenario: User works with a long column
+- **WHEN** статус содержит больше карточек, чем помещается в доступную высоту под верхней панелью
+- **THEN** высота доски остаётся ограниченной высотой окна, вертикально прокручивается только список этого статуса, а его нижняя кнопка остаётся видимой под списком
+
+#### Scenario: User works on a short or narrow viewport
+- **WHEN** доска показана на узком экране, на экране малой высоты (например 568 на 320 px) или доступная высота изменилась
+- **THEN** документ не прокручивается, верхняя панель остаётся на месте, все статусы достижимы горизонтальной прокруткой, а нижний вход виден без прокрутки, если высоты хватает на заголовок, список минимум в 5rem и нижний вход; иначе рабочая область доски прокручивается, и вход достижим прокруткой изнутри списка; вход установки приложения не перекрывает входы создания и элементы управления
+
 #### Scenario: Saving from either entry fails
 - **WHEN** пользователь открывает форму любым из двух входов, вводит данные, а сохранение не удаётся
-- **THEN** карточка не появляется, форма остаётся открытой с введёнными данными и сообщением об ошибке; после последующего закрытия фокус возвращается к исходному входу
+- **THEN** карточка не появляется, форма остаётся открытой с введёнными данными и сообщением об ошибке; после последующего закрытия фокус возвращается к исходному входу, если он остаётся доступным
 
 ### Requirement: Initial status-set selection
 Система SHALL предлагать при создании проекта пять наборов статусов и вариант «Без статусов». В каждой новой форме SHALL быть выбран «Простой». До создания пользователь SHALL видеть упорядоченные названия статусов выбранного набора. Выбор SHALL быть доступен с клавиатуры и на узком экране.
@@ -600,3 +636,91 @@ The system SHALL fit all four status columns of a four-status board at viewport 
 #### Scenario: Refresh fails after a committed placement
 - **WHEN** запись расположения уже подтверждена хранилищем, но обновление отображаемой доски завершается ошибкой
 - **THEN** интерфейс сообщает об ошибке обновления, не предлагает повторно записать уже сохранённый перенос и позволяет повторить чтение; после успешного чтения показано сохранённое расположение
+
+### Requirement: Board card description preview
+На карточке доски система SHALL показывать до трёх строк сохранённого непустого описания обычным текстом. Предпросмотр SHALL быть частью области открытия подробностей карточки; веб-ссылки в нём SHALL не открываться самостоятельно. Пустое описание SHALL не занимать места на карточке.
+
+#### Scenario: Card has a long description
+- **WHEN** пользователь открывает доску с карточкой, у которой сохранено описание длиннее трёх строк
+- **THEN** карточка показывает начало описания не более чем в трёх строках, а полное описание доступно в панели и на странице карточки
+
+#### Scenario: Card has no description
+- **WHEN** описание карточки пустое или состоит только из пробельных символов
+- **THEN** на доске нет пустого блока или подписи предпросмотра
+
+#### Scenario: Description contains a web link
+- **WHEN** сохранённое описание содержит веб-ссылку и пользователь нажимает на её текст в предпросмотре
+- **THEN** открывается панель карточки, а веб-ссылка доступна для открытия в подробностях
+
+#### Scenario: Description changes
+- **WHEN** пользователь сохраняет новое описание или очищает существующее и возвращается на доску
+- **THEN** предпросмотр отражает последнее успешно сохранённое описание либо исчезает после очистки; несохранённый текст на доске не появляется
+
+### Requirement: Recent note preview on board cards
+На карточке доски система SHALL показывать последнюю сохранённую заметку, если она есть. Каждый предпросмотр SHALL занимать не более трёх строк текста. «Последние» SHALL определяться порядком создания заметок, а не временем редактирования. Текст и веб-ссылки SHALL оставаться обычным текстом; нажатие на текст SHALL открывать подробности карточки с полной историей так же, как нажатие на карточку.
+
+#### Scenario: Card has no notes
+- **WHEN** у карточки нет заметок
+- **THEN** блок предпросмотра заметок и управление раскрытием отсутствуют
+
+#### Scenario: Card has one note
+- **WHEN** у карточки есть одна заметка длиннее трёх строк
+- **THEN** на доске показано не более трёх строк этой заметки и нет управления раскрытием
+
+#### Scenario: Older note is edited
+- **WHEN** пользователь изменяет текст старой заметки и возвращается на доску
+- **THEN** последней остаётся заметка с самой поздней датой создания; сохранённый новый текст старой заметки виден при раскрытии, если она входит в последние пять
+
+#### Scenario: Preview contains a web link
+- **WHEN** пользователь нажимает на текст веб-ссылки в предпросмотре
+- **THEN** открываются подробности карточки, в которых ссылку можно открыть отдельно
+
+### Requirement: Expand recent notes independently
+Если у карточки больше одной заметки, система SHALL предоставлять отдельную доступную кнопку раскрытия. Раскрытая карточка SHALL показывать не более пяти последних заметок, включая первоначально видимую, в порядке от старых к новым; каждая SHALL занимать не более трёх строк. Повторное нажатие SHALL сворачивать список до одной последней заметки. Кнопка SHALL не открывать страницу карточки и не мешать её остальным контролам.
+
+#### Scenario: Card has between two and five notes
+- **WHEN** пользователь раскрывает карточку с четырьмя заметками
+- **THEN** видны все четыре заметки в порядке создания, без повтора последней
+
+#### Scenario: Card has more than five notes
+- **WHEN** пользователь раскрывает карточку с шестью или более заметками
+- **THEN** видны только пять последних, а вся история доступна на странице карточки
+
+#### Scenario: User collapses notes
+- **WHEN** пользователь повторно нажимает кнопку раскрытия
+- **THEN** остаётся только последняя заметка и кнопка показывает свёрнутое состояние
+
+#### Scenario: Keyboard user expands notes
+- **WHEN** пользователь активирует кнопку клавиатурой на узком экране
+- **THEN** список раскрывается без перехода на страницу карточки, состояние кнопки и её назначение доступны вспомогательным технологиям, а ссылка на карточку, меню карточки и перетаскивание остаются доступны
+
+#### Scenario: User returns after note changes
+- **WHEN** пользователь добавляет, изменяет или удаляет заметку на странице карточки и возвращается на доску
+- **THEN** предпросмотр и состав последних пяти отражают только сохранённую историю этой карточки
+
+### Requirement: Apply a status set to an existing project without statuses
+Система SHALL предлагать выбор встроенного набора в существующем проекте без статусов и SHALL сохранять весь выбранный набор атомарно. Действие SHALL быть недоступно в проекте с хотя бы одним статусом и SHALL не перемещать карточки.
+
+#### Scenario: User fills an empty board
+- **WHEN** пользователь открывает ранее созданный проект без статусов, выбирает набор и подтверждает действие
+- **THEN** доска показывает все статусы набора в заданном порядке, а после перезагрузки они остаются на месте
+
+#### Scenario: User previews a set on an empty board
+- **WHEN** пользователь выбирает другой набор в форме пустой доски
+- **THEN** форма показывает будущие названия в правильном порядке; вариант «Без статусов» не предлагается
+
+#### Scenario: Project already has statuses
+- **WHEN** пользователь открывает проект с хотя бы одним статусом
+- **THEN** действие применения набора отсутствует, существующие статусы и карточки не меняются
+
+#### Scenario: Applying the set fails
+- **WHEN** запись одного из статусов набора завершается ошибкой
+- **THEN** проект остаётся без статусов, форма сохраняет выбор и показывает ошибку для повторной попытки
+
+#### Scenario: Another status appears before applying the set
+- **WHEN** статус появляется в проекте между открытием формы и сохранением набора
+- **THEN** применение отклоняется как конфликт, ни один статус набора не добавляется, а доска обновляется до сохранённого состояния
+
+#### Scenario: User submits the set twice
+- **WHEN** пользователь повторно активирует применение набора до завершения первой записи
+- **THEN** выполняется только одна операция и дубликаты статусов не появляются

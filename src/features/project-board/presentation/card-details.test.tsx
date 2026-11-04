@@ -13,7 +13,7 @@ vi.mock('virtual:pwa-register/react', () => ({ useRegisterSW: () => ({ needRefre
 
 const databases: ProjectBoardDatabase[] = []
 afterEach(async () => { vi.useRealTimers(); pwa.ready = false; pwa.update.mockClear(); cleanup(); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(db => db.delete())) })
-async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectBoardRepository) => void = () => {}) {
+async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectBoardRepository) => void | Promise<void> = () => {}) {
   const db = new ProjectBoardDatabase(`details-${crypto.randomUUID()}`); databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
   await repo.createProject({ id: 'p', name: 'Project', createdAt: '2026-11-01T00:00:00Z' }, [], true)
@@ -21,7 +21,7 @@ async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectB
   await repo.createStatus({ id: 's', projectId: 'p', name: 'Status' })
   await repo.createCard({ id: 'c', statusId: 's', name: 'Card', description: '', important: false, urgent: false })
   history.replaceState(null, '', `/${hash}`)
-  configure(repo)
+  await configure(repo)
   render(<App repository={repo} />)
   const user = userEvent.setup()
   return { repo, db, user }
@@ -125,11 +125,11 @@ it('creates, edits without a no-op date, refuses blank notes, confirms deletion 
   expect(await screen.findByRole('alert')).toHaveTextContent('Заметка не сохранена')
   expect(note).toHaveValue('First note')
   await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
-  await waitFor(() => expect(screen.queryByLabelText('Новая заметка')).not.toBeInTheDocument()); await screen.findByText('First note')
+  await waitFor(() => expect(screen.queryByLabelText('Новая заметка')).not.toBeInTheDocument()); await waitFor(() => expect(document.querySelector('.note-list')).toHaveTextContent('First note'))
   await user.click(screen.getByRole('button', { name: 'Редактировать заметку' }))
   await user.click(screen.getByRole('button', { name: 'Сохранить заметку' }))
   expect((await repo.cardDetails('p', 'c'))!.notes[0].updatedAt).toBeUndefined()
-  await user.click(screen.getByRole('button', { name: 'Редактировать заметку' })); note = screen.getByLabelText('Редактировать заметку')
+  await user.click(screen.getByRole('button', { name: 'Редактировать заметку' })); note = screen.getByRole('textbox', { name: 'Редактировать заметку' })
   await user.clear(note); await user.type(note, 'Changed note')
   await user.click(screen.getByRole('button', { name: 'Сохранить заметку' }))
   expect((await repo.cardDetails('p', 'c'))!.notes[0].updatedAt).toBeTruthy()
@@ -151,6 +151,7 @@ it('saves a note without saving pending card fields, and guards editor switches'
   const { repo, user } = await setup(); const form = await fields()
   await user.type(form.getByLabelText('Описание карточки'), 'Pending fields')
   await user.type(await editor(user), 'Saved note'); await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  await waitFor(() => expect(screen.queryByLabelText('Новая заметка')).not.toBeInTheDocument())
   expect(form.getByLabelText('Описание карточки')).toHaveValue('Pending fields')
   expect((await repo.cardDetails('p', 'c'))!.card.description).toBe('')
   await user.type(await editor(user), 'Pending note')
@@ -160,7 +161,7 @@ it('saves a note without saving pending card fields, and guards editor switches'
   expect(screen.getByLabelText('Новая заметка')).toHaveValue('Pending note')
   await user.click(screen.getByRole('button', { name: 'Редактировать заметку' }))
   dialog = screen.getByRole('dialog'); await user.click(within(dialog).getByRole('button', { name: 'Выйти без сохранения' }))
-  expect(screen.getByLabelText('Редактировать заметку')).toHaveValue('Saved note')
+  expect(screen.getByRole('textbox', { name: 'Редактировать заметку' })).toHaveValue('Saved note')
 })
 
 it('keeps separately committed fields after a failed save-on-leave note and retries without duplicating writes', async () => {
@@ -258,4 +259,103 @@ it('does not dispatch the same field save twice while persistence is pending', a
   expect(form.getByLabelText('Описание карточки')).toBeDisabled()
   finish()
   await waitFor(() => expect(form.getByLabelText('Описание карточки')).toBeEnabled())
+})
+
+async function openPanel(user: ReturnType<typeof userEvent.setup>, name = 'Card') {
+  await user.click(await screen.findByRole('link', { name }))
+  return screen.findByRole('region', { name: 'Подробности карточки' })
+}
+async function deleteFromBoard(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('button', { name: `Действия карточки ${name}` }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Удалить' }))
+}
+
+it('closes the panel and returns to the board URL when the open card is deleted from the board', async () => {
+  const { user } = await setup('#project/p')
+  const boardIndex = history.state?.easyTrackIndex
+  await openPanel(user)
+  const length = history.length
+  await deleteFromBoard(user, 'Card')
+  await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Удалить' }))
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'Подробности карточки' })).toBeNull())
+  await waitFor(() => expect(location.hash).toBe('#project/p'))
+  expect(history.length).toBe(length)
+  // Back removed the panel entry instead of duplicating the board entry.
+  await waitFor(() => expect(history.state?.easyTrackIndex).toBe(boardIndex))
+  expect(screen.queryByText('Карточка недоступна')).toBeNull()
+  expect(await screen.findByRole('heading', { level: 1, name: 'Project' })).toBeInTheDocument()
+  await waitFor(() => expect(document.activeElement).not.toBe(document.body))
+  expect(document.activeElement?.tagName).toBe('BUTTON')
+})
+
+it('keeps the missing-card page for a direct link to a missing card', async () => {
+  await setup('#project/p/card/gone')
+  expect(await screen.findByRole('alert')).toHaveTextContent(/не найден/i)
+  expect(location.hash).toBe('#project/p/card/gone')
+})
+
+it('deleting an unrelated card never prompts for or discards the open card draft; deleting the open card does', async () => {
+  const { user } = await setup('#project/p', async r => { await r.createCard({ id: 'd', statusId: 's', name: 'Other card', description: '', important: false, urgent: false }) })
+  await openPanel(user, 'Card')
+  const description = await screen.findByRole('textbox', { name: 'Описание карточки' })
+  await user.type(description, 'Kept draft')
+  await deleteFromBoard(user, 'Other card')
+  expect(screen.queryByRole('dialog', { name: 'Несохранённые изменения' })).toBeNull()
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Удалить' }))
+  await waitFor(() => expect(screen.queryByRole('link', { name: 'Other card' })).toBeNull())
+  expect(screen.getByRole('textbox', { name: 'Описание карточки' })).toHaveValue('Kept draft')
+  await deleteFromBoard(user, 'Card')
+  expect(await screen.findByRole('dialog', { name: 'Несохранённые изменения' })).toBeInTheDocument()
+})
+
+it('never renders the card as a full page while Back closes the panel', async () => {
+  const { user } = await setup('#project/p')
+  await openPanel(user)
+  const seen: string[] = []
+  const observer = new MutationObserver(() => { for (const h1 of document.querySelectorAll('h1')) seen.push(h1.textContent ?? '') })
+  observer.observe(document.body, { childList: true, subtree: true, characterData: true })
+  await act(async () => { history.back() })
+  await waitFor(() => expect(screen.queryByRole('region', { name: 'Подробности карточки' })).toBeNull())
+  observer.disconnect()
+  expect(seen).not.toContain('Card')
+  expect(screen.getByRole('heading', { level: 1, name: 'Project' })).toBeInTheDocument()
+})
+
+it('keeps one install entry in place and retains the captured install prompt across board, catalogue, card page and panel navigation', async () => {
+  const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const { user } = await setup('#project/p')
+  const prompt = vi.fn().mockResolvedValue(undefined)
+  const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt })
+  await act(async () => { window.dispatchEvent(event) })
+  const entry = () => {
+    const all = document.querySelectorAll('.install-help')
+    expect(all).toHaveLength(1)
+    expect(within(all[0] as HTMLElement).getByRole('button', { name: 'Установить EasyTrack' })).toBeInTheDocument()
+    return all[0]
+  }
+  const inBoard = () => !!entry().closest('.board-workspace main')
+  await screen.findByRole('link', { name: 'Card' })
+  expect(inBoard()).toBe(true)
+  await user.click(screen.getByRole('button', { name: /Все проекты/ }))
+  await screen.findByRole('button', { name: 'Project' })
+  expect(inBoard()).toBe(false)
+  await user.click(screen.getByRole('button', { name: 'Project' }))
+  await screen.findByRole('link', { name: 'Card' })
+  expect(inBoard()).toBe(true)
+  await openPanel(user)
+  expect(inBoard()).toBe(true)
+  await user.click(screen.getByRole('button', { name: 'Открыть на всю страницу' }))
+  await screen.findByRole('button', { name: 'Назад к доске' })
+  expect(inBoard()).toBe(false)
+  await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
+  await screen.findByRole('link', { name: 'Card' })
+  expect(inBoard()).toBe(true)
+  // Back from the board returns to the full card page entry.
+  await act(async () => { history.back() })
+  await screen.findByRole('button', { name: 'Назад к доске' })
+  expect(inBoard()).toBe(false)
+  await user.click(within(entry() as HTMLElement).getByRole('button'))
+  expect(prompt).toHaveBeenCalledOnce()
+  expect(errors).not.toHaveBeenCalled()
+  errors.mockRestore()
 })

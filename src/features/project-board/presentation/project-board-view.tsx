@@ -1,24 +1,31 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Card, CardPlacement, CardInput, Id, ProjectBoard, Status } from '../domain/model'
+import type { Card, CardPlacement, CardInput, Id, ProjectBoard, BoardView, Status } from '../domain/model'
 import { useModalOpen } from '../../../ui/modal-state'
 import { AppBar } from '../../../ui/app-bar'
 import { CardView } from './card-view'
 import { BoardDrag, usePlacementMarker, useStatusDrop } from './board-drag'
 import { BoardIcon } from './board-icon'
 import { ActionMenu, CardDialog, NameDialog } from './controls'
+import { ApplyStatusSetForm } from './apply-status-set-form'
 import { DeleteDialog } from './delete-dialog'
-import type { MoveCardStateResult, DeleteStatusStateResult } from '../state/project-board-store'
+import type { ApplyStatusSetResult, MoveCardStateResult, DeleteStatusStateResult } from '../state/project-board-store'
 
 type BoardProps = {
+  onRequestDestructiveAction?: (action: () => void) => void
+  /** The card shown beside the board; only deletions that remove it need the unsaved-draft guard. */
+  openCard?: { id: Id; statusId: Id } | null
+  /** Receives the node where the narrow-screen install entry is placed after the board content. */
+  installSlot?: (node: HTMLElement | null) => void
   focusCreation: boolean
   onCreationFocused: () => void
-  board: ProjectBoard
+  board: BoardView
   saveError: boolean
   busy: boolean
   placementPending: boolean
   refreshFailed: boolean
   onRetryRefresh: () => Promise<boolean>
+  onApplyStatusSet: (names: string[]) => Promise<ApplyStatusSetResult>
   onReturn: () => Promise<void>
   onDeleteProject: () => Promise<boolean>
   onRenameProject: (name: string) => Promise<void>
@@ -32,7 +39,9 @@ type BoardProps = {
   onMoveCard: (cardId: Id, placement: CardPlacement) => Promise<MoveCardStateResult>
 }
 
-export function ProjectBoardView({ focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
+const runImmediately = (action: () => void) => action()
+
+export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, openCard = null, installSlot, focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onApplyStatusSet, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
   const { t } = useTranslation()
   const [moveDialogCardId, setMoveDialogCardId] = useState<Id | null>(null)
   const root = useRef<HTMLElement>(null)
@@ -88,11 +97,14 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
     return result
   }, [onMoveCard, t])
   const requestStatusDeletion = useCallback((status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => {
-    setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus })
-  }, [])
+    const request = openCard?.statusId === status.id ? onRequestDestructiveAction : runImmediately
+    request(() => setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus }))
+  }, [onRequestDestructiveAction, openCard?.statusId])
   const requestCardDeletion = useCallback((card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => {
-    setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus })
-  }, [])
+    const request = openCard?.id === card.id ? onRequestDestructiveAction : runImmediately
+    request(() => setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus }))
+  }, [onRequestDestructiveAction, openCard?.id])
+  const hasCards = board.statuses.some(status => status.cards.length > 0)
   const statuses = useMemo(() => board.statuses.map(({ cards: _cards, ...status }) => status), [board.statuses])
   const [deletingProject, setDeletingProject] = useState(false)
   const [creatingStatus, setCreatingStatus] = useState(false)
@@ -104,11 +116,11 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
       onReturn={() => void onReturn()}
       creation={{ disabled: busy, label: t('addStatus'), triggerRef: addStatusTrigger, onSelect: () => setCreatingStatus(true) }}
       rename={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setRenamingProject(true) }}
-      deleteProject={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setDeletingProject(true) }}
+      deleteProject={{ disabled: busy, triggerRef: projectMenu, onSelect: () => onRequestDestructiveAction(() => setDeletingProject(true)) }}
     />
     <main ref={root} className="app-shell">
       {saveError && !deletingProject ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
-      {board.statuses.length === 0 ? <section className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p></section> : null}
+      {board.statuses.length === 0 ? <section inert={modalOpen} aria-hidden={modalOpen || undefined} className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p><ApplyStatusSetForm busy={busy} onApply={onApplyStatusSet} /></section> : null}
       <p className="placement-status" role="status" aria-live="polite">{placementPending ? t('placementSaving') : notice}</p>
       {refreshFailed ? <div className="save-error" role="alert"><p>{t('placementRefreshFailed')}</p><button className="button button-secondary" disabled={placementPending} onClick={() => void onRetryRefresh().then(saved => { if (saved) setNotice(t('placementSaved')) })}>{t('retryBoardRead')}</button></div> : null}
       <BoardDrag board={board} disabled={busy} onPlace={moveCard}>
@@ -119,8 +131,10 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
           index={index}
           total={board.statuses.length}
           statuses={statuses}
+          recentNotes={board.recentNotes}
           saveError={saveError}
           disabled={busy}
+          showFooterCreate={hasCards}
           onDeleteStatus={requestStatusDeletion}
           onDeleteCard={requestCardDeletion}
           onMoveDialogChange={setMoveDialogCardId}
@@ -137,6 +151,7 @@ export function ProjectBoardView({ focusCreation, onCreationFocused, board, save
       {deleting ? <DeleteDialog kind={deleting.kind} name={deleting.name} blocked={deleting.kind === 'status' && !!board.statuses.find(status => status.id === deleting.id)?.cards.length} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}
       {creatingStatus ? <NameDialog returnFocus={addStatusTrigger} title={t('newStatus')} label={t('statusName')} button={t('createStatus')} onSubmit={onCreateStatus} onClose={() => setCreatingStatus(false)} /> : null}
       {renamingProject ? <NameDialog returnFocus={projectMenu} title={t('renameProject')} label={t('newName')} button={t('save')} initialName={board.name} onSubmit={onRenameProject} onClose={() => setRenamingProject(false)} /> : null}
+      {installSlot ? <div ref={installSlot} /> : null}
     </main>
   </>
 }
@@ -146,8 +161,11 @@ type StatusColumnProps = {
   index: number
   total: number
   statuses: Status[]
+  recentNotes: BoardView['recentNotes']
   saveError: boolean
   disabled: boolean
+  /** The lower creation entry is offered only once the board has a card; the header plus is always available. */
+  showFooterCreate: boolean
   onDeleteStatus: (status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => void
   onDeleteCard: (card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => void
   onMoveDialogChange: (cardId: Id | null) => void
@@ -159,7 +177,7 @@ type StatusColumnProps = {
   onMoveCard: (cardId: Id, placement: CardPlacement, focus?: boolean) => Promise<MoveCardStateResult>
 }
 
-const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, saveError, disabled, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
+const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, recentNotes, saveError, disabled, showFooterCreate, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const { ref: dropRef } = useStatusDrop(status.id)
@@ -193,6 +211,7 @@ const StatusColumn = memo(function StatusColumn({ projectId, status, index, tota
       card={card}
       onDelete={onDeleteCard}
       statuses={statuses}
+      notes={recentNotes[card.id]}
       saveError={saveError}
       onMoveDialogChange={onMoveDialogChange}
       peers={status.cards}
@@ -201,7 +220,7 @@ const StatusColumn = memo(function StatusColumn({ projectId, status, index, tota
       onOpen={onOpenCard}
       onMove={onMoveCard}
     /></Fragment>)}{marker === null ? <li className="card-placement-marker" aria-hidden="true">{t('placementHere')}</li> : null}</ul>
-    <button ref={footerCreateTrigger} className="button button-quiet add-card" onClick={() => openCreation(footerCreateTrigger)}><span className="button button-primary button-icon add-card-symbol" aria-hidden="true"><BoardIcon name="plus" /></span>{t('addCard')}</button>
+    {showFooterCreate ? <button ref={footerCreateTrigger} className="button button-quiet add-card" onClick={() => openCreation(footerCreateTrigger)}><span className="button button-primary button-icon add-card-symbol" aria-hidden="true"><BoardIcon name="plus" /></span>{t('addCard')}</button> : null}
     {renaming ? <NameDialog title={t('renameStatus')} label={t('newName')} button={t('save')} initialName={status.name} onSubmit={name => onRename(status.id, name)} onClose={() => setRenaming(false)} /> : null}
     {creatingCard ? <CardDialog title={t('newCard')} returnFocus={createTrigger} button={t('createCard')} onSubmit={input => onCreateCard(status.id, input)} onClose={() => setCreatingCard(false)} /> : null}
   </article>

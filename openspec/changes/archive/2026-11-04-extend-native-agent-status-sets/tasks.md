@@ -5,4 +5,4 @@
 - [x] 1.3 Verify background route/preference preservation, mutation guard, saved results, session/dedup and refresh-warning behavior for both operations; preserve exclusion of notes from get_board.
 - [x] 2.1 Use skill-creator to update EasyTrack skill and references for explicit choice, Simple recommendation, none, apply only to empty projects and protocol 2; run skill validation and inspect workflow cases.
 - [x] 2.2 Update native integration documentation and QA evidence, preserving the accepted transport decision and distinguishing candidate from production verification.
-- [ ] 3.1 Run relevant contract/application/repository/state/browser tests and npm run check; address independent review.
+- [x] 3.1 Run relevant contract/application/repository/state/browser tests and npm run check; address independent review.

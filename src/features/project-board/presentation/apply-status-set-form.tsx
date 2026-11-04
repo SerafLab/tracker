@@ -17,7 +17,7 @@ export function ApplyStatusSetForm({ busy, onApply }: { busy: boolean; onApply(n
     pending.current = true; setSaving(true); setError(null)
     try {
       const result = await onApply(presetStatusNames(preset, t))
-      if (result !== 'saved') setError(result === 'conflict' ? 'statusSetConflict' : 'saveError')
+      if (result === 'failed' || result === 'conflict') setError(result === 'conflict' ? 'statusSetConflict' : 'saveError')
     } catch { setError('saveError') }
     finally { pending.current = false; setSaving(false) }
   }

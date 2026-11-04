@@ -15,7 +15,7 @@ export type Workspace =
 export type DeleteStatusStateResult = DeleteStatusResult | 'failed'
 export type ProjectDeletionSummary = { statusCount: number; cardCount: number }
 export type MoveCardStateResult = CardPlacementResult | 'failed' | 'refresh-failed'
-export type ApplyStatusSetResult = 'saved' | 'conflict' | 'failed'
+export type ApplyStatusSetResult = 'saved' | 'conflict' | 'missing' | 'failed'
 export type ShowCardResult = 'shown' | 'missing' | 'unavailable' | 'superseded'
 
 export type ProjectBoardState = {
@@ -156,6 +156,11 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
             if (error instanceof CommandError && error.code === 'conflict') {
               await refreshBoard(projectId, startedAt)
               return 'conflict'
+            }
+            if (error instanceof CommandError && error.code === 'not_found') {
+              // The project was deleted elsewhere; retrying cannot succeed, so leave the stale board like deleteProject does.
+              if (navigation === startedAt && currentProjectId === projectId) await get().showCatalogue()
+              return 'missing'
             }
             if (navigation === startedAt) set({ saveError: true })
             return 'failed'

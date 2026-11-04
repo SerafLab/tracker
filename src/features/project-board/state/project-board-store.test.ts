@@ -480,6 +480,14 @@ it('retains a failed empty-board state and refreshes an authoritative conflict',
   expect(api.board).toHaveBeenCalledTimes(2)
   expect(store.getState().saveError).toBe(false)
 })
+it('leaves a board whose project was deleted elsewhere for the catalogue', async () => {
+  const api = useCases({ applyStatusSet: vi.fn().mockRejectedValue(new CommandError('not_found')), projects: vi.fn().mockResolvedValue([]) })
+  const store = createProjectBoardStore(api)
+  await store.getState().showBoard('project')
+  expect(await store.getState().applyStatusSet('project', ['First'])).toBe('missing')
+  expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: [] })
+  expect(store.getState().saveError).toBe(false)
+})
 it('does not repeat a committed set when only refreshing the board fails and refuses stale writes', async () => {
   const api = useCases({ board: vi.fn().mockResolvedValueOnce(board).mockRejectedValueOnce(Error('read')) })
   const store = createProjectBoardStore(api)

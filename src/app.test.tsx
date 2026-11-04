@@ -18,7 +18,13 @@ async function addStatus(user: ReturnType<typeof userEvent.setup>, name: string)
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await waitFor(() => expect(trigger).toHaveFocus())
 }
-async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string) { await user.click(column.querySelector<HTMLButtonElement>('.add-card')!); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
+type CreationEntry = '.add-card-header' | '.add-card'
+async function addCard(user: ReturnType<typeof userEvent.setup>, column: HTMLElement, name: string, entry: CreationEntry = '.add-card-header') { await user.click(column.querySelector<HTMLButtonElement>(entry)!); await fill(user, 'Название карточки', name, 'Создать карточку'); await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument()) }
+/** The lower entry exists only on a board that already has a card, so footer scenarios seed one in another status. */
+async function seedOtherStatus(user: ReturnType<typeof userEvent.setup>) {
+  await addStatus(user, 'Seed')
+  await addCard(user, screen.getByRole('heading', { name: 'Seed' }).closest('article')!, 'Seed card')
+}
 async function moveThroughMenu(user: ReturnType<typeof userEvent.setup>, name: string, destination: string) {
   await user.click(screen.getByRole('button', { name: `Действия карточки ${name}` }))
   await user.click(screen.getByRole('menuitem', { name: 'Переместить в…' }))
@@ -284,6 +290,7 @@ describe('project board', () => {
 it.each(['.add-card-header', '.add-card'])('retains the %s creation draft on validation and storage errors and retries the whole form', async source => {
   const user = userEvent.setup(); const repo = repository(); render(<App repository={repo} />)
   await fill(user, 'Новый проект', 'Priority', 'Создать проект'); await addStatus(user, 'Todo')
+  if (source === '.add-card') await seedOtherStatus(user)
   const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
   const trigger = column.querySelector<HTMLButtonElement>(source)!
   await user.click(trigger)
@@ -346,9 +353,10 @@ it('edits fields on the detail page atomically, preserves failed drafts, and kee
 it.each(['.add-card-header', '.add-card'])('returns creation focus to %s after save, cancel and Escape in empty and populated statuses', async source => {
   const user = userEvent.setup(); render(<App repository={repository()} />)
   await fill(user, 'Новый проект', 'Creation entries', 'Создать проект'); await addStatus(user, 'Todo')
+  if (source === '.add-card') await seedOtherStatus(user)
   const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
   const trigger = column.querySelector<HTMLButtonElement>(source)!
-  expect(within(column).getAllByRole('button', { name: 'Добавить карточку' })).toHaveLength(2)
+  expect(within(column).getAllByRole('button', { name: 'Добавить карточку' })).toHaveLength(source === '.add-card' ? 2 : 1)
   for (const populated of [false, true]) {
     for (const dismissal of ['cancel', 'escape']) {
       await user.click(trigger)
@@ -371,6 +379,7 @@ it.each(['.add-card-header', '.add-card'])('returns creation focus to %s after s
 it.each(['.add-card-header', '.add-card'])('closes a failed %s creation without losing the opener focus', async source => {
   const user = userEvent.setup(); const repo = repository(); render(<App repository={repo} />)
   await fill(user, 'Новый проект', 'Creation failure', 'Создать проект'); await addStatus(user, 'Todo')
+  if (source === '.add-card') await seedOtherStatus(user)
   const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
   const trigger = column.querySelector<HTMLButtonElement>(source)!
   vi.spyOn(repo, 'createCard').mockRejectedValueOnce(new Error('quota'))
@@ -381,4 +390,38 @@ it.each(['.add-card-header', '.add-card'])('closes a failed %s creation without 
   expect(column.querySelectorAll('.work-card')).toHaveLength(0)
   await user.keyboard('{Escape}')
   await waitFor(() => expect(trigger).toHaveFocus())
+})
+
+it('offers the lower creation entry in every status only while the board has a card', async () => {
+  const user = userEvent.setup(); const repo = repository(); render(<App repository={repo} />)
+  await fill(user, 'Новый проект', 'Visibility', 'Создать проект'); await addStatus(user, 'Todo'); await addStatus(user, 'Done')
+  const todo = () => screen.getByRole('heading', { name: 'Todo' }).closest('article')!
+  const done = () => screen.getByRole('heading', { name: 'Done' }).closest('article')!
+  for (const column of [todo, done]) {
+    expect(column().querySelector('.add-card-header')).toBeEnabled()
+    expect(column().querySelector('.add-card')).toBeNull()
+  }
+  expect(screen.getAllByRole('button', { name: 'Добавить статус' })[0]).toBeEnabled()
+  await addCard(user, done(), 'Only card')
+  for (const column of [todo, done]) { expect(column().querySelector('.add-card-header')).toBeEnabled(); expect(column().querySelector('.add-card')).toBeEnabled() }
+  expect(within(todo()).getAllByRole('button', { name: 'Добавить карточку' })).toHaveLength(2)
+  await user.click(screen.getByRole('button', { name: 'Действия карточки Only card' })); await user.click(screen.getByRole('menuitem', { name: 'Удалить' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Удалить' }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  for (const column of [todo, done]) { expect(column().querySelector('.add-card-header')).toBeEnabled(); expect(column().querySelector('.add-card')).toBeNull() }
+  expect(screen.getAllByRole('button', { name: 'Добавить статус' })[0]).toBeEnabled()
+  await addCard(user, todo(), 'First again')
+  for (const column of [todo, done]) expect(column().querySelector('.add-card')).toBeEnabled()
+})
+
+it('opens one form for the status of the activated entry', async () => {
+  const user = userEvent.setup(); render(<App repository={repository()} />)
+  await fill(user, 'Новый проект', 'Entries', 'Создать проект'); await addStatus(user, 'Todo'); await addStatus(user, 'Done')
+  const done = () => screen.getByRole('heading', { name: 'Done' }).closest('article')!
+  await addCard(user, screen.getByRole('heading', { name: 'Todo' }).closest('article')!, 'Seed')
+  for (const entry of ['.add-card-header', '.add-card'] as const) {
+    await addCard(user, done(), `From ${entry}`, entry)
+    expect(within(done()).getByText(`From ${entry}`)).toBeInTheDocument()
+  }
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })

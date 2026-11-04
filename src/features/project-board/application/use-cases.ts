@@ -37,6 +37,7 @@ export function createProjectBoardUseCases(dependencies: {
     preference: () => repository.preference(),
     setLastProject: (id?: Id) => repository.setLastProject(id),
     board: (projectId: Id) => repository.board(projectId),
+    boardView: (projectId: Id) => repository.boardView(projectId),
     createProject: (input: CreateProjectInput) => {
       const projectName = name(input.name)
       const statusNames = input.initialStatusNames.map(name)

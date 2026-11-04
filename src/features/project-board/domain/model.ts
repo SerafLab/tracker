@@ -16,6 +16,9 @@ export type RegisterDraftGuard = (guard: DraftGuard | null) => void
 export type WorkspacePreference = { id: 'workspace'; lastProjectId?: Id }
 
 export type ProjectBoard = Project & { statuses: Array<Status & { cards: Card[] }> }
+export const RECENT_NOTE_LIMIT = 5
+/** Board snapshot plus the last RECENT_NOTE_LIMIT notes per card (by card id), oldest first. Read-only view data; never stored in Card. */
+export type BoardView = ProjectBoard & { recentNotes: Record<Id, Note[]> }
 
 export function requiredName(value: string): string | null {
   const name = value.trim()

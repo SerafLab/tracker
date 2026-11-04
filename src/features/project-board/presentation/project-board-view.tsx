@@ -1,6 +1,6 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Card, CardPlacement, CardInput, Id, ProjectBoard, Status } from '../domain/model'
+import type { Card, CardPlacement, CardInput, Id, ProjectBoard, BoardView, Status } from '../domain/model'
 import { useModalOpen } from '../../../ui/modal-state'
 import { AppBar } from '../../../ui/app-bar'
 import { CardView } from './card-view'
@@ -18,7 +18,7 @@ type BoardProps = {
   installSlot?: (node: HTMLElement | null) => void
   focusCreation: boolean
   onCreationFocused: () => void
-  board: ProjectBoard
+  board: BoardView
   saveError: boolean
   busy: boolean
   placementPending: boolean
@@ -128,6 +128,7 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
           index={index}
           total={board.statuses.length}
           statuses={statuses}
+          recentNotes={board.recentNotes}
           saveError={saveError}
           disabled={busy}
           onDeleteStatus={requestStatusDeletion}
@@ -156,6 +157,7 @@ type StatusColumnProps = {
   index: number
   total: number
   statuses: Status[]
+  recentNotes: BoardView['recentNotes']
   saveError: boolean
   disabled: boolean
   onDeleteStatus: (status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => void
@@ -169,7 +171,7 @@ type StatusColumnProps = {
   onMoveCard: (cardId: Id, placement: CardPlacement, focus?: boolean) => Promise<MoveCardStateResult>
 }
 
-const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, saveError, disabled, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
+const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, recentNotes, saveError, disabled, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const { ref: dropRef } = useStatusDrop(status.id)
@@ -203,6 +205,7 @@ const StatusColumn = memo(function StatusColumn({ projectId, status, index, tota
       card={card}
       onDelete={onDeleteCard}
       statuses={statuses}
+      notes={recentNotes[card.id]}
       saveError={saveError}
       onMoveDialogChange={onMoveDialogChange}
       peers={status.cards}

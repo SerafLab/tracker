@@ -224,3 +224,67 @@ for (const language of ['ru', 'en'] as const) {
     await expect(column.locator('.work-card')).toHaveCount(15)
   })
 }
+
+for (const width of [1280, 1440]) for (const language of ['ru', 'en'] as const) {
+  test(`column boundaries and list starts hold beside the card panel with expanded note previews in ${language} at ${width}px`, async ({ page }, testInfo) => {
+    const en = language === 'en'
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/tracker/')
+    await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
+    if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+    await page.evaluate(async () => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
+      await new Promise<void>((resolve, reject) => {
+        const tx = db.transaction(['projects', 'statuses', 'cards', 'notes'], 'readwrite')
+        tx.objectStore('projects').put({ id: 'cols', name: 'Columns', createdAt: '2026-11-04T00:00:00Z' })
+        const names = ['Todo', 'Doing', 'Review', 'Решение — длинное название статуса с несколькими дополнительными словами для проверки четырёх строк и выравнивания карточек']
+        names.forEach((name, index) => tx.objectStore('statuses').put({ id: `s${index}`, projectId: 'cols', name, position: index }))
+        for (let index = 0; index < 3; index++) tx.objectStore('cards').put({ id: `c${index}`, statusId: 's0', name: `Card ${index}`, description: index === 0 ? 'Описание '.repeat(40) : '', important: false, urgent: false, position: index })
+        tx.objectStore('cards').put({ id: 'c3', statusId: 's1', name: 'Other', description: '', important: false, urgent: false, position: 0 })
+        for (let n = 1; n <= 6; n++) tx.objectStore('notes').put({ id: `n${n}`, cardId: 'c0', text: `Note ${n} https://example.com/${'long-path-'.repeat(12)}\nsecond\nthird\nfourth`, createdAt: `2026-11-02T00:00:0${n}.000Z` })
+        tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error)
+      })
+      db.close()
+    })
+    await page.goto('/tracker/#project/cols')
+    await page.reload()
+    const toggle = page.locator('.work-card').first().locator('.card-notes-toggle')
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const measure = () => page.locator('.status-columns').evaluate(board => {
+      const columns = Array.from(board.querySelectorAll('.status-column'))
+      const main = board.closest('main')!
+      return {
+        pageOverflow: document.documentElement.scrollWidth > innerWidth,
+        columns: columns.length,
+        listStarts: columns.map(column => column.querySelector('.card-list')!.getBoundingClientRect().top),
+        borders: columns.map(column => getComputedStyle(column).borderTopWidth),
+        widths: columns.map(column => column.getBoundingClientRect().width),
+        scrollsX: board.scrollWidth > board.clientWidth || main.scrollWidth > main.clientWidth,
+        mainRight: main.getBoundingClientRect().right,
+        boardClipped: board.getBoundingClientRect().right <= main.getBoundingClientRect().right + 1,
+      }
+    })
+    const check = (state: Awaited<ReturnType<typeof measure>>) => {
+      expect(state.pageOverflow).toBe(false)
+      expect(state.columns).toBe(4)
+      expect(Math.max(...state.listStarts) - Math.min(...state.listStarts)).toBeLessThan(1)
+      expect(state.borders.every(border => border === '1px')).toBe(true)
+      expect(Math.min(...state.widths)).toBeGreaterThanOrEqual(260)
+    }
+    const closed = await measure(); check(closed)
+    await page.getByRole('link', { name: 'Card 1', exact: true }).click()
+    const panel = page.locator('.card-panel')
+    await expect(panel).toBeVisible()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    const open = await measure(); check(open)
+    expect(open.mainRight).toBeLessThanOrEqual((await panel.boundingBox())!.x + 1)
+    expect(open.boardClipped).toBe(true)
+    // The narrowed board scrolls horizontally instead of squeezing columns, and the last column is reachable.
+    expect(open.scrollsX).toBe(true)
+    await page.locator('.status-column').last().scrollIntoViewIfNeeded()
+    await expect(page.locator('.status-column').last().locator('.add-card-header')).toBeVisible()
+    check(await measure())
+    await page.screenshot({ path: testInfo.outputPath(`panel-columns-${language}-${width}.png`) })
+  })
+}

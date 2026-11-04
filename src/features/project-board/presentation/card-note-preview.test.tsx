@@ -23,7 +23,7 @@ async function setup(noteTexts: string[] = []) {
   return { repo, user: userEvent.setup() }
 }
 const card = () => screen.getByRole('link', { name: 'Card' }).closest('li')!
-const toggle = () => within(card()).queryByRole('button', { name: 'Последние заметки' })
+const toggle = () => within(card()).queryByRole('button', { name: 'Последние заметки: Card' })
 const shown = () => within(card()).queryAllByRole('listitem').map(item => item.textContent)
 
 it('shows no notes block or toggle for a card without notes, keeping the description preview', async () => {
@@ -92,4 +92,20 @@ it('reflects only confirmed note add, edit and delete after the board snapshot r
   expect(toggle()).not.toBeNull()
   await user.click(toggle()!)
   expect(shown()).toEqual(['old', 'newest', 'Unsaved text'])
+})
+
+it('keeps the local expand toggle enabled and focused while a board write is pending', async () => {
+  const { ProjectBoardView } = await import('./project-board-view')
+  const board = { id: 'p', name: 'Project', createdAt: 'now', recentNotes: { c: [{ id: 'a', cardId: 'c', text: 'old', createdAt: '1' }, { id: 'b', cardId: 'c', text: 'new', createdAt: '2' }] },
+    statuses: [{ id: 's', name: 'S', projectId: 'p', position: 0, cards: [{ id: 'c', statusId: 's', name: 'Card', position: 0, description: '', important: false, urgent: false }] }] }
+  const props = { onDeleteProject: async () => true, saveError: false, placementPending: false, refreshFailed: false, onRetryRefresh: vi.fn(), focusCreation: false, onCreationFocused: vi.fn(), onReturn: vi.fn(), onRenameProject: vi.fn(), onCreateStatus: vi.fn(), onRenameStatus: vi.fn(), onMoveStatus: vi.fn(), onCreateCard: vi.fn(), onOpenCard: vi.fn(), onDeleteCard: vi.fn(), onDeleteStatus: vi.fn(), onMoveCard: vi.fn() }
+  const view = (busy: boolean) => <ProjectBoardView {...props} board={board} busy={busy} />
+  const { rerender } = render(view(false))
+  const button = screen.getByRole('button', { name: 'Последние заметки: Card' })
+  button.focus()
+  rerender(view(true))
+  expect(button).toBeEnabled()
+  expect(button).toHaveFocus()
+  await userEvent.setup().keyboard('{Enter}')
+  expect(button).toHaveAttribute('aria-expanded', 'true')
 })

@@ -41,7 +41,7 @@ for (const width of [320, 390, 1280, 1440]) test(`board preview of five long not
   await createBoard(page, false, ['Todo', 'Doing', 'Review', 'Done'])
   await seed(page, 6, 'Длинное описание '.repeat(30))
   const card = page.locator('.work-card')
-  const toggle = card.getByRole('button', { name: 'Последние заметки' })
+  const toggle = card.getByRole('button', { name: 'Последние заметки: Preview card' })
   await expect(card.locator('.card-note')).toHaveCount(1)
   await expect(card.locator('.card-note')).toContainText('Note 6')
   await expect(card.locator('.card-notes a')).toHaveCount(0)
@@ -80,7 +80,7 @@ test('card remains draggable by its note text and the expand button does not sta
   await createBoard(page, false, ['Todo', 'Done'])
   await seed(page, 3)
   const card = page.locator('.work-card')
-  const toggle = card.getByRole('button', { name: 'Последние заметки' })
+  const toggle = card.getByRole('button', { name: 'Последние заметки: Preview card' })
   const from = (await toggle.boundingBox())!, target = (await page.locator('.status-column').last().boundingBox())!
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2); await page.mouse.down()
   await page.mouse.move(target.x + target.width / 2, target.y + 120, { steps: 12 }); await page.mouse.up()
@@ -106,7 +106,7 @@ for (const en of [false, true]) test(`note add, edit and delete are reflected on
   }
   await add('First note'); await add('Second note')
   await page.getByRole('button', { name: t('Назад к доске', 'Back to board'), exact: true }).click()
-  const toggle = card.getByRole('button', { name: t('Последние заметки', 'Recent notes') })
+  const toggle = card.getByRole('button', { name: t('Последние заметки: Preview card', 'Recent notes: Preview card') })
   await expect(card.locator('.card-note')).toHaveText('Second note')
   await toggle.click(); await expect(card.locator('.card-note')).toHaveText(['First note', 'Second note'])
   // Editing the older note keeps the creation-ordered last note.

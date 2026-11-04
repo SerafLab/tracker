@@ -67,7 +67,7 @@ export const CardView = memo(function CardView({ card, notes, peers, statuses, d
     <div className="card-badges">{card.important ? <span className="card-badge card-badge-important"><BoardIcon name="important" />{t('important')}</span> : null}{card.urgent ? <span className="card-badge card-badge-urgent"><BoardIcon name="urgent" />{t('urgent')}</span> : null}</div>
     {shownNotes.length ? <div className="card-notes">
       <ul id={notesId} className="card-note-list" aria-label={t('recentNotes')}>{shownNotes.map(note => <li key={note.id} className="card-note">{note.text}</li>)}</ul>
-      {notes!.length > 1 ? <button type="button" className="card-notes-toggle" aria-expanded={notesOpen} aria-controls={notesId} disabled={disabled} onClick={() => setNotesOpen(open => !open)}>{t('recentNotes')}</button> : null}
+      {notes!.length > 1 ? <button type="button" className="card-notes-toggle" aria-expanded={notesOpen} aria-controls={notesId} onClick={() => setNotesOpen(open => !open)}>{t('recentNotesToggle', { name: card.name })}</button> : null}
     </div> : null}
     {moving ? <ActionDialog title={t('moveCard')} returnFocus={menuTrigger} onClose={closeMoving}><form onSubmit={event => { event.preventDefault(); void move(appendPlacement(card, destination)) }}>
       <label className="field"><span className="field-label">{t('moveTo', { name: card.name })}</span><select className="select-input" value={destination} disabled={saving} aria-describedby={saveError ? errorId : undefined} onChange={event => setDestination(event.target.value)}>{otherStatuses.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>

@@ -12,6 +12,8 @@ import type { MoveCardStateResult, DeleteStatusStateResult } from '../state/proj
 
 type BoardProps = {
   onRequestDestructiveAction?: (action: () => void) => void
+  /** The card shown beside the board; only deletions that remove it need the unsaved-draft guard. */
+  openCard?: { id: Id; statusId: Id } | null
   focusCreation: boolean
   onCreationFocused: () => void
   board: ProjectBoard
@@ -35,7 +37,7 @@ type BoardProps = {
 
 const runImmediately = (action: () => void) => action()
 
-export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
+export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, openCard = null, focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
   const { t } = useTranslation()
   const [moveDialogCardId, setMoveDialogCardId] = useState<Id | null>(null)
   const root = useRef<HTMLElement>(null)
@@ -91,11 +93,13 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
     return result
   }, [onMoveCard, t])
   const requestStatusDeletion = useCallback((status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => {
-    onRequestDestructiveAction(() => setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus }))
-  }, [onRequestDestructiveAction])
+    const request = openCard?.statusId === status.id ? onRequestDestructiveAction : runImmediately
+    request(() => setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus }))
+  }, [onRequestDestructiveAction, openCard?.statusId])
   const requestCardDeletion = useCallback((card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => {
-    onRequestDestructiveAction(() => setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus }))
-  }, [onRequestDestructiveAction])
+    const request = openCard?.id === card.id ? onRequestDestructiveAction : runImmediately
+    request(() => setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus }))
+  }, [onRequestDestructiveAction, openCard?.id])
   const statuses = useMemo(() => board.statuses.map(({ cards: _cards, ...status }) => status), [board.statuses])
   const [deletingProject, setDeletingProject] = useState(false)
   const [creatingStatus, setCreatingStatus] = useState(false)

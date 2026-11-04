@@ -8,11 +8,12 @@ import { ProjectBoardView } from './project-board-view'
 import { ProjectCatalogueView } from './project-catalogue-view'
 import { CardDetailView } from './card-detail-view'
 
-export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'page', onExpandCard, onCloseCard, store, navigateToProject, navigateToCatalogue, navigateToCard, onProjectDeleted, registerDraftGuard, requestLeave, onMutationSaved }: {
+export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'page', onExpandCard, onCloseCard, onPanelCardMissing, store, navigateToProject, navigateToCatalogue, navigateToCard, onProjectDeleted, registerDraftGuard, requestLeave, onMutationSaved }: {
   onPanelIsolationChange?: (isolated: boolean) => void
   cardPresentation?: 'panel' | 'page'
   onExpandCard?: () => Promise<void>
   onCloseCard?: (projectId: Id) => Promise<void>
+  onPanelCardMissing?: (projectId: Id) => Promise<void>
   store: ProjectBoardStore
   navigateToProject: (id: Id) => Promise<void>
   navigateToCatalogue: () => Promise<void>
@@ -28,6 +29,9 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
   const workspace = useStore(store, state => state.workspace)
   const panelOpen = workspace.kind === 'card' && cardPresentation === 'panel'
   const boardSnapshot = useStore(store, state => state.boardSnapshot)
+  // A card deleted while shown beside the board closes the panel instead of replacing the board.
+  const missingInPanel = workspace.kind === 'card-missing' && cardPresentation === 'panel' && !!boardSnapshot
+  const missingProjectId = workspace.kind === 'card-missing' ? workspace.project.id : undefined
   const root = useRef<HTMLDivElement>(null)
   const lastCard = useRef<Id | null>(null)
   const [narrow, setNarrow] = useState(() => typeof matchMedia !== 'undefined' && matchMedia('(max-width: 60rem)').matches)
@@ -43,11 +47,17 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
     return () => onPanelIsolationChange?.(false)
   }, [panelOpen, narrow, onPanelIsolationChange])
   useEffect(() => {
+    if (missingInPanel && missingProjectId) void onPanelCardMissing?.(missingProjectId)
+  }, [missingInPanel, missingProjectId, onPanelCardMissing])
+  useEffect(() => {
     if (workspace.kind === 'card') lastCard.current = workspace.details.card.id
     else if (workspace.kind === 'board' && lastCard.current) {
       const id = lastCard.current; lastCard.current = null
       const card = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find(node => node.dataset.cardId === id)
-      card?.querySelector<HTMLElement>('.card-detail-link')?.focus({ preventScroll: true })
+      const target = card?.querySelector<HTMLElement>('.card-detail-link')
+        ?? root.current?.querySelector<HTMLElement>('.card-detail-link')
+        ?? root.current?.querySelector<HTMLElement>('.board-workspace button:not(:disabled)')
+      target?.focus({ preventScroll: true })
     }
   }, [workspace.kind, workspace.kind === 'card' ? workspace.details.card.id : undefined])
   const agentPending = useStore(store, state => state.agentPending)
@@ -83,7 +93,7 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
     onRename={async (id, name) => { if (await renameProject(id, name)) onMutationSaved?.() }}
   />
 
-  if (workspace.kind === 'card-missing') return <><AppBar title={t('cardMissing')} onReturn={() => void navigateToCatalogue()} /><main className="app-shell"><p role="alert">{t('cardMissingHelp')}</p><button className="button button-secondary" onClick={() => void navigateToProject(workspace.project.id)}>{t('backToBoard')}</button></main></>
+  if (workspace.kind === 'card-missing' && !missingInPanel) return <><AppBar title={t('cardMissing')} onReturn={() => void navigateToCatalogue()} /><main className="app-shell"><p role="alert">{t('cardMissingHelp')}</p><button className="button button-secondary" onClick={() => void navigateToProject(workspace.project.id)}>{t('backToBoard')}</button></main></>
   const details = workspace.kind === 'card' ? workspace.details : null
   const detailView = details ? <CardDetailView key={details.card.id} presentation={cardPresentation} narrow={narrow} onExpand={onExpandCard} details={details} refreshFailed={agentRefreshError} retrying={agentPending} onRetryRefresh={() => store.getState().retryAgentRefresh()} busy={agentPending || agentRefreshError} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave}
       onReturn={() => onCloseCard ? onCloseCard(details.project.id) : navigateToProject(details.project.id)} onCatalogue={navigateToCatalogue}
@@ -96,7 +106,7 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
   const board = workspace.kind === 'board' ? workspace.board : boardSnapshot
   return <div ref={root} className={panelOpen ? 'workspace-with-panel' : 'workspace-layout'}>
     <div className="board-workspace" role="region" hidden={!!details && !panelOpen} inert={panelOpen && narrow} aria-label={t('boardRegion')}>
-    {board ? <ProjectBoardView onRequestDestructiveAction={requestLeave} key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError} placementPending={placementPending} busy={agentPending || agentRefreshError || placementPending || !!placementRefreshError} refreshFailed={!!placementRefreshError} onRetryRefresh={() => store.getState().retryPlacementRefresh()}
+    {board ? <ProjectBoardView onRequestDestructiveAction={requestLeave} openCard={details ? { id: details.card.id, statusId: details.card.statusId } : null} key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError} placementPending={placementPending} busy={agentPending || agentRefreshError || placementPending || !!placementRefreshError} refreshFailed={!!placementRefreshError} onRetryRefresh={() => store.getState().retryPlacementRefresh()}
     onReturn={navigateToCatalogue}
     onDeleteProject={async () => {
       const saved = await store.getState().deleteProject(board.id)

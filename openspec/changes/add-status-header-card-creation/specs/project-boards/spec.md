@@ -3,60 +3,56 @@
 ## MODIFIED Requirements
 
 ### Requirement: Card creation follows its status list
-The system SHALL provide two card-creation entries in each status when the board contains at least one card: a square plus in the status header before its action menu, and a button after the card list combining the same plus with a visible label. Both entries SHALL open the same focused form for that status and return focus to the activated entry when the form closes, without forcing the board to scroll to the other entry. When the board contains no cards, header plus controls SHALL remain available in every status, lower card-creation entries SHALL be hidden, and the global add-status control SHALL remain available. The board with cards SHALL fit the available viewport height below the application bar; each status SHALL scroll its card list independently and keep its lower creation entry at the bottom.
+Система SHALL показывать в каждом статусе вход создания карточки в заголовке перед меню действий: зелёный квадратный плюс без видимой подписи, как добавление статуса. Если на доске есть хотя бы одна карточка, система SHALL дополнительно показывать после списка каждого статуса, включая пустой, нижний вход: такой же плюс с подписью в одной кнопке. Оба входа SHALL открывать одну форму в своём статусе и возвращать фокус к нажатому входу после закрытия без принудительной прокрутки к другому входу. Если на доске нет карточек, верхние плюсы SHALL оставаться во всех статусах, нижние входы SHALL быть скрыты, а глобальный плюс добавления статуса SHALL оставаться доступным. Доска SHALL помещаться в доступную высоту экрана под верхней панелью; список карточек каждого статуса SHALL прокручиваться независимо, а нижний вход SHALL оставаться под списком. Если высоты недостаточно для списка минимальной удобной высоты, рабочая область доски SHALL прокручиваться, чтобы нижний вход оставался достижим прокруткой изнутри списка.
 
 #### Scenario: User creates a card after reviewing a status
-- **WHEN** a user reaches the end of a status's cards and activates its lower creation entry
-- **THEN** the card form opens for that status and closing the form returns focus to the lower button without changing existing cards
+- **WHEN** пользователь достигает конца списка карточек статуса и активирует нижний вход создания
+- **THEN** открывается существующая форма создания в этом статусе; закрытие формы возвращает фокус к нижней кнопке без изменения существующих карточек
 
 #### Scenario: User creates a card from the status header
-- **WHEN** a user activates the plus in a status header
-- **THEN** the same card form opens for that status and closing it returns focus to the header plus
-
-#### Scenario: User sees creation entries on a board with cards
-- **WHEN** at least one card exists anywhere on the board
-- **THEN** every status shows a green square plus before its action menu and a lower button after its list with the same plus and a localized visible label; each is one button and one Tab stop
-
-#### Scenario: User sees no card-creation entries on an empty board
-- **WHEN** no cards exist in any status, including when statuses exist but are empty
-- **THEN** header card-creation plus controls remain available, lower creation entries are hidden, and the global add-status plus remains available
-
-#### Scenario: User creates the first card
-- **WHEN** the user creates a card while the board contains no cards
-- **THEN** the board shows both card-creation entries in every status
-
-#### Scenario: User deletes the last card
-- **WHEN** the only remaining card on the board is deleted
-- **THEN** header card-creation plus controls remain available, lower creation entries are hidden again, and the global add-status plus remains available
-
-#### Scenario: User identifies the header action
-- **WHEN** a user hovers over or keyboard-focuses the header plus
-- **THEN** a readable localized tooltip and an equivalent accessible name identify it as the add-card action
-
-#### Scenario: User adds from the end of a long list
-- **WHEN** a user scrolls a status's long card list to its lower creation button, opens the form, and closes it after creating or canceling
-- **THEN** the lower button remains available at the bottom of the status, focus returns to it, and the board does not jump to the header
-
-#### Scenario: User creates a card using the keyboard
-- **WHEN** a user activates either creation entry with Enter or Space
-- **THEN** the form receives focus and, after save, cancel, or Escape, focus returns to the specific entry that opened it
-
-#### Scenario: User sees long status names on different screens
-- **WHEN** a board with long status names is displayed at widths of 320, 390, 1280, or 1440 px
-- **THEN** names wrap without covering the plus, count, or menu; controls remain reachable, the page has no horizontal overflow, and four statuses fit without horizontal board scrolling at desktop widths
-
-#### Scenario: User works with a long column
-- **WHEN** a status contains enough cards to exceed the available height below the application bar
-- **THEN** the board height remains bounded by the available viewport height, only that status's card list scrolls vertically, and its lower add-card button remains visible at the bottom
-
-#### Scenario: User works on a narrow viewport
-- **WHEN** the board is shown on a narrow mobile viewport or its usable height changes
-- **THEN** the board fits below the application bar, its card list remains vertically scrollable, and all status columns remain reachable through horizontal scrolling
-
-#### Scenario: Saving from either entry fails
-- **WHEN** a user opens the form from either entry, enters data, and saving fails
-- **THEN** no card appears, the form retains its values and error, and closing it returns focus to the originating entry when that entry remains available
+- **WHEN** пользователь активирует плюс в заголовке выбранного статуса
+- **THEN** открывается та же форма создания карточки в этом статусе, что и с нижней кнопки, а закрытие возвращает фокус к верхнему плюсу
 
 #### Scenario: User sees both creation entries
 - **WHEN** на доске с хотя бы одной карточкой показан пустой или заполненный статус
-- **THEN** перед меню в заголовке виден зелёный квадратный плюс; после списка виден такой же плюс с локализованной подписью, образующие одну кнопку и одну остановку Tab
+- **THEN** перед меню в заголовке виден зелёный квадратный плюс с теми же размером, символом и оформлением, что у добавления статуса, без видимой подписи; после списка виден такой же плюс с подписью «Добавить карточку» или «Add card» на выбранном языке, образующие одну кнопку и одну остановку Tab
+
+#### Scenario: User sees no lower entries on an empty board
+- **WHEN** ни в одном статусе нет карточек, включая случай, когда статусы существуют, но пусты
+- **THEN** верхние плюсы создания карточки остаются во всех статусах, нижние входы скрыты, а глобальный плюс добавления статуса остаётся доступным
+
+#### Scenario: User creates the first card
+- **WHEN** пользователь создаёт карточку на доске без карточек
+- **THEN** во всех статусах показаны оба входа создания
+
+#### Scenario: User deletes the last card
+- **WHEN** удаляется единственная оставшаяся на доске карточка, в том числе через нативного агента
+- **THEN** верхние плюсы остаются доступными, нижние входы снова скрыты, глобальный плюс добавления статуса остаётся доступным
+
+#### Scenario: User identifies the header action
+- **WHEN** пользователь наводит указатель на верхний плюс или переводит на него фокус клавиатурой
+- **THEN** доступна читаемая подсказка «Добавить карточку» или «Add card» на выбранном языке; верхняя кнопка также имеет соответствующее доступное имя для вспомогательных технологий
+
+#### Scenario: User adds from the end of a long list
+- **WHEN** пользователь прокручивает длинный список до нижней кнопки, открывает форму и закрывает её после создания или отмены
+- **THEN** нижняя кнопка остаётся доступной под списком, фокус возвращается на неё, а интерфейс не прокручивает доску к заголовку
+
+#### Scenario: User creates a card using the keyboard
+- **WHEN** пользователь переводит фокус на любой из двух входов и нажимает Enter или Space
+- **THEN** форма получает фокус; после успешного сохранения, отмены или Escape фокус возвращается на конкретную кнопку, открывшую форму
+
+#### Scenario: User sees long status names on different screens
+- **WHEN** доска с длинными названиями статусов показана на ширине 320, 390, 1280 или 1440 px
+- **THEN** названия переносятся, не перекрывая плюс, счётчик и меню; оба входа остаются доступны, зона верхней кнопки и квадратного плюса нижней кнопки составляет не менее 44 на 44 px, страница не получает горизонтальную прокрутку, а четыре статуса на 1280 и 1440 px помещаются без горизонтальной прокрутки доски
+
+#### Scenario: User works with a long column
+- **WHEN** статус содержит больше карточек, чем помещается в доступную высоту под верхней панелью
+- **THEN** высота доски остаётся ограниченной высотой окна, вертикально прокручивается только список этого статуса, а его нижняя кнопка остаётся видимой под списком
+
+#### Scenario: User works on a short or narrow viewport
+- **WHEN** доска показана на узком экране, на экране малой высоты (например 568 на 320 px) или доступная высота изменилась
+- **THEN** документ не прокручивается, верхняя панель остаётся на месте, все статусы достижимы горизонтальной прокруткой, а нижний вход виден без прокрутки, если высоты хватает на заголовок, список минимум в 5rem и нижний вход; иначе рабочая область доски прокручивается, и вход достижим прокруткой изнутри списка; вход установки приложения не перекрывает входы создания и элементы управления
+
+#### Scenario: Saving from either entry fails
+- **WHEN** пользователь открывает форму любым из двух входов, вводит данные, а сохранение не удаётся
+- **THEN** карточка не появляется, форма остаётся открытой с введёнными данными и сообщением об ошибке; после последующего закрытия фокус возвращается к исходному входу, если он остаётся доступным

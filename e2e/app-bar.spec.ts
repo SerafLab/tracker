@@ -206,5 +206,5 @@ for (const language of ['ru', 'en'] as const) test(`remeasures a renamed title a
   await page.keyboard.press('Tab')
   await expect(page.getByRole('button', {name: en ? 'Add status' : 'Добавить статус', exact: true})).toBeFocused()
   await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
-  await expect(page.getByRole('combobox')).toBeVisible()
+  await expect(page.getByRole('dialog').getByRole('combobox')).toBeVisible()
 })

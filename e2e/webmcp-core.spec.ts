@@ -188,7 +188,7 @@ test('native-contract fixture: delete_card on the open panel card closes the pan
   await expect(description).toHaveValue('Kept draft')
   await expect(panel).toBeVisible()
   await page.getByRole('form', { name: 'Поля карточки' }).getByRole('button', { name: 'Сохранить', exact: true }).click()
-  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page.locator('.card-description-preview').first()).toHaveText('Kept draft')
   expect(await host.call('delete_card', { cardId: firstId, confirm: true })).toMatchObject({ ok: true, data: { deletedId: firstId } })
   await expect(panel).toHaveCount(0)
   await expect(page).toHaveURL(new RegExp(`#project/${projectId}$`))

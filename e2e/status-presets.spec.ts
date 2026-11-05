@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { selectLanguage } from './language'
 
 const sets = {
   ru: [
@@ -60,9 +61,7 @@ test('preserves customized Russian names after switching language and creates ne
   await page.getByRole('dialog').getByRole('textbox').fill('Мой первый статус')
   await page.getByRole('dialog').getByRole('button', { name: 'Сохранить', exact: true }).click()
   const originalUrl = page.url()
-  await page.getByRole('button', { name: 'Настройки', exact: true }).click()
-  await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en')
-  await page.keyboard.press('Escape')
+  await selectLanguage(page, 'en')
   await expect(page.locator('.column-title')).toHaveText(['Мой первый статус', 'В процессе', 'Готово'])
   await page.reload()
   await expect(page.locator('.column-title')).toHaveText(['Мой первый статус', 'В процессе', 'Готово'])

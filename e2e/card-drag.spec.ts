@@ -145,7 +145,7 @@ for (const width of [320, 390, 1280, 1440]) for (const en of [false, true]) {
 
 test('uses library autoscroll to reach an offscreen empty column and a long board', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 700 }); await setup(page)
-  const scroller = page.locator('.status-columns')
+  const scroller = page.locator('[data-board-scroller]')
   await start(page, card(page, 'A1'))
   const boardBox = await scroller.boundingBox()
   await page.mouse.move(boardBox!.x + boardBox!.width - 2, boardBox!.y + 100, { steps: 12 })
@@ -160,12 +160,12 @@ test('uses library autoscroll to reach an offscreen empty column and a long boar
     await expect(page.getByRole('dialog')).toBeHidden()
   }
   await start(page, card(page, 'Both'))
-  const boardScroller = column(page, 'A').locator('.card-list')
-  const before = await boardScroller.evaluate(node => node.scrollTop), count = await writes(page)
+  // The same workspace scrolls vertically towards the end of a long status.
+  const before = await scroller.evaluate(node => node.scrollTop), count = await writes(page)
   const source = await card(page, 'Both').boundingBox()
-  const listBox = await boardScroller.boundingBox()
+  const listBox = await scroller.boundingBox()
   await page.mouse.move(source!.x + 35, listBox!.y + listBox!.height - 4, { steps: 15 })
-  await expect.poll(() => boardScroller.evaluate(node => node.scrollTop)).toBeGreaterThan(before + 100)
+  await expect.poll(() => scroller.evaluate(node => node.scrollTop)).toBeGreaterThan(before + 100)
   await page.keyboard.press('Escape'); await page.mouse.up()
   await expect(page.locator('.card-placement-marker')).toHaveCount(0)
   expect(await writes(page)).toBe(count)
@@ -188,9 +188,9 @@ test('keeps native touch swipes before hold, then drags without opening on relea
     }
     let bounds = await card(page, 'A2').boundingBox()
     await swipe(300, bounds!.y + 25, -210, 0)
-    await expect.poll(() => page.locator('.status-columns').evaluate(element => element.scrollLeft)).toBeGreaterThan(20)
-    await page.locator('.status-columns').evaluate(element => { element.scrollLeft = 0 })
-    const list = column(page, 'A').locator('.card-list')
+    const list = page.locator('[data-board-scroller]')
+    await expect.poll(() => list.evaluate(element => element.scrollLeft)).toBeGreaterThan(20)
+    await list.evaluate(element => { element.scrollLeft = 0 })
     await list.evaluate(node => { node.scrollTop = 0 })
     bounds = await card(page, 'A2').boundingBox()
     const listBox = await list.boundingBox()

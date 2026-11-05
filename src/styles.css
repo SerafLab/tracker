@@ -108,7 +108,7 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .locale-control { display: grid; gap: .5rem; font-size: .875rem; }
 .locale-control select { width: 100%; min-height: 2.75rem; padding: .375rem .5rem; background: var(--surface); }
 .locale-selector p { margin: .5rem 0 0; color: var(--danger); font-size: .75rem; line-height: 1.5; overflow-wrap: anywhere; }
-.app-shell { max-width: var(--workspace-width); min-width: 0; margin: 0 auto; padding: 1.875rem 2rem 4rem; }
+.app-shell { --shell-top: 1.875rem; max-width: var(--workspace-width); min-width: 0; margin: 0 auto; padding: var(--shell-top) 2rem 4rem; }
 .page-subtitle, .muted-copy { color: var(--text-secondary); margin: .5rem 0 0; }
 .catalogue-subtitle { margin: 0 0 1.5rem; }
 .button-row, .dialog-header, .form-actions { display: flex; align-items: center; gap: .5rem; }
@@ -169,33 +169,32 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .project-card:hover, .project-card:focus-within, .work-card:hover, .work-card:focus-within { border-color: #a5b3a7; }
 .project-open { min-width: 0; flex: 1; min-height: 2.75rem; padding: 0; border: 0; color: var(--text); background: transparent; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
 
-/* Subgrid shares the tallest header track across every status. */
+/* Subgrid shares the tallest header track across every status; the board workspace scrolls the whole grid. */
 .status-columns {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: minmax(16.25rem, 24rem);
   justify-content: start;
-  grid-template-rows: auto minmax(5rem, 1fr) auto;
+  grid-template-rows: auto 1fr;
   column-gap: 1.375rem;
-  min-width: 0;
-  min-height: 0;
-  overflow-x: auto;
-  padding: .25rem .25rem 1.5rem;
-  scroll-snap-type: x proximity;
-  scrollbar-color: #9aaa9c var(--canvas);
+  width: fit-content;
+  min-width: calc(100% + 2rem);
+  /* The scroller adds no end padding after overflowing content, so the grid carries the shell's right gutter itself. */
+  margin-right: -2rem;
+  padding: .25rem 2.25rem 1.5rem .25rem;
 }
 .status-columns:empty { display: none; }
-.status-column { display: grid; grid-template-rows: subgrid; grid-row: span 3; row-gap: 0; min-width: 0; max-width: 24rem; padding: .75rem; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--column-surface); scroll-snap-align: start; }
-.column-header { display: flex; align-items: flex-start; gap: .5rem; min-height: 4.5rem; padding: .125rem 0 .75rem; }
+.status-column { display: grid; grid-template-rows: subgrid; grid-row: span 2; row-gap: 0; min-width: 0; max-width: 24rem; padding: .75rem; border: 1px solid var(--border); border-radius: var(--radius-card); background: var(--column-surface); scroll-snap-align: start; }
+/* The header sticks to the scroller edge (sticky offsets start inside the scroller padding) while its status is in view; an opaque copy of the column surface and a constant rule keep passing cards out of sight. */
+.column-header { position: sticky; top: calc(-1 * var(--shell-top, 0px)); z-index: 2; display: flex; align-items: flex-start; gap: .5rem; min-height: 4.5rem; margin: 0 -.75rem .375rem; padding: .125rem .75rem .75rem; border-bottom: 1px solid var(--border); background: linear-gradient(var(--column-surface), var(--column-surface)), var(--canvas); }
 .column-heading { display: flex; align-items: baseline; flex: 1; gap: .5625rem; min-width: 0; }
 .column-title { margin: .375rem 0 0; font-size: .875rem; line-height: 1.3125rem; font-weight: 650; overflow-wrap: anywhere; text-wrap: pretty; }
 .card-count { position: relative; color: var(--text-muted); font-size: .75rem; line-height: 1.3125rem; font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.card-list { display: grid; align-content: start; gap: .75rem; min-height: 0; overflow-y: auto; padding: .375rem; margin: -.375rem; }
+.card-list { display: grid; align-content: start; gap: .75rem; padding: .375rem; margin: -.375rem; }
+/* Focus scrolling keeps card controls below the sticky headers; a scroller-wide padding would also move the board when a stuck header control gains focus. */
+.card-list * { scroll-margin-top: var(--status-header-height, 0px); scroll-margin-bottom: 1rem; }
 .work-card { display: grid; gap: .8125rem; min-width: 0; padding: 1.0625rem 1rem .5625rem; transition: border-color .16s ease; }
 .card-name { min-width: 0; font-size: .9375rem; font-weight: 530; line-height: 1.5; overflow-wrap: anywhere; }
-.add-card { justify-content: flex-start; width: 100%; margin: .75rem 0 0; padding: 0; border: 0; gap: .75rem; font-weight: 450; }
-.add-card-symbol { height: 2.75rem; }
-.add-card:hover .add-card-symbol, .add-card:active .add-card-symbol { background: var(--accent-hover); }
 .card-flags, .card-badges { display: flex; flex-wrap: wrap; gap: .375rem; }
 .card-flags { margin-block: 1rem; gap: 1.5rem; }
 .card-badges:empty { display: none; }
@@ -272,8 +271,9 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
   .app-bar-controls { grid-column: 2; grid-row: 1; }
   .page-title-wrap { grid-column: 1 / -1; grid-row: 2; }
   .page-title { font-size: 1.25rem; line-height: 1.3; letter-spacing: -.025em; }
-  .app-shell { padding: 1.375rem 1rem 1.5rem; }
-  .status-columns { grid-auto-columns: min(calc(100vw - 3.375rem), 20.625rem); column-gap: 1rem; margin-right: -1rem; padding-right: 1rem; }
+  .app-shell { --shell-top: 1.375rem; padding: var(--shell-top) 1rem 1.5rem; }
+  .board-alerts { padding: .75rem 1rem; }
+  .status-columns { grid-auto-columns: min(calc(100vw - 3.375rem), 20.625rem); column-gap: 1rem; min-width: calc(100% + 1rem); margin-right: -1rem; padding-right: 1rem; }
   .status-column { max-width: none; }
   .column-header { min-height: 3.875rem; }
   .work-card { padding: .9375rem .875rem .5625rem; }
@@ -329,12 +329,11 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .work-card { touch-action: auto; }
 .work-card[data-dragging] a { -webkit-touch-callout: none; }
 .board-drag-surface { min-width: 0; }
-.status-column { min-height: 0; }
 .card-placement-marker { list-style: none; min-height: 1.5rem; border: 2px dashed var(--accent); border-radius: var(--radius-control); color: var(--accent); font-size: .75rem; padding: .125rem .5rem; background: #e3ece4; }
 .drag-card-preview { width: 16rem; padding: 1rem; display: grid; gap: .5rem; box-shadow: 0 4px 24px #0003; pointer-events: none; overflow-wrap: anywhere; }
 
 /* Scroll snapping would undo the library’s small autoscroll increments. */
-.board-drag-surface[data-drag-active="true"] .status-columns { scroll-snap-type: none; }
+.board-workspace > main:has(> .board-drag-surface[data-drag-active="true"]) { scroll-snap-type: none; }
 
 .apply-status-set { max-width: 32rem; margin-top: 1.25rem; text-align: left; }
 .apply-status-set .field { max-width: 26rem; }
@@ -360,16 +359,21 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .workspace-layout > .board-workspace { display: flex; flex-direction: column; height: 100dvh; }
 .board-workspace[hidden] { display: none; }
 .board-workspace > .app-bar { flex: none; }
-.board-workspace > main { flex: 1; min-height: 0; overflow: auto; width: 100%; display: flex; flex-direction: column; }
-/* The board fills the workspace; only each card list scrolls, so lower entries stay in view. */
+/* Board errors sit between the bar and the scroller so they stay visible at any scroll position. */
+.board-alerts { flex: none; width: 100%; max-width: var(--workspace-width); margin: 0 auto; padding: 1rem 2rem .75rem; }
+.board-alerts > .save-error:last-child { margin-bottom: 0; }
+/* The workspace is the board's single scroller on both axes; status headers stick to its top edge. */
+.board-workspace > main { flex: 1; min-height: 0; overflow: auto; width: 100%; display: flex; flex-direction: column; scroll-snap-type: x proximity; scrollbar-color: #9aaa9c var(--canvas); }
 .board-workspace > main > * { flex: none; }
-.board-workspace > main > .board-drag-surface { flex: 1 1 auto; min-height: 17rem; display: flex; flex-direction: column; }
+/* Short boards still stretch their statuses to the workspace bottom; longer ones grow and scroll. */
+.board-workspace > main > .board-drag-surface { flex: 1 0 auto; display: flex; flex-direction: column; }
 .board-workspace .board-drag-surface > .status-columns { flex: 1 1 auto; }
-.workspace-with-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(22rem, 38%); grid-template-rows: auto minmax(0, 1fr); height: 100dvh; }
+.workspace-with-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(22rem, 38%); grid-template-rows: auto auto minmax(0, 1fr); height: 100dvh; }
 .workspace-with-panel > .board-workspace { display: contents; }
 .workspace-with-panel .board-workspace > .app-bar { grid-column: 1 / -1; grid-row: 1; }
-.workspace-with-panel .board-workspace > main { grid-column: 1; grid-row: 2; min-width: 0; max-width: 100%; overflow: auto; margin: 0; }
-.card-panel { grid-column: 2; grid-row: 2; overflow-y: auto; overscroll-behavior: contain; border-left: 1px solid var(--border); background: var(--workspace, #f6f5ee); }
+.workspace-with-panel .board-workspace > .board-alerts { grid-column: 1; grid-row: 2; }
+.workspace-with-panel .board-workspace > main { grid-column: 1; grid-row: 3; min-width: 0; max-width: 100%; overflow: auto; margin: 0; }
+.card-panel { grid-column: 2; grid-row: 2 / 4; overflow-y: auto; overscroll-behavior: contain; border-left: 1px solid var(--border); background: var(--workspace, #f6f5ee); }
 .card-panel .card-detail { padding: 1.25rem; }
 @media (max-width: 60rem) {
   .workspace-with-panel { display: block; height: auto; }

@@ -39,3 +39,17 @@ Panel: the existing 1280/1440 board-beside-panel tests (four columns, aligned li
 ## Remaining limits
 
 Below 20rem of available height the board stops shrinking and the workspace scrolls as a fallback. At 320 px only one column is visible, so other footers are checked by geometry, not on screen. A mobile browser bar was only emulated by resizing the viewport.
+
+## Superseded by board-unified-scroll (2026-11-05)
+
+The lower entry, the bounded board and per-list scrolling described above were replaced by the `board-unified-scroll` change. The results above are kept as history. Current behaviour and its automated checks:
+
+- The board workspace below the application bar is the only scroller, on both axes. Lists and the status grid no longer scroll on their own. `calm-board.spec.ts` covers 320×568, 390×844, 568×320, 1280×800 and 1440×900: the document stays put, every status is as tall as the longest one, headers stick right under the bar with an opaque surface and a constant rule, and cards passing under a header are hidden by it.
+- Card creation uses only the header plus. No status has a lower entry on empty or populated boards, in unit and browser tests. Creating a card while the board is scrolled (RU/EN, 390 px) keeps the scroll position, returns focus to the plus, and increments the counter.
+- Keyboard focus is never hidden under a header when moving up or down a long status at 320×568 and 1440×900. A focused control in a stuck header does not scroll the board.
+- Card and status menus close once their trigger is under a header or outside the workspace, and follow it otherwise.
+- Board errors appear in a strip between the bar and the workspace at any scroll position, including a sideways-scrolled 390 px board, and retrying leaves the scroll position unchanged.
+- The board keeps both scroll offsets after closing a panel, after an expanded page with Back, and after «Назад к доске» at 390 px. This was checked in Chromium only.
+
+Inspected screenshots: `unified-board-1280x800.png` (RU, scrolled to the end: headers stuck, short statuses full height) and `unified-board-sideways-390x844.png` (RU, last status after horizontal scroll: header stuck, plus tooltip unclipped). Also `board-alert-390.png` (RU, refresh error over a sideways-scrolled board, fully visible under the bar).
+

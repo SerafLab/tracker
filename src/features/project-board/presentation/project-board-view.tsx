@@ -104,12 +104,22 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
     const request = openCard?.id === card.id ? onRequestDestructiveAction : runImmediately
     request(() => setDeleting({ kind: 'card', id: card.id, statusId: card.statusId, name: card.name, returnFocus }))
   }, [onRequestDestructiveAction, openCard?.id])
-  const hasCards = board.statuses.some(status => status.cards.length > 0)
   const statuses = useMemo(() => board.statuses.map(({ cards: _cards, ...status }) => status), [board.statuses])
   const [deletingProject, setDeletingProject] = useState(false)
   const [creatingStatus, setCreatingStatus] = useState(false)
   const [renamingProject, setRenamingProject] = useState(false)
   const projectMenu = useRef<HTMLButtonElement>(null)
+  const showSaveError = saveError && !deletingProject
+  const firstStatusId = board.statuses[0]?.id
+  useEffect(() => {
+    // Card scroll margins keep focused cards below the sticky status headers, whose shared height follows wrapped names.
+    const scroller = root.current
+    const header = scroller?.querySelector<HTMLElement>('.column-header')
+    if (!scroller || !header || typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(() => scroller.style.setProperty('--status-header-height', `${header.offsetHeight + 8}px`))
+    observer.observe(header)
+    return () => { observer.disconnect(); scroller.style.removeProperty('--status-header-height') }
+  }, [firstStatusId])
   return <>
     <AppBar
       title={board.name}
@@ -118,10 +128,12 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
       rename={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setRenamingProject(true) }}
       deleteProject={{ disabled: busy, triggerRef: projectMenu, onSelect: () => onRequestDestructiveAction(() => setDeletingProject(true)) }}
     />
-    <main ref={root} className="app-shell">
-      {saveError && !deletingProject ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
-      {board.statuses.length === 0 ? <section inert={modalOpen} aria-hidden={modalOpen || undefined} className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p><ApplyStatusSetForm busy={busy} onApply={onApplyStatusSet} /></section> : null}
+    {showSaveError || refreshFailed ? <div className="board-alerts">
+      {showSaveError ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
       {refreshFailed ? <div className="save-error" role="alert"><p>{t('placementRefreshFailed')}</p><button className="button button-secondary" disabled={placementPending} onClick={() => void onRetryRefresh().then(saved => { if (saved) showToast(t('placementSaved')) })}>{t('retryBoardRead')}</button></div> : null}
+    </div> : null}
+    <main ref={root} className="app-shell" data-board-scroller="">
+      {board.statuses.length === 0 ? <section inert={modalOpen} aria-hidden={modalOpen || undefined} className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p><ApplyStatusSetForm busy={busy} onApply={onApplyStatusSet} /></section> : null}
       <BoardDrag board={board} disabled={busy} onPlace={moveCard}>
       <section className="status-columns" inert={busy} aria-label={t('statuses')}>
         {board.statuses.map((status, index) => <StatusColumn
@@ -133,7 +145,6 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
           recentNotes={board.recentNotes}
           saveError={saveError}
           disabled={busy}
-          showFooterCreate={hasCards}
           onDeleteStatus={requestStatusDeletion}
           onDeleteCard={requestCardDeletion}
           onMoveDialogChange={setMoveDialogCardId}
@@ -162,8 +173,6 @@ type StatusColumnProps = {
   recentNotes: BoardView['recentNotes']
   saveError: boolean
   disabled: boolean
-  /** The lower creation entry is offered only once the board has a card; the header plus is always available. */
-  showFooterCreate: boolean
   onDeleteStatus: (status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => void
   onDeleteCard: (card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => void
   onMoveDialogChange: (cardId: Id | null) => void
@@ -175,19 +184,13 @@ type StatusColumnProps = {
   onMoveCard: (cardId: Id, placement: CardPlacement, focus?: boolean) => Promise<MoveCardStateResult>
 }
 
-const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, recentNotes, saveError, disabled, showFooterCreate, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
+const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, recentNotes, saveError, disabled, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const { ref: dropRef } = useStatusDrop(status.id)
   const marker = usePlacementMarker(status)
   const menuTrigger = useRef<HTMLButtonElement>(null)
-  const headerCreateTrigger = useRef<HTMLButtonElement>(null)
-  const footerCreateTrigger = useRef<HTMLButtonElement>(null)
-  const createTrigger = useRef<HTMLButtonElement | null>(null)
-  const openCreation = (trigger: React.RefObject<HTMLButtonElement | null>) => {
-    createTrigger.current = trigger.current
-    setCreatingCard(true)
-  }
+  const createTrigger = useRef<HTMLButtonElement>(null)
   const [creatingCard, setCreatingCard] = useState(false)
   return <article ref={dropRef} className="status-column" data-status-id={status.id}>
     <header className="column-header">
@@ -195,7 +198,7 @@ const StatusColumn = memo(function StatusColumn({ projectId, status, index, tota
         <h2 className="column-title">{status.name}</h2>
         <span className="card-count"><span aria-hidden="true">{status.cards.length}</span><span className="sr-only">{t('cardCount', { count: status.cards.length })}</span></span>
       </div>
-      <button ref={headerCreateTrigger} className="button button-primary button-icon bar-hint add-card-header" aria-label={t('addCard')} data-hint={t('addCard')} onClick={() => openCreation(headerCreateTrigger)}><BoardIcon name="plus" /></button>
+      <button ref={createTrigger} className="button button-primary button-icon bar-hint add-card-header" aria-label={t('addCard')} data-hint={t('addCard')} onClick={() => setCreatingCard(true)}><BoardIcon name="plus" /></button>
       <ActionMenu triggerRef={menuTrigger} label={t('statusActions', { name: status.name })} actions={[
         { label: t('rename'), onSelect: () => setRenaming(true) },
         { label: t('moveLeft'), disabled: index === 0, onSelect: () => void onMove(status.id, -1) },
@@ -218,7 +221,6 @@ const StatusColumn = memo(function StatusColumn({ projectId, status, index, tota
       onOpen={onOpenCard}
       onMove={onMoveCard}
     /></Fragment>)}{marker === null ? <li className="card-placement-marker" aria-hidden="true">{t('placementHere')}</li> : null}</ul>
-    {showFooterCreate ? <button ref={footerCreateTrigger} className="button button-quiet add-card" onClick={() => openCreation(footerCreateTrigger)}><span className="button button-primary button-icon add-card-symbol" aria-hidden="true"><BoardIcon name="plus" /></span>{t('addCard')}</button> : null}
     {renaming ? <NameDialog title={t('renameStatus')} label={t('newName')} button={t('save')} initialName={status.name} onSubmit={name => onRename(status.id, name)} onClose={() => setRenaming(false)} /> : null}
     {creatingCard ? <CardDialog title={t('newCard')} returnFocus={createTrigger} button={t('createCard')} onSubmit={input => onCreateCard(status.id, input)} onClose={() => setCreatingCard(false)} /> : null}
   </article>

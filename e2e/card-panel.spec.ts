@@ -156,8 +156,8 @@ test('a card link opened in a new tab is a page and returns explicitly to its pr
 for (const width of [390, 1440]) test(`preserves the board scroll container when opening, expanding and closing a later card at ${width}px`, async ({ page }) => {
   await page.setViewportSize({ width, height: 900 }); await seededBoard(page)
   const card = page.locator('.card-detail-link[href$="/card/panel-card-18"]')
-  // The bounded board scrolls inside the card's list, which must survive opening, expanding and closing.
-  const main = page.locator('.card-list').filter({ has: card }), columns = page.locator('.status-columns')
+  // The whole board scrolls in its workspace, whose position must survive opening, expanding and closing.
+  const main = page.locator('[data-board-scroller]'), columns = page.locator('.status-columns')
   await card.scrollIntoViewIfNeeded()
   const before = await main.evaluate(node => node.scrollTop)
   expect(before).toBeGreaterThan(500)

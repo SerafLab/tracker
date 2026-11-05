@@ -171,7 +171,7 @@ test.describe('first-visit installation invitation', () => {
     await expect(page.getByRole('button', { name: 'Создать проект' })).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('button', { name: 'Настройки' }).click()
-    await page.getByRole('button', { name: 'Где хранятся проекты' }).click()
+    await page.getByRole('menuitem', { name: 'Где хранятся проекты' }).click()
     await expect(page.getByRole('dialog', { name: 'Где хранятся проекты' })).toContainText('не синхронизируются')
   })
 })

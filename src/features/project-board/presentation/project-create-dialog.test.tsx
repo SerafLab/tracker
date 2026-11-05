@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createRef } from 'react'
@@ -102,7 +102,7 @@ it('closes a committed creation after navigation fails without offering another 
     await user.type(screen.getByRole('textbox'), 'Saved project')
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Создать проект' }))
     expect(await screen.findByRole('button', { name: 'Saved project' })).toBeInTheDocument()
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(create).toHaveBeenCalledOnce()
     expect(saved).toHaveBeenCalledOnce()
     expect(await repo.projects()).toHaveLength(1)

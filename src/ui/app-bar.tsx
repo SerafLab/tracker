@@ -7,7 +7,9 @@ import { TruncatedText } from './truncated-text'
 
 type BarAction = { disabled?: boolean; label: string; onSelect: () => void; triggerRef: RefObject<HTMLButtonElement | null> }
 
-export function AppBar({ title, context, onReturn, creation, rename, deleteProject }: { title?: string; context?: { project: string; status: string }; onReturn?: () => void; creation?: BarAction; rename?: Omit<BarAction, 'label'>; deleteProject?: Omit<BarAction, 'label'> }) {
+type AppBarProps = ({ title: string; context?: never } | { title?: never; context: { project: string; status: string } }) & { onReturn?: () => void; creation?: BarAction; rename?: Omit<BarAction, 'label'>; deleteProject?: Omit<BarAction, 'label'> }
+
+export function AppBar({ title, context, onReturn, creation, rename, deleteProject }: AppBarProps) {
   const { t } = useTranslation()
   const modalOpen = useModalOpen()
   const settingsEntry = useContext(SettingsEntryContext)

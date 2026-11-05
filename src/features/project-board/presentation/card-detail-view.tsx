@@ -73,11 +73,16 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   useLayoutEffect(() => {
     if (!editRequest || editRequest.cardId !== details.card.id || handledRequest.current === editRequest.seq) return
     handledRequest.current = editRequest.seq
-    if (editRequest.edit) setEditing(true)
+    setEditing(editRequest.edit)
+    // An already open editor does not re-run the mode effect; move focus here.
+    if (editRequest.edit) nameInput.current?.focus({ preventScroll: true })
   }, [editRequest, details.card.id])
   useLayoutEffect(() => {
     if (!editedBefore.current) { editedBefore.current = true; return }
-    ;(editing ? nameInput.current : editButton.current)?.focus({ preventScroll: true })
+    const target = editing ? nameInput.current : editButton.current
+    // A disabled target (busy refresh) cannot take focus; keep it inside the details.
+    if (target && !target.disabled) target.focus({ preventScroll: true })
+    else main.current?.focus({ preventScroll: true })
   }, [editing])
 
   const saveFields = async () => {

@@ -122,6 +122,25 @@ it('validates basic fields, clears descriptions and retains independent note dra
   expect((await repo.cardDetails('p', 'c'))!.card.description).toBe('')
 })
 
+it('keeps focus inside the details when the pencil is disabled after a successful save', async () => {
+  const details: CardDetails = {
+    project: { id: 'p', name: 'Project', createdAt: '2026-11-01T00:00:00Z' },
+    status: { id: 's', projectId: 'p', name: 'Status', position: 0 },
+    card: { id: 'c', statusId: 's', name: 'Card', description: '', important: false, urgent: false, position: 0 },
+    notes: [],
+  }
+  const props = { details, busy: false, onReturn: vi.fn(), onCatalogue: vi.fn(), onCreateNote: vi.fn(), onUpdateNote: vi.fn(), onDeleteNote: vi.fn(), registerDraftGuard: vi.fn(), requestLeave: vi.fn() }
+  // The save is written, but the follow-up read fails and makes the details busy.
+  const onSave = vi.fn(async () => { rerender(<LocaleProvider><CardDetailView {...props} onSave={onSave} busy /></LocaleProvider>); return true })
+  const { rerender } = render(<LocaleProvider><CardDetailView {...props} onSave={onSave} /></LocaleProvider>)
+  const user = userEvent.setup()
+  const form = await fields(user)
+  await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  const pencilButton = await pencil()
+  expect(pencilButton).toBeDisabled()
+  await waitFor(() => expect(document.querySelector('.card-detail')).toHaveFocus())
+})
+
 it('creates, edits without a no-op date, refuses blank notes, confirms deletion and restores focus', async () => {
   const { repo, user } = await setup(); await pencil()
   let note = await editor(user)

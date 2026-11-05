@@ -101,7 +101,6 @@ a { text-underline-offset: .2em; }
 .app-bar-context-project { flex: 0 1 auto; }
 .app-bar-context-status { flex: 0 100 auto; min-width: 3.5rem; color: var(--text-secondary); font-weight: 500; }
 .app-bar-context-text { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.app-bar-context-text:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .app-bar-context-separator { flex: none; color: var(--text-secondary); }
 .app-bar-controls { display: flex; align-items: center; gap: .5rem; min-width: 0; }
 button.app-brand { border: 0; padding: 0; background: transparent; color: inherit; min-height: 44px; }

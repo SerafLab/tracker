@@ -1,4 +1,18 @@
 #!/usr/bin/env sh
 set -eu
 
+# Git passes "<local ref> <local sha> <remote ref> <remote sha>" per pushed ref.
+# A deletion has an all-zero local sha. Skip the check only when every ref is a deletion.
+deletes_only=false
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  case "$local_sha" in
+    *[!0]*) deletes_only=false; break ;;
+    *) deletes_only=true ;;
+  esac
+done
+
+if [ "$deletes_only" = true ]; then
+  exit 0
+fi
+
 npm run check

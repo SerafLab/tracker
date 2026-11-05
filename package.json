@@ -17,7 +17,8 @@
     "test": "vitest",
     "test:run": "vitest --run",
     "test:e2e": "npm run build && playwright test",
-    "test:production": "npm run build && vitest --run"
+    "test:production": "npm run build && vitest --run",
+    "fixtures:backup": "node scripts/backup-fixtures.mjs"
   },
   "dependencies": {
     "@dnd-kit/collision": "0.5.3",

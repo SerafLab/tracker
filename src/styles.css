@@ -329,6 +329,7 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .card-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; min-width: 0; }
 .card-heading .card-name { flex: 1; min-width: 0; }
 .card-heading .menu { flex-shrink: 0; position: relative; z-index: 1; }
+.card-heading .menu .button-icon { align-items: flex-start; padding-top: .0625rem; }
 .work-card { touch-action: auto; }
 .work-card[data-dragging] a { -webkit-touch-callout: none; }
 .board-drag-surface { min-width: 0; }

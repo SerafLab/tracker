@@ -175,9 +175,10 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
       {details.card.description ? <section className="saved-description surface-card" aria-label={t('savedDescription')}><h2>{t('savedDescription')}</h2><PlainText text={details.card.description} /></section> : null}
       <section ref={history} className="note-history" aria-label={t('noteHistory')}><h2>{t('noteHistory')}</h2>
         {details.notes.length === 0 ? <p className="muted-copy">{t('noNotes')}</p> : <ol className="note-list">{details.notes.map(note => <li className="note surface-card" key={note.id} data-note-id={note.id}>
-          <p className="note-date"><time dateTime={note.createdAt}>{date(note.createdAt)}</time>{note.updatedAt ? <> · {t('noteEdited')} <time dateTime={note.updatedAt}>{date(note.updatedAt)}</time></> : null}</p>
+          <div className="note-header"><p className="note-date"><time dateTime={note.createdAt}>{date(note.createdAt)}</time>{note.updatedAt ? <> · {t('noteEdited')} <time dateTime={note.updatedAt}>{date(note.updatedAt)}</time></> : null}</p>
+            <div className="note-actions"><button className="button button-quiet button-icon" aria-label={t('editNote')} disabled={saving || busy} onClick={() => openEditor(note)}><BoardIcon name="edit" /></button><button className="button button-quiet button-icon" aria-label={t('deleteNote')} disabled={saving || busy} onClick={event => { deletionFocus.current = null; deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}><BoardIcon name="delete" /></button></div>
+          </div>
           {editor?.id === note.id ? noteEditor : <PlainText text={note.text} />}
-          <div className="note-actions"><button className="button button-quiet button-icon" aria-label={t('editNote')} disabled={saving || busy} onClick={() => openEditor(note)}><BoardIcon name="edit" /></button><button className="button button-quiet button-icon" aria-label={t('deleteNote')} disabled={saving || busy} onClick={event => { deletionFocus.current = null; deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}><BoardIcon name="delete" /></button></div>
         </li>)}</ol>}
         {editor && editor.id === null ? noteEditor : <button ref={addTrigger} className="button button-secondary" disabled={saving || busy} onClick={() => openEditor()}>{t('addNote')}</button>}
       </section>

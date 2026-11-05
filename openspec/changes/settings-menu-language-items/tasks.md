@@ -2,7 +2,7 @@
 
 ## 1. Shared menu keyboard helper
 
-- [ ] 1.1 Extract the card menu's wrapping Arrow Up/Down focus logic into one helper in `src/ui/` that selects items by `menuitem` roles and skips disabled ones, and switch `controls.tsx` to it. Verify that existing card-menu unit and e2e tests (`card-moves`, `deletion`) pass unchanged.
+- [x] 1.1 Extract the card menu's wrapping Arrow Up/Down focus logic into one helper in `src/ui/` that selects items by `menuitem` roles and skips disabled ones, and switch `controls.tsx` to it. Verify that existing card-menu unit and e2e tests (`card-moves`, `deletion`) pass unchanged.
 
 ## 2. Language menu group
 

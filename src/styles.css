@@ -356,6 +356,9 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .detail-fields .card-flags { margin: 0; }
 .detail-fields .form-actions { margin: 0; }
 .note-history h2 { font-size: 1.125rem; margin-top: 0; }
+.note-history-header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .75rem; }
+.note-history-header h2 { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.note-history-header .ui-icon { width: 1rem; height: 1rem; }
 .detail-text { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.6; }
 .detail-text a { color: var(--accent); }
 .note-history { margin-block: 2rem; }

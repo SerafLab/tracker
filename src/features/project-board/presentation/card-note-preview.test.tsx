@@ -4,11 +4,12 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { App } from '../../../app/app'
 import { ProjectBoardDatabase } from '../infrastructure/indexeddb/database'
 import { DexieProjectBoardRepository } from '../infrastructure/indexeddb/dexie-project-board-repository'
+import { noteOrderStorageKey } from './note-order'
 
 vi.mock('virtual:pwa-register/react', () => ({ useRegisterSW: () => ({ needRefresh: [false, vi.fn()], offlineReady: [false, vi.fn()], updateServiceWorker: vi.fn() }) }))
 
 const databases: ProjectBoardDatabase[] = []
-afterEach(async () => { cleanup(); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(db => db.delete())) })
+afterEach(async () => { cleanup(); localStorage.removeItem(noteOrderStorageKey); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(db => db.delete())) })
 
 async function setup(noteTexts: string[] = []) {
   const db = new ProjectBoardDatabase(`preview-${crypto.randomUUID()}`); databases.push(db)
@@ -43,13 +44,13 @@ it('shows one long multi-line note as plain text with an unlinked URL and no tog
   expect(within(card()).getByText('Описание карточки')).toBeInTheDocument()
 })
 
-it('expands four notes in creation order without repeating the last, and collapses again', async () => {
+it('expands four notes newest first by default without repeating the last, and collapses again', async () => {
   const { user } = await setup(['one', 'two', 'three', 'four'])
   expect(shown()).toEqual(['four'])
   expect(toggle()).toHaveAttribute('aria-expanded', 'false')
   await user.click(toggle()!)
   expect(toggle()).toHaveAttribute('aria-expanded', 'true')
-  expect(shown()).toEqual(['one', 'two', 'three', 'four'])
+  expect(shown()).toEqual(['four', 'three', 'two', 'one'])
   expect(toggle()).toHaveAttribute('aria-controls', card().querySelector('.card-note-list')!.id)
   expect(location.hash).toBe('#project/p')
   await user.click(toggle()!)
@@ -60,14 +61,34 @@ it('expands four notes in creation order without repeating the last, and collaps
 it('shows only the five newest of six notes when expanded', async () => {
   const { user } = await setup(['1', '2', '3', '4', '5', '6'])
   await user.click(toggle()!)
-  expect(shown()).toEqual(['2', '3', '4', '5', '6'])
+  expect(shown()).toEqual(['6', '5', '4', '3', '2'])
+})
+
+it('expands notes oldest first when that order is stored, keeping the newest when collapsed', async () => {
+  localStorage.setItem(noteOrderStorageKey, 'oldest')
+  const { user } = await setup(['one', 'two', 'three'])
+  expect(shown()).toEqual(['three'])
+  await user.click(toggle()!)
+  expect(shown()).toEqual(['one', 'two', 'three'])
+})
+
+it('reorders expanded board notes as soon as the order changes in the open card panel', async () => {
+  const { user } = await setup(['one', 'two', 'three'])
+  await user.click(toggle()!)
+  expect(shown()).toEqual(['three', 'two', 'one'])
+  await user.click(screen.getByRole('link', { name: 'Card' }))
+  const panel = await screen.findByRole('region', { name: 'Подробности карточки' })
+  await user.click(within(panel).getByRole('button', { name: 'Порядок заметок: сначала новые' }))
+  await within(panel).findByRole('button', { name: 'Порядок заметок: сначала старые' })
+  expect(shown()).toEqual(['one', 'two', 'three'])
+  expect(localStorage.getItem(noteOrderStorageKey)).toBe('oldest')
 })
 
 it('toggles by keyboard without opening the card or the actions menu', async () => {
   const { user } = await setup(['old', 'new'])
   toggle()!.focus()
   await user.keyboard('{Enter}')
-  expect(shown()).toEqual(['old', 'new'])
+  expect(shown()).toEqual(['new', 'old'])
   await user.keyboard(' ')
   expect(shown()).toEqual(['new'])
   expect(location.hash).toBe('#project/p')
@@ -91,7 +112,7 @@ it('reflects only confirmed note add, edit and delete after the board snapshot r
   await waitFor(() => expect(shown()).toEqual(['Unsaved text']))
   expect(toggle()).not.toBeNull()
   await user.click(toggle()!)
-  expect(shown()).toEqual(['old', 'newest', 'Unsaved text'])
+  expect(shown()).toEqual(['Unsaved text', 'newest', 'old'])
 })
 
 it('keeps the local expand toggle enabled and focused while a board write is pending', async () => {

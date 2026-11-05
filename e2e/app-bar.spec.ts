@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
 for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] as const) {
   test(`shares app bar controls in ${language} at ${width}px`, async ({ page }, testInfo) => {
@@ -208,3 +208,60 @@ for (const language of ['ru', 'en'] as const) test(`remeasures a renamed title a
   await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
   await expect(page.getByRole('combobox', {name: en ? 'Application language' : 'Язык приложения'})).toBeVisible()
 })
+
+async function seedCardPage(page: Page, en: boolean, project: string, status: string) {
+  await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('textbox').fill(project)
+  await dialog.getByRole('combobox', { name: en ? 'Status set' : 'Набор статусов' }).selectOption('empty')
+  await dialog.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
+  await page.getByRole('button', { name: en ? 'Add status' : 'Добавить статус', exact: true }).click()
+  await dialog.getByRole('textbox').fill(status)
+  await dialog.getByRole('button', { name: en ? 'Create status' : 'Создать статус', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  await page.locator('.status-column .add-card-header').click()
+  await dialog.getByRole('textbox').fill('Context card')
+  await dialog.getByRole('button', { name: en ? 'Create card' : 'Создать карточку', exact: true }).click()
+  await expect(dialog).toBeHidden()
+  await page.getByRole('link', { name: 'Context card', exact: true }).click()
+  await page.getByRole('button', { name: en ? 'Open full page' : 'Открыть на всю страницу', exact: true }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Context card', exact: true })).toBeVisible()
+}
+
+for (const width of [320, 1280]) for (const en of [false, true]) {
+  test(`Card page has a long project and status in ${en ? 'en' : 'ru'} at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 740 })
+    await page.goto('/tracker/')
+    if (en) { await page.getByRole('button', { name: 'Настройки' }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+    await seedCardPage(page, en, 'Short', 'Todo')
+    const bar = page.locator('.card-page .app-bar')
+    await expect(bar.locator('h1')).toHaveCount(0)
+    await expect(bar).toContainText('Short›Todo')
+    await expect(bar.locator('.app-bar-context-text[tabindex]')).toHaveCount(0)
+    const shortHeight = await bar.evaluate(element => element.getBoundingClientRect().height)
+    await page.getByRole('button', { name: /^EasyTrack —/ }).click()
+    const project = 'ОченьДлинноеИмяПроектаБезПробелов'.repeat(6), status = 'ОченьДлинныйСтатусБезПробелов'.repeat(6)
+    await seedCardPage(page, en, project, status)
+    await expect(bar.locator('.app-bar-context-text[tabindex="0"]')).toHaveCount(2)
+    expect(await bar.evaluate(element => element.getBoundingClientRect().height)).toBeCloseTo(shortHeight, 0)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    const parts = bar.locator('.app-bar-context-text')
+    const geometry = await bar.locator('.app-bar-context').evaluate(element => {
+      const [first, second] = Array.from(element.querySelectorAll('.app-bar-context-text')).map(node => node.getBoundingClientRect())
+      const line = parseFloat(getComputedStyle(element.querySelector('.app-bar-context-text')!).lineHeight)
+      return { oneLine: first.height <= line + 1 && second.height <= line + 1, separator: element.querySelector('.app-bar-context-separator')!.getBoundingClientRect().width, firstWidth: first.width, secondWidth: second.width, inside: second.right <= element.getBoundingClientRect().right + 1 }
+    })
+    expect(geometry).toMatchObject({ oneLine: true, inside: true })
+    expect(geometry.separator).toBeGreaterThan(0); expect(geometry.firstWidth).toBeGreaterThan(geometry.secondWidth); expect(geometry.secondWidth).toBeGreaterThan(20)
+    const hint = bar.locator('.page-title-hint')
+    for (const [index, text] of [project, status].entries()) {
+      await parts.nth(index).hover()
+      await expect(hint.filter({ hasText: text })).toBeVisible()
+      await page.mouse.move(0, 400)
+      await expect(hint.filter({ hasText: text })).toBeHidden()
+      await parts.nth(index).focus()
+      await expect(hint.filter({ hasText: text })).toBeVisible()
+      expect(await hint.filter({ hasText: text }).evaluate(element => { const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth })).toBe(true)
+    }
+  })
+}

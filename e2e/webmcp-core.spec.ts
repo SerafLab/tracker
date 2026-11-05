@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { enterEdit, saveEdit } from './card-helpers'
 import { dismissedInstallInvitation } from './storage-state'
 
 // A deterministic host contract fixture, NOT proof of native WebMCP availability.
@@ -59,8 +60,9 @@ for (const locale of ['ru', 'en']) test(`native-contract fixture covers every ta
   expect(card).toMatchObject({ description: '', important: false, urgent: false })
   await expect(page.locator('.card-name').filter({ hasText: 'Source' })).toBeVisible()
   await page.getByRole('link', { name: 'Source', exact: true }).click()
-  await page.getByLabel(locale === 'en' ? 'Card description' : 'Описание карточки').fill('Saved detailed text')
-  await page.getByRole('button', { name: locale === 'en' ? 'Save' : 'Сохранить', exact: true }).click()
+  const form = await enterEdit(page, locale === 'en')
+  await form.getByLabel(locale === 'en' ? 'Card description' : 'Описание карточки').fill('Saved detailed text')
+  await saveEdit(page, form, locale === 'en')
   await page.getByRole('button', { name: locale === 'en' ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await page.getByLabel(locale === 'en' ? 'New note' : 'Новая заметка').fill('Personal note')
   await page.getByRole('button', { name: locale === 'en' ? 'Add note' : 'Добавить заметку', exact: true }).click()
@@ -113,6 +115,7 @@ test('native-contract fixture protects dirty drafts, retains mounted editor on r
   const cardId = (await host.call('create_card', { statusId, name: 'Card' })).data.card.id
   await host.call('show_workspace', { projectId })
   await page.getByRole('link', { name: 'Card', exact: true }).click()
+  await enterEdit(page)
   const description = page.getByLabel('Описание карточки')
   await description.fill('Dirty description')
   await page.getByRole('button', { name: 'Добавить заметку', exact: true }).click()
@@ -191,12 +194,13 @@ test('native-contract fixture: delete_card on the open panel card closes the pan
   await page.getByRole('link', { name: 'First', exact: true }).click()
   const panel = page.locator('.card-panel')
   await expect(panel).toBeVisible()
+  await enterEdit(page)
   const description = page.getByLabel('Описание карточки')
   await description.fill('Kept draft')
   expect((await host.call('delete_card', { cardId: firstId, confirm: true })).error.code).toBe('conflict')
   await expect(description).toHaveValue('Kept draft')
   await expect(panel).toBeVisible()
-  await page.getByRole('form', { name: 'Поля карточки' }).getByRole('button', { name: 'Сохранить', exact: true }).click()
+  await page.getByRole('form', { name: 'Редактировать основное' }).getByRole('button', { name: 'Сохранить', exact: true }).click()
   await expect(page.locator('.card-description-preview').first()).toHaveText('Kept draft')
   expect(await host.call('delete_card', { cardId: firstId, confirm: true })).toMatchObject({ ok: true, data: { deletedId: firstId } })
   await expect(panel).toHaveCount(0)

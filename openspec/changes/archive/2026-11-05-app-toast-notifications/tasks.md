@@ -37,7 +37,7 @@
 ## 4. Integration
 
 - [x] 4.1 Run `npm run check` and confirm it passes in full.
-- [ ] 4.2 Manual check in RU and EN at 320, 390 and 1280 px:
+- [x] 4.2 Manual check in RU and EN at 320, 390 and 1280 px:
   - after a drop or a menu move, the toast appears at the bottom centre without shifting the board;
   - taps beneath it reach cards and «Добавить карточку»;
   - it disappears after about 4 s;

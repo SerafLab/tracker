@@ -49,7 +49,7 @@ The lower entry, the bounded board and per-list scrolling described above were r
 - Keyboard focus is never hidden under a header when moving up or down a long status at 320×568 and 1440×900. A focused control in a stuck header does not scroll the board.
 - Card and status menus close once their trigger is under a header or outside the workspace, and follow it otherwise.
 - Board errors appear in a strip between the bar and the workspace at any scroll position, including a sideways-scrolled 390 px board, and retrying leaves the scroll position unchanged.
-- The board keeps both scroll offsets after closing a panel, after an expanded page with Back, and after «Назад к доске» at 390 px. This was checked in Chromium only.
+- The board keeps both scroll offsets after closing a panel, after an expanded page with Back, and after «Назад к доске» at 390 px. This was checked automatically in Chromium. Playwright WebKit could not start in the agent sandbox; the user accepted the Safari/WebKit check on 2026-11-05.
 
 Inspected screenshots: `unified-board-1280x800.png` (RU, scrolled to the end: headers stuck, short statuses full height) and `unified-board-sideways-390x844.png` (RU, last status after horizontal scroll: header stuck, plus tooltip unclipped). Also `board-alert-390.png` (RU, refresh error over a sideways-scrolled board, fully visible under the bar).
 

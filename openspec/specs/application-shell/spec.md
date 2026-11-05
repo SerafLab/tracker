@@ -57,7 +57,7 @@ The application bar SHALL show an icon-only plus for project creation in the cat
 - **THEN** доступны закрытие панели и «Открыть на всю страницу», а действия доски и бренд проходят через защиту черновиков при уходе с карточки
 
 ### Requirement: Responsive application bar presentation
-The application bar SHALL be a visually distinct, full-width light surface with a bottom boundary and content aligned with the main content width. In the catalogue, on the full card page and in service states it SHALL scroll with the document. On a project board, with or without an open card panel, the board workspace SHALL be bounded by the available viewport height below the application bar, using the dynamic viewport height on mobile browsers; the application bar SHALL remain at the top while the board content scrolls inside the workspace, and the page itself SHALL not scroll. At a 320 px viewport, the brand, heading, settings gear and creation plus when applicable SHALL remain visible and operable without horizontal page overflow or hiding the plus in a menu.
+The application bar SHALL be a visually distinct, full-width light surface with a bottom boundary and content aligned with the main content width. In the catalogue, on the full card page and in service states it SHALL scroll with the document. On a project board, with or without an open card panel, the board workspace SHALL be bounded by the available viewport height below the application bar, using the dynamic viewport height on mobile browsers; the application bar SHALL remain at the top while the whole board scrolls inside the workspace vertically and horizontally, and the page itself SHALL not scroll. At a 320 px viewport, the brand, heading, settings gear and creation plus when applicable SHALL remain visible and operable without horizontal page overflow or hiding the plus in a menu.
 
 #### Scenario: User works on a narrow screen
 - **WHEN** the catalogue or board is viewed at a width of 320 or 390 px
@@ -72,8 +72,8 @@ The application bar SHALL be a visually distinct, full-width light surface with 
 - **THEN** the application bar moves with the document rather than remaining fixed above the content
 
 #### Scenario: User scrolls a board
-- **WHEN** the user scrolls a board's content vertically, with or without an open card panel, at 320, 390, 1280 or 1440 px
-- **THEN** the board workspace scrolls inside the viewport-bounded area, the application bar stays at the top of the viewport, and the document itself does not scroll
+- **WHEN** the user scrolls a board's content vertically or horizontally, with or without an open card panel, at 320, 390, 1280 or 1440 px
+- **THEN** every status scrolls together inside the viewport-bounded workspace, the application bar stays at the top of the viewport in full on every width, and the document itself does not scroll
 
 ### Requirement: Calm application bar hierarchy
 The system SHALL retain a warm light application bar with a restrained green creation plus and a visually secondary settings gear. The heading SHALL remain the single primary heading. Every application-bar heading SHALL occupy one line; text that exceeds the available width SHALL end with an ellipsis without changing the bar height, hiding controls, or causing page-level horizontal overflow. The complete heading SHALL remain available to assistive technology and, when truncated, in a hint on pointer hover or keyboard focus. The same visual tokens SHALL apply to service screens.

@@ -21,7 +21,7 @@ afterEach(cleanup)
 
 it('isolates board dialogs, column dialogs and a card move dialog from unchanged cards and columns', async () => {
   const board: BoardView = {
-    id: 'p', name: 'Project', createdAt: 'now', recentNotes: {},
+    id: 'p', name: 'Project', createdAt: 'now', previewNotes: {},
     statuses: ['A', 'B'].map((name, position) => ({
       id: name, name, projectId: 'p', position,
       cards: [{ id: `card-${name}`, statusId: name, name: `Card ${name}`, position: 0, description: '', important: false, urgent: false }],

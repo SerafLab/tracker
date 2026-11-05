@@ -3,7 +3,7 @@ import { CommandError } from '../application/agent-command'
 import { createProjectBoardStore } from './project-board-store'
 import type { ProjectBoardUseCases } from '../application/use-cases'
 
-const board = { id: 'project', name: 'Поиск квартиры', createdAt: 'now', statuses: [], recentNotes: {} }
+const board = { id: 'project', name: 'Поиск квартиры', createdAt: 'now', statuses: [], previewNotes: {} }
 function useCases(overrides: Partial<ProjectBoardUseCases> = {}): ProjectBoardUseCases {
   return {
     executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
@@ -287,7 +287,7 @@ it('refreshes board previews after confirmed note add, edit and delete, and keep
   const api = useCases({ cardDetails: vi.fn().mockResolvedValue(details), createNote: vi.fn().mockResolvedValue(note), updateNote: vi.fn().mockResolvedValue({ ...note, text: 'Edited' }), deleteNote: vi.fn().mockResolvedValue(undefined) })
   const store = createProjectBoardStore(api); await store.getState().showCard(board.id, 'c', true)
   vi.mocked(api.boardView).mockClear()
-  const refreshed = { ...board, recentNotes: { c: [note] } }
+  const refreshed = { ...board, previewNotes: { c: [note] } }
   vi.mocked(api.boardView).mockResolvedValue(refreshed)
   await store.getState().createNote(board.id, 'c', 'New')
   expect(store.getState().boardSnapshot).toEqual(refreshed)

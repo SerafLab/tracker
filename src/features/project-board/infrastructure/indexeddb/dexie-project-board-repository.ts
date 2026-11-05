@@ -169,12 +169,14 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
     return this.db.transaction('r', this.db.projects, this.db.statuses, this.db.cards, this.db.notes, async () => {
       const board = await this.board(projectId)
       if (!board) return undefined
-      const recentNotes: Record<Id, Note[]> = {}
+      const previewNotes: Record<Id, Note[]> = {}
       await Promise.all(board.statuses.flatMap(status => status.cards).map(async card => {
-        const notes = await this.db.notes.where('[cardId+createdAt]').between([card.id, Dexie.minKey], [card.id, Dexie.maxKey]).reverse().limit(RECENT_NOTE_LIMIT).toArray()
-        if (notes.length) recentNotes[card.id] = notes.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+        const history = () => this.db.notes.where('[cardId+createdAt]').between([card.id, Dexie.minKey], [card.id, Dexie.maxKey])
+        const [oldest, newest] = await Promise.all([history().limit(RECENT_NOTE_LIMIT).toArray(), history().reverse().limit(RECENT_NOTE_LIMIT).toArray()])
+        const notes = [...new Map([...oldest, ...newest].map(note => [note.id, note])).values()]
+        if (notes.length) previewNotes[card.id] = notes.sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
       }))
-      return { ...board, recentNotes }
+      return { ...board, previewNotes }
     })
   }
 

@@ -119,3 +119,22 @@
 ## Card panel
 
 Check panel, page and confirmed board-description preview in RU/EN at 320/390/1280 px. On narrow screens the panel fills the screen, Tab/Shift+Tab cycle within it, and board and update controls are inert; nested draft/deletion confirmations remain reachable. On desktop the board stays interactive beside the panel, with independent scrolling and distinguishable region names. Open a card well down a long board and check that the same board-main scroll container retains its position during panel open, page expansion, Back and close. Check A → B → C → Back restores the board and focus to C without resetting scroll. Enter fields and a note, expand, and verify both drafts survive without a guard dialog. Save then Back to the panel. Direct/new-tab/reloaded addresses open a page; the board-return action has an arrow and project name before the form. Verify description previews never show drafts, note edit/delete icons retain accessible names, and destructive board actions ask the draft guard before confirmation. Native unload uses the browser warning; a forced stale-DB restart cannot guarantee draft persistence or write through the closed connection.
+
+## Уведомления
+
+Проверять RU/EN на 320, 390 и 1280 px.
+
+| ID | Действие | Ожидаемый результат |
+| --- | --- | --- |
+| N-01 | Перенести карточку перетаскиванием и через меню. | Внизу по центру появляется «Расположение карточки сохранено.», колонки не смещаются, примерно через 4 с уведомление исчезает. Строки статуса над доской нет. |
+| N-02 | Нажать на карточку или «Добавить карточку» под уведомлением. | Нажатие проходит к элементу под уведомлением. |
+| N-03 | Показать предложение обновления и перенести карточку. | Временное уведомление встаёт прямо над предложением; после его исчезновения предложение не двигается, «Обновить» и «Позже» доступны. |
+| N-04 | Открыть диалог или панель карточки на узком экране при видимом предложении обновления. | Tab не попадает в «Обновить»/«Позже», скринридер их не видит; после закрытия они снова доступны. |
+| N-05 | VoiceOver: дважды подряд переставить карточку через меню. | Оба одинаковых результата объявляются; фокус остаётся на меню карточки. |
+
+Результат 2026-11-05 (агент, Chromium):
+
+- N-01: снимки e2e `card-drag-ru-320` и `card-drag-en-1280` после переноса через меню и drop — уведомление внизу по центру, внутри экрана; e2e на 320/390/1280/1440 RU/EN подтверждает неизменный верх `.status-columns`, центрирование и `pointer-events: none`. Исчезновение через 4000 мс — юнит-тест.
+- N-03: снимки стопки на 390 и 1280 px (RU) и всех четырёх значений `placement` на 1280 px — временное над постоянным, без наложения; `top-center` перекрывает app bar, этот вариант сейчас не используется.
+- N-02 и N-04: подтверждены автоматическими тестами (`pointer-events`, `inert`/`aria-hidden`, Tab внутри диалога), вручную не проходились.
+- N-05: проверено пользователем в VoiceOver на macOS 2026-11-05 — оба одинаковых результата объявлены.

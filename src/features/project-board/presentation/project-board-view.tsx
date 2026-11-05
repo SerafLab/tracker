@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { Card, CardPlacement, CardInput, Id, ProjectBoard, BoardView, Status } from '../domain/model'
 import { useModalOpen } from '../../../ui/modal-state'
 import { AppBar } from '../../../ui/app-bar'
+import { useToast } from '../../../ui/notifications'
 import { CardView } from './card-view'
 import { BoardDrag, usePlacementMarker, useStatusDrop } from './board-drag'
 import { BoardIcon } from './board-icon'
@@ -81,7 +82,7 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
     return 'deleted' as const
   }
   const [moveFocus, setMoveFocus] = useState<Id | null>(null)
-  const [notice, setNotice] = useState<string>('')
+  const { showToast } = useToast()
   useEffect(() => {
     if (!moveFocus || busy) return
     const card = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find(item => item.dataset.cardId === moveFocus)
@@ -90,10 +91,11 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
   }, [moveFocus, busy])
   const moveCard = useCallback(async (cardId: Id, placement: CardPlacement, focus = false) => {
     const result = await onMoveCard(cardId, placement)
-    setNotice(t(result === 'saved' ? 'placementSaved' : result === 'unchanged' ? 'placementUnchanged' : result === 'refresh-failed' ? 'placementRefreshFailed' : 'saveError'))
+    // Failures stay on the board as the save-error and refresh-failed alerts.
+    if (result === 'saved' || result === 'unchanged') showToast(t(result === 'saved' ? 'placementSaved' : 'placementUnchanged'))
     if (focus) setMoveFocus(cardId)
     return result
-  }, [onMoveCard, t])
+  }, [onMoveCard, showToast, t])
   const requestStatusDeletion = useCallback((status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => {
     const request = openCard?.statusId === status.id ? onRequestDestructiveAction : runImmediately
     request(() => setDeleting({ kind: 'status', id: status.id, statusId: status.id, name: status.name, returnFocus }))
@@ -119,8 +121,7 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
     <main ref={root} className="app-shell">
       {saveError && !deletingProject ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}
       {board.statuses.length === 0 ? <section inert={modalOpen} aria-hidden={modalOpen || undefined} className="empty-state surface-card"><h2>{t('firstStatus')}</h2><p>{t('firstStatusHelp')}</p><ApplyStatusSetForm busy={busy} onApply={onApplyStatusSet} /></section> : null}
-      <p className="placement-status" role="status" aria-live="polite">{placementPending ? t('placementSaving') : notice}</p>
-      {refreshFailed ? <div className="save-error" role="alert"><p>{t('placementRefreshFailed')}</p><button className="button button-secondary" disabled={placementPending} onClick={() => void onRetryRefresh().then(saved => { if (saved) setNotice(t('placementSaved')) })}>{t('retryBoardRead')}</button></div> : null}
+      {refreshFailed ? <div className="save-error" role="alert"><p>{t('placementRefreshFailed')}</p><button className="button button-secondary" disabled={placementPending} onClick={() => void onRetryRefresh().then(saved => { if (saved) showToast(t('placementSaved')) })}>{t('retryBoardRead')}</button></div> : null}
       <BoardDrag board={board} disabled={busy} onPlace={moveCard}>
       <section className="status-columns" inert={busy} aria-label={t('statuses')}>
         {board.statuses.map((status, index) => <StatusColumn

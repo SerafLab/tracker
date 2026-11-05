@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../app/app'
 import { ProjectBoardDatabase, DexieProjectBoardRepository, type ProjectBoardRepository } from '../features/project-board'
 import { InstallProvider } from '../app/pwa/install-guidance'
+import { NotificationProvider } from '../ui/notifications'
 import { PwaUpdateNotice } from '../app/pwa/update-notice'
 import { RestartRequired } from '../app/pwa/restart-required'
 import { AppBar } from '../ui/app-bar'
@@ -142,14 +143,14 @@ it.each(['en', 'ru'] as const)('translates platform installation, update and res
     await user.click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
     await user.click(screen.getByRole('button', { name: locale === 'en' ? 'How to install EasyTrack' : 'Как установить EasyTrack' }))
   }
-  const view = render(<LocaleProvider><InstallProvider><PwaUpdateNotice needRefresh onUpdate={async () => {}} onLater={() => {}} /><RestartRequired onRestart={() => {}} /></InstallProvider></LocaleProvider>)
+  const view = render(<LocaleProvider><NotificationProvider><InstallProvider><PwaUpdateNotice needRefresh onUpdate={async () => {}} onLater={() => {}} /><RestartRequired onRestart={() => {}} /></InstallProvider></NotificationProvider></LocaleProvider>)
+  expect(screen.getByRole('status', { name: locale === 'en' ? 'EasyTrack update' : 'Обновление EasyTrack' })).toHaveTextContent(locale === 'en' ? 'An EasyTrack update is available.' : 'Доступно обновление EasyTrack.')
   await openInstallGuidance()
   expect(screen.getByRole('dialog')).toHaveTextContent(locale === 'en' ? 'Add to Home Screen' : 'На экран')
-  expect(screen.getByRole('status')).toHaveAccessibleName(locale === 'en' ? 'EasyTrack update' : 'Обновление EasyTrack')
   expect(document.querySelector('h1')).toHaveTextContent(locale === 'en' ? 'Restart EasyTrack' : 'Нужно перезапустить EasyTrack')
   await user.click(screen.getByRole('button', { name: locale === 'en' ? 'Close' : 'Закрыть' }))
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Chrome')
-  view.rerender(<LocaleProvider><InstallProvider><RestartRequired onRestart={() => {}} /></InstallProvider></LocaleProvider>)
+  view.rerender(<LocaleProvider><NotificationProvider><InstallProvider><RestartRequired onRestart={() => {}} /></InstallProvider></NotificationProvider></LocaleProvider>)
   await openInstallGuidance()
   expect(screen.getByRole('dialog')).toHaveTextContent(locale === 'en' ? 'Open the browser menu' : 'Откройте меню браузера')
   expect(within(screen.getByRole('dialog')).queryByRole('combobox')).not.toBeInTheDocument()

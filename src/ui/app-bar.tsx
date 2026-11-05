@@ -78,8 +78,8 @@ export function AppBar({ title, context, onReturn, creation, rename, deleteProje
       <div className="app-bar-controls">
         {creation ? <button disabled={creation.disabled} ref={creation.triggerRef} className="button button-primary button-icon bar-hint" data-hint={creation.label} aria-label={creation.label} onClick={() => { setOpen(false); creation.onSelect() }}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></button> : null}
         <button ref={gear} className="button button-quiet button-icon bar-hint" data-hint={t('settings')} aria-label={t('settings')} aria-haspopup="menu" aria-expanded={open && !modalOpen} aria-controls={id} onClick={() => setOpen(value => !value)}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 3-.6 2.4-2 .9L4 5.6 2 9l1.8 1.7v2.6L2 15l2 3.4 2.4-.7 2 .9L9 21h4l.6-2.4 2-.9 2.4.7 2-3.4-1.8-1.7v-2.6L20 9l-2-3.4-2.4.7-2-.9L13 3Z" /><circle cx="11" cy="12" r="3" /></svg></button>
-        {open && !modalOpen ? <div id={id} ref={panel} className="settings-panel menu-items" popover="auto">
-          <div ref={menu} role="menu" aria-label={t('settings')} className="menu-list">
+        {open && !modalOpen ? <div ref={panel} className="settings-panel menu-items" popover="auto">
+          <div id={id} ref={menu} role="menu" aria-label={t('settings')} className="menu-list">
             {rename ? <button disabled={rename.disabled} className="menu-item" role="menuitem" onClick={() => { setOpen(false); rename.onSelect() }}>{t('renameProject')}</button> : null}
             {deleteProject ? <button disabled={deleteProject.disabled} className="menu-item" role="menuitem" onClick={() => { setOpen(false); deleteProject.onSelect() }}>{t('deleteProject')}</button> : null}
             {/* Focus the gear first so a dialog opened by the entry returns focus there. */}

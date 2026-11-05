@@ -56,6 +56,9 @@ it('lists actions, a separator and the language group in order with a wrapping a
   expect(items[0]).toHaveFocus()
   for (const item of [...items.slice(1), items[0]]) { await user.keyboard('{ArrowDown}'); expect(item).toHaveFocus() }
   await user.keyboard('{ArrowUp}'); expect(items[4]).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Настройки' })).toHaveAttribute('aria-controls', menu.id)
+  await user.click(within(menu).getByText('Язык приложения'))
+  await user.keyboard('{ArrowUp}'); expect(items[4]).toHaveFocus()
 })
 
 it('omits the separator when no action precedes the language group', async () => {

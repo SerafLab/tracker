@@ -68,6 +68,10 @@ for (const locale of ['ru', 'en'] as const) {
     await page.setViewportSize({ width: 320, height: 740 })
     await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
     const item = page.getByRole('menuitemradio', { name: locale === 'en' ? 'English' : 'Русский' })
+    const other = page.getByRole('menuitemradio', { name: locale === 'en' ? 'Русский' : 'English' })
+    // Start from the other language so the keyboard choice is a real change.
+    if (await item.getAttribute('aria-checked') === 'true') { await other.click(); await expect(other).toHaveAttribute('aria-checked', 'true') }
+    await expect(item).toHaveAttribute('aria-checked', 'false')
     await item.focus()
     await page.keyboard.press('Enter')
     await expect(item).toHaveAttribute('aria-checked', 'true')

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { viewportFor } from './viewports'
 
 const app = '/tracker/'
 
@@ -37,7 +38,7 @@ test('delivers the manifest and keeps local projects usable offline', async ({ p
   await context.setOffline(true)
   await page.goto(app)
   await expect(page.getByRole('heading', { name: 'Поиск квартиры' })).toBeVisible()
-  await page.setViewportSize({ width: 390, height: 844 })
+  await page.setViewportSize(viewportFor(390))
   await page.getByRole('button', { name: 'Добавить статус' }).first().click()
   await page.getByLabel('Название статуса').fill('Просмотр')
   await page.getByRole('button', { name: 'Создать статус' }).click()
@@ -65,7 +66,7 @@ test('activates a waiting worker only after the user chooses Update', async ({ p
 for (const locale of ['ru', 'en'] as const) {
   test(`localizes manifests and keeps ${locale} selected after offline reopen at mobile width`, async ({ page, context }) => {
     await openAndControl(page)
-    await page.setViewportSize({ width: 320, height: 740 })
+    await page.setViewportSize(viewportFor(320))
     await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
     const item = page.getByRole('menuitemradio', { name: locale === 'en' ? 'English' : 'Русский' })
     const other = page.getByRole('menuitemradio', { name: locale === 'en' ? 'Русский' : 'English' })
@@ -109,7 +110,7 @@ for (const locale of ['ru', 'en'] as const) {
 
 for (const width of [1280, 320]) {
   test(`switches language after closing an unfinished dialog at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 844 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto(app)
     await page.getByRole('button', { name: 'Создать проект' }).click()
     await page.getByLabel('Название проекта').fill('Мой проект')
@@ -143,7 +144,7 @@ test.describe('first-visit installation invitation', () => {
 
   for (const [language, width] of [['ru', 320], ['en', 1280]] as const) test(`opens on first visit until dismissed permanently in ${language} at ${width}px`, async ({ page }) => {
     const en = language === 'en'
-    await page.setViewportSize({ width, height: 720 })
+    await page.setViewportSize(viewportFor(width))
     await page.addInitScript(locale => localStorage.setItem('easytrack.locale', locale), language)
     await page.goto(app)
     const invitation = page.getByRole('dialog', { name: en ? 'You can install EasyTrack' : 'EasyTrack можно установить' })

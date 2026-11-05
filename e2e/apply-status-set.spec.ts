@@ -1,9 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { selectLanguage } from './language'
+import { viewportFor } from './viewports'
 
 for (const language of ['ru', 'en'] as const) for (const width of [320, 390, 1280, 1440]) {
   test(`applies a complete localized set to an existing empty project with retry in ${language} at ${width}px`, async ({ page, context }, testInfo) => {
-    await page.setViewportSize({ width, height: 740 })
+    await page.setViewportSize(viewportFor(width))
     await page.addInitScript(locale => {
       localStorage.setItem('easytrack.locale', locale)
       const add = IDBObjectStore.prototype.add

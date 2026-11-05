@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { readFile, writeFile } from 'node:fs/promises'
 import { summaryOf } from './card-helpers'
 import { selectLanguage } from './language'
+import { viewportFor } from './viewports'
 
 const t = (en: boolean, ru: string, enText: string) => en ? enText : ru
 type Data = { projects: object[]; statuses: object[]; cards: object[]; notes: object[] }
@@ -165,7 +166,7 @@ test.describe('backup', () => {
   })
 
   for (const en of [false, true]) test(`menu and comparison dialog fit 320px in ${en ? 'en' : 'ru'}`, async ({ page }, info) => {
-    await page.setViewportSize({ width: 320, height: 800 })
+    await page.setViewportSize(viewportFor(320))
     await start(page, original, en)
     const exporting = page.waitForEvent('download')
     await chooseEntry(page, t(en, 'Выгрузить резервную копию', 'Export backup'))

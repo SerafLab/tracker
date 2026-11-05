@@ -1,5 +1,6 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test'
 import { edgeCasesBackup, TEXT } from '../src/test/backup-fixtures'
+import { viewportFor } from './viewports'
 
 const backup = edgeCasesBackup()
 const projectId = (name: string) => backup.data.projects.find(project => project.name === name)!.id
@@ -47,7 +48,7 @@ async function shot(page: Page, info: TestInfo, name: string, width: number) {
 
 for (const width of [320, 1280]) test.describe(`edge-case backup at ${width}px`, () => {
   test.beforeEach(async ({ page }) => {
-    await page.setViewportSize({ width, height: 800 })
+    await page.setViewportSize(viewportFor(width))
     await restoreEdgeCases(page)
   })
 

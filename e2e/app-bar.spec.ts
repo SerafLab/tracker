@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import { selectLanguage } from './language'
+import { viewportFor } from './viewports'
 
 for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] as const) {
   test(`shares app bar controls in ${language} at ${width}px`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: 740 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     const en = language === 'en'
     if (en) { await selectLanguage(page, 'en') }
@@ -120,7 +121,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
 
 for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] as const) for (const state of ['loading', 'unavailable', 'restart'] as const) {
   test(`service ${state} settings in ${language} at ${width}px`, async ({page}, testInfo) => {
-    await page.setViewportSize({width, height: 740})
+    await page.setViewportSize(viewportFor(width))
     await page.addInitScript(({language, state}) => {
       localStorage.setItem('easytrack.locale', language)
       if (state === 'loading') indexedDB.open = () => new EventTarget() as IDBOpenDBRequest
@@ -170,7 +171,7 @@ test('repositions settings after language and preference warning resize', async 
 })
 
 for (const language of ['ru', 'en'] as const) test(`remeasures a renamed title and scrolls its full hint in ${language}`, async ({page}, testInfo) => {
-  await page.setViewportSize({width: 1440, height: 740})
+  await page.setViewportSize(viewportFor(1440))
   await page.addInitScript(language => localStorage.setItem('easytrack.locale', language), language)
   await page.goto('/tracker/')
   const en = language === 'en'
@@ -181,9 +182,9 @@ for (const language of ['ru', 'en'] as const) test(`remeasures a renamed title a
   await dialog.getByRole('button', {name: en ? 'Create project' : 'Создать проект', exact: true}).click()
   const heading = page.getByRole('heading', {level: 1})
   await expect(heading).not.toHaveAttribute('tabindex')
-  await page.setViewportSize({width: 320, height: 740})
+  await page.setViewportSize(viewportFor(320))
   await expect(heading).toHaveAttribute('tabindex', '0')
-  await page.setViewportSize({width: 1440, height: 740})
+  await page.setViewportSize(viewportFor(1440))
   await expect(heading).not.toHaveAttribute('tabindex')
   await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
   await page.getByRole('menuitem', {name: en ? 'Rename project' : 'Переименовать проект'}).click()
@@ -216,7 +217,7 @@ for (const language of ['ru', 'en'] as const) test(`remeasures a renamed title a
 
 for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) for (const screen of ['catalogue', 'board'] as const) {
   test(`aligns settings menu labels to the start edge on the ${screen} in ${language} at ${width}px`, async ({page}, testInfo) => {
-    await page.setViewportSize({width, height: 740})
+    await page.setViewportSize(viewportFor(width))
     await page.addInitScript(language => localStorage.setItem('easytrack.locale', language), language)
     await page.goto('/tracker/')
     const en = language === 'en'
@@ -253,7 +254,7 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) f
 }
 
 test('shows the preference warning below the settings menu', async ({page}, testInfo) => {
-  await page.setViewportSize({width: 320, height: 740})
+  await page.setViewportSize(viewportFor(320))
   await page.addInitScript(() => { Storage.prototype.setItem = () => {throw Error('blocked')} })
   await page.goto('/tracker/')
   await page.getByRole('button', {name: 'Настройки'}).click()
@@ -266,7 +267,7 @@ test('shows the preference warning below the settings menu', async ({page}, test
 })
 
 test('shows the theme warning below the menu alongside the language warning', async ({page}) => {
-  await page.setViewportSize({width: 320, height: 740})
+  await page.setViewportSize(viewportFor(320))
   await page.addInitScript(() => { Storage.prototype.setItem = () => {throw Error('blocked')} })
   await page.goto('/tracker/')
   await page.getByRole('button', {name: 'Настройки'}).click()
@@ -299,7 +300,7 @@ async function seedCardPage(page: Page, en: boolean, project: string, status: st
 
 for (const width of [320, 1280]) for (const en of [false, true]) {
   test(`Card page has a long project and status in ${en ? 'en' : 'ru'} at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 740 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     if (en) await selectLanguage(page, 'en')
     await seedCardPage(page, en, 'Short', 'Todo')

@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { viewportFor } from './viewports'
 
 for (const width of [320, 1280]) {
   test(`keeps card move controls readable and keyboard focus on the card at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 844 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     await page.getByRole('button', { name: 'Создать проект' }).click()
     await page.getByLabel('Название проекта').fill('Доска')

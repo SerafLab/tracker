@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { viewportFor } from './viewports'
 
 for (const width of [320, 1280]) {
   test(`deletes cards and statuses with safe keyboard focus and persistent order at ${width}px`, async ({ page }) => {
-    await page.setViewportSize({ width, height: 844 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     const projectName = page.getByRole('textbox', { name: /^(Новый проект|Название проекта)$/ })
     if (await projectName.count() === 0) await page.getByRole('button', { name: 'Создать проект' }).click()

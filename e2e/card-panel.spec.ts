@@ -1,6 +1,7 @@
 import { enterEdit, saveEdit } from './card-helpers'
 import { expect, test, type Page } from '@playwright/test'
 import { selectLanguage } from './language'
+import { viewportFor } from './viewports'
 
 async function seededBoard(page: Page, en = false) {
   await page.goto('/tracker/')
@@ -22,7 +23,7 @@ async function seededBoard(page: Page, en = false) {
 }
 
 for (const en of [false, true]) test(`panel history preserves board/editor, switches cards once and reloads as page ${en ? 'en' : 'ru'}`, async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.setViewportSize(viewportFor(1440))
   await seededBoard(page, en)
   const board = page.locator('.status-columns')
   await board.evaluate(node => { node.dataset.identity = 'preserved' })
@@ -69,7 +70,7 @@ for (const en of [false, true]) test(`panel history preserves board/editor, swit
 })
 
 for (const width of [320, 390, 1280]) for (const en of [false, true]) test(`panel/preview/page layout ${width} ${en ? 'en' : 'ru'}`, async ({ page }, info) => {
-  await page.setViewportSize({ width, height: 900 }); await seededBoard(page, en)
+  await page.setViewportSize(viewportFor(width)); await seededBoard(page, en)
   const preview = page.locator('.card-description-preview').first()
   await expect(preview.locator('a')).toHaveCount(0)
   const dimensions = await preview.evaluate(node => ({ height: node.clientHeight, line: parseFloat(getComputedStyle(node).lineHeight) }))
@@ -100,7 +101,7 @@ for (const width of [320, 390, 1280]) for (const en of [false, true]) test(`pane
 })
 
 test('guard keeps a dirty panel on switch/cancel, then saves both drafts before switching once', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 }); await seededBoard(page)
+  await page.setViewportSize(viewportFor(1280)); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
   await enterEdit(page)
   await page.getByRole('textbox', { name: 'Описание карточки', exact: true }).fill('Fields first')
@@ -121,7 +122,7 @@ test('guard keeps a dirty panel on switch/cancel, then saves both drafts before 
 })
 
 test('board actions preserve drafts and destructive actions ask the editor guard before confirmation', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 }); await seededBoard(page)
+  await page.setViewportSize(viewportFor(1280)); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
   await enterEdit(page)
   await page.getByRole('textbox', { name: 'Описание карточки' }).fill('Retained while board changes')
@@ -165,7 +166,7 @@ test('a card link opened in a new tab is a page and returns explicitly to its pr
 
 
 for (const width of [390, 1440]) test(`preserves the board scroll container when opening, expanding and closing a later card at ${width}px`, async ({ page }) => {
-  await page.setViewportSize({ width, height: 900 }); await seededBoard(page)
+  await page.setViewportSize(viewportFor(width)); await seededBoard(page)
   const card = page.locator('.card-detail-link[href$="/card/panel-card-18"]')
   // The whole board scrolls in its workspace, whose position must survive opening, expanding and closing.
   const main = page.locator('[data-board-scroller]'), columns = page.locator('.status-columns')
@@ -190,7 +191,7 @@ for (const width of [390, 1440]) test(`preserves the board scroll container when
 })
 
 test('isolates all narrow-panel background actions while nested confirmations keep keyboard focus', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 900 }); await seededBoard(page)
+  await page.setViewportSize(viewportFor(390)); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
   const panel = page.getByRole('dialog', { name: 'Подробности карточки', exact: true })
   await expect(panel).toBeFocused()
@@ -218,7 +219,7 @@ test('isolates all narrow-panel background actions while nested confirmations ke
 
 
 test('narrow panel exposes read-only recovery after a committed field save cannot refresh the board', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 900 }); await seededBoard(page)
+  await page.setViewportSize(viewportFor(390)); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
   const panel = page.getByRole('dialog', { name: 'Подробности карточки', exact: true })
   await enterEdit(page)
@@ -251,7 +252,7 @@ test('narrow panel exposes read-only recovery after a committed field save canno
 
 
 test('narrow panel note icons and nested deletion preserve an independent new-note draft', async ({ page }, info) => {
-  await page.setViewportSize({ width: 390, height: 900 }); await seededBoard(page)
+  await page.setViewportSize(viewportFor(390)); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
   const panel = page.getByRole('dialog', { name: 'Подробности карточки', exact: true })
   await panel.getByRole('button', { name: 'Добавить заметку', exact: true }).click()
@@ -280,7 +281,7 @@ test('narrow panel note icons and nested deletion preserve an independent new-no
 })
 
 test('deleting the open card closes the panel to the board URL without an extra history entry, while a direct link still shows the missing page', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 }); await seededBoard(page)
+  await page.setViewportSize(viewportFor(1280)); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 3', exact: true }).click()
   const panel = page.getByRole('region', { name: 'Подробности карточки', exact: true })
   await expect(panel).toBeVisible()
@@ -302,7 +303,7 @@ test('deleting the open card closes the panel to the board URL without an extra 
 })
 
 test('deleting an unrelated card keeps the open card draft without a prompt', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 }); await seededBoard(page)
+  await page.setViewportSize(viewportFor(1280)); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
   await enterEdit(page)
   const description = page.getByRole('textbox', { name: 'Описание карточки', exact: true })
@@ -354,7 +355,7 @@ test('catalogue and full card page scroll the bar with the document', async ({ p
 })
 
 test('Back after a panel card is deleted returns to the board entry instead of repeating it', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 }); await seededBoard(page)
+  await page.setViewportSize(viewportFor(1280)); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 3', exact: true }).click()
   await expect(page.locator('.card-panel')).toBeVisible()
   await page.getByRole('button', { name: 'Действия карточки Card 3', exact: true }).click()

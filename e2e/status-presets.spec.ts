@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { selectLanguage } from './language'
+import { viewportFor } from './viewports'
 
 const sets = {
   ru: [
@@ -76,7 +77,7 @@ test('preserves customized Russian names after switching language and creates ne
 
 for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] as const) {
   test(`status-set form keeps keyboard, failure and five statuses usable in ${language} at ${width}px`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: 740 })
+    await page.setViewportSize(viewportFor(width))
     await page.addInitScript(language => {
       localStorage.setItem('easytrack.locale', language)
       const add = IDBObjectStore.prototype.add

@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
 import { selectLanguage } from './language'
+import { viewportFor, referenceViewports, viewports } from './viewports'
 
 for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] as const) {
   test(`calm board keeps four columns and reachable controls in ${language} at ${width}px`, async ({ page }, testInfo) => {
     const en = language === 'en'
-    await page.setViewportSize({ width, height: width === 320 ? 568 : 900 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     if (en) { await selectLanguage(page, 'en') }
     await expect(page.getByRole('heading', { name: en ? 'Start with your first project' : 'Начните с первого проекта' })).toBeVisible()
@@ -217,7 +218,7 @@ const boardGeometry = (page: Page) => scroller(page).evaluate(element => {
 for (const language of ['ru', 'en'] as const) {
   test(`creates a card from a sticky header while the board is scrolled in ${language}`, async ({ page }, testInfo) => {
     const en = language === 'en'
-    await page.setViewportSize({ width: 390, height: 844 })
+    await page.setViewportSize(viewportFor(390))
     await seedBoard(page, [{ name: 'Todo', cards: 14 }, { name: 'Done', cards: 14 }])
     if (en) { await selectLanguage(page, 'en') }
     const column = statusColumn(page, 'Todo')
@@ -251,7 +252,7 @@ for (const language of ['ru', 'en'] as const) {
 }
 
 test('only the header creation entry exists on empty and populated boards', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.setViewportSize(viewportFor(1280))
   await seedBoard(page, [{ name: 'One', cards: 0 }, { name: 'Two', cards: 0 }, { name: 'Three', cards: 0 }])
   const expectHeaderOnly = async () => {
     await expect(page.locator('.add-card')).toHaveCount(0)
@@ -275,7 +276,7 @@ test('only the header creation entry exists on empty and populated boards', asyn
   await expectHeaderOnly()
 })
 
-for (const [width, height] of [[390, 844], [320, 568], [1280, 800], [1440, 900], [568, 320]]) test(`the whole board scrolls in one workspace with sticky status headers at ${width}x${height}`, async ({ page }, testInfo) => {
+for (const { width, height } of referenceViewports) test(`the whole board scrolls in one workspace with sticky status headers at ${width}x${height}`, async ({ page }, testInfo) => {
   await page.setViewportSize({ width, height })
   await seedBoard(page, [{ name: 'Todo', cards: 30 }, { name: 'Doing', cards: 25 }, { name: 'Short', cards: 1 }, { name: 'Done', cards: 0 }])
   const start = await boardGeometry(page)
@@ -330,7 +331,7 @@ for (const [width, height] of [[390, 844], [320, 568], [1280, 800], [1440, 900],
 })
 
 test('a short board stretches its statuses to the workspace bottom without scrolling', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.setViewportSize(viewportFor(1280))
   await seedBoard(page, [{ name: 'Todo', cards: 1 }, { name: 'Done', cards: 0 }])
   const geometry = await boardGeometry(page), state = await scrollState(page)
   expect(state.maxTop).toBe(0)
@@ -338,7 +339,7 @@ test('a short board stretches its statuses to the workspace bottom without scrol
   for (const column of geometry.columns) expect(Math.abs(column.bottom - (geometry.scroller.bottom - padding))).toBeLessThan(2)
 })
 
-for (const [width, height] of [[320, 568], [1440, 900]]) test(`keyboard focus is never hidden under a status header at ${width}x${height}`, async ({ page }) => {
+for (const { width, height } of [viewports.phoneNarrow, viewports.wide]) test(`keyboard focus is never hidden under a status header at ${width}x${height}`, async ({ page }) => {
   await page.setViewportSize({ width, height })
   await seedBoard(page, [{ name: 'Todo', cards: 30 }, { name: 'Done — длинное название статуса, которое переносится на несколько строк', cards: 2 }])
   const unobscured = () => page.evaluate(() => {
@@ -398,7 +399,7 @@ test('a card can be dropped into a scrolled board, the workspace autoscrolls and
 })
 
 for (const width of [390, 1440]) test(`board menus close once their trigger is hidden by scrolling at ${width}px`, async ({ page }) => {
-  await page.setViewportSize({ width, height: 800 })
+  await page.setViewportSize(viewportFor(width))
   await seedBoard(page, [{ name: 'Todo', cards: 30 }, { name: 'Doing', cards: 4 }, { name: 'Review', cards: 2 }, { name: 'Done', cards: 2 }])
   const trigger = (name: string) => page.getByRole('button', { name: `Действия карточки ${name}`, exact: true })
   // A visible trigger keeps its menu open next to it while the board scrolls a little.
@@ -406,8 +407,8 @@ for (const width of [390, 1440]) test(`board menus close once their trigger is h
   await expect(page.getByRole('menu')).toBeVisible()
   await scroller(page).evaluate(element => { element.scrollTop += 40 })
   await expect(page.getByRole('menu')).toBeVisible()
-  const near = await page.evaluate(() => { const menu = document.querySelector('[role="menu"]')!.getBoundingClientRect(), button = document.querySelector('[aria-expanded="true"]')!.getBoundingClientRect(); return Math.abs(menu.top - Math.max(8, Math.min(innerHeight - menu.height - 8, button.bottom + 6))) < 2 })
-  expect(near).toBe(true)
+  // The menu follows its trigger after the asynchronous scroll event.
+  await expect.poll(() => page.evaluate(() => { const menu = document.querySelector('[role="menu"]')!.getBoundingClientRect(), button = document.querySelector('[aria-expanded="true"]')!.getBoundingClientRect(); return Math.abs(menu.top - Math.max(8, Math.min(innerHeight - menu.height - 8, button.bottom + 6))) < 2 })).toBe(true)
   // Scrolling the trigger under the sticky status header closes the menu.
   const offset = await page.evaluate(() => {
     const button = document.querySelector('[aria-expanded="true"]')!.getBoundingClientRect()
@@ -429,7 +430,7 @@ for (const width of [390, 1440]) test(`board menus close once their trigger is h
 for (const width of [1280, 1440]) for (const language of ['ru', 'en'] as const) {
   test(`column boundaries and list starts hold beside the card panel with expanded note previews in ${language} at ${width}px`, async ({ page }, testInfo) => {
     const en = language === 'en'
-    await page.setViewportSize({ width, height: 900 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
     if (en) { await selectLanguage(page, 'en') }
@@ -491,7 +492,7 @@ for (const width of [1280, 1440]) for (const language of ['ru', 'en'] as const) 
 }
 
 for (const count of [2, 3]) test(`${count} statuses sit together at the left with the design gap at 1440px`, async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.setViewportSize(viewportFor(1440))
   await page.goto('/tracker/')
   await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
   await page.evaluate(async count => {
@@ -531,7 +532,7 @@ const alertStrip = (page: Page) => page.evaluate(() => {
 })
 
 test('a save error appears under the bar while the board is scrolled down', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.setViewportSize(viewportFor(1280))
   await seedBoard(page, [{ name: 'Todo', cards: 30 }, { name: 'Done', cards: 2 }])
   await scroller(page).evaluate(element => { element.scrollTop = element.scrollHeight })
   await failOnce(page, 'cards', 'put')
@@ -543,7 +544,7 @@ test('a save error appears under the bar while the board is scrolled down', asyn
 })
 
 test('a refresh error stays whole on a sideways-scrolled narrow board and leaves the scroll position on retry', async ({ page }, testInfo) => {
-  await page.setViewportSize({ width: 390, height: 844 })
+  await page.setViewportSize(viewportFor(390))
   await seedBoard(page, [{ name: 'Todo', cards: 30 }, { name: 'Doing', cards: 2 }, { name: 'Done', cards: 12 }])
   await scroller(page).evaluate(element => { element.scrollTop = 200; element.scrollLeft = element.scrollWidth })
   await expect(page.getByRole('button', { name: 'Действия карточки Done card 6', exact: true })).toBeInViewport()
@@ -565,7 +566,7 @@ test('a refresh error stays whole on a sideways-scrolled narrow board and leaves
 })
 
 test('a narrow board keeps both scroll offsets around an opened, expanded and closed card', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 })
+  await page.setViewportSize(viewportFor(390))
   await seedBoard(page, [{ name: 'Todo', cards: 30 }, { name: 'Doing', cards: 25 }, { name: 'Done', cards: 3 }])
   await scroller(page).evaluate(element => { element.scrollLeft = element.querySelectorAll('.status-column')[1].getBoundingClientRect().left - element.getBoundingClientRect().left; element.scrollTop = 900 })
   await expect.poll(async () => (await scrollState(page)).left).toBeGreaterThan(100)

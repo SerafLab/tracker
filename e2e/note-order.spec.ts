@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { selectLanguage } from './language'
+import { viewportFor } from './viewports'
 
 const t = (en: boolean, ru: string, enText: string) => en ? enText : ru
 
@@ -40,7 +41,7 @@ const notes = (...ns: number[]) => ns.map(n => `Note ${n}`)
 
 for (const en of [false, true]) {
   test(`note order toggle fits a 320px screen ${en ? 'en' : 'ru'}`, async ({ page }, info) => {
-    await page.setViewportSize({ width: 320, height: 800 })
+    await page.setViewportSize(viewportFor(320))
     await createBoard(page, en, ['Order card'])
     await page.getByRole('link', { name: 'Order card', exact: true }).click()
     await expect(history(page)).toHaveText(notes(8, 7, 6, 5, 4, 3, 2, 1))
@@ -68,7 +69,7 @@ for (const en of [false, true]) {
 }
 
 test('note order rebuilds collapsed and expanded board cards at once and after reload', async ({ page }, info) => {
-  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.setViewportSize(viewportFor(1280))
   await createBoard(page, false, ['First card', 'Second card', 'Third card'])
   const boardCard = (name: string) => page.locator('.work-card', { has: page.getByRole('link', { name, exact: true }) })
   const expanded = boardCard('Second card').locator('.card-note'), collapsed = boardCard('Third card').locator('.card-note')

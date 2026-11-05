@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { leaveCard } from './card-helpers'
+import { viewportFor } from './viewports'
 
 async function createProject(page: Page, name: string, en: boolean, empty = false) {
   const create = en ? 'Create project' : 'Создать проект'
@@ -46,7 +47,7 @@ async function counts(page: Page) {
 
 for (const width of [320, 390, 1280]) for (const en of [false, true]) {
   test(`confirmed project deletion from catalogue and board persists offline in ${en ? 'en' : 'ru'} at ${width}px`, async ({ page, context }, info) => {
-    await page.setViewportSize({ width, height: 844 })
+    await page.setViewportSize(viewportFor(width))
     await page.addInitScript(en => localStorage.setItem('easytrack.locale', en ? 'en' : 'ru'), en)
     await page.goto('/tracker/')
     const longName = 'ОченьДлинноеНазваниеПроектаБезПробелов'.repeat(3), deletion = en ? 'Delete project' : 'Удалить проект'
@@ -114,7 +115,7 @@ for (const width of [320, 390, 1280]) for (const en of [false, true]) {
 
 for (const en of [false, true]) {
   test(`project cascade rolls back in the browser and permits an explicit retry in ${en ? 'en' : 'ru'}`, async ({ page }, info) => {
-    await page.setViewportSize({ width: 320, height: 844 })
+    await page.setViewportSize(viewportFor(320))
     await page.addInitScript(en => {
       localStorage.setItem('easytrack.locale', en ? 'en' : 'ru')
       const remove = IDBObjectStore.prototype.delete

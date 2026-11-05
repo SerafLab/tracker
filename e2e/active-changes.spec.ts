@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { enterEdit, leaveCard, saveEdit, summaryOf } from './card-helpers'
+import { viewportFor } from './viewports'
 
 for (const language of ['ru', 'en'] as const) for (const width of [390, 1280]) {
   test(`combines a default status set, header card creation and durable details in ${language} at ${width}px`, async ({ page, context }) => {
     const en = language === 'en'
     await page.addInitScript(locale => localStorage.setItem('easytrack.locale', locale), language)
-    await page.setViewportSize({ width, height: 900 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     const creation = page.getByRole('dialog')

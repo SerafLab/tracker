@@ -63,4 +63,4 @@
 ## 6. Интеграция
 
 - [x] 6.1 Выборочно просмотреть снимки меню настроек (доска, 320 и 1280 px, RU и EN) и диалога сравнения (320 px, RU и EN) по `docs/agents/rules/visual-review.md` и записать фактически просмотренное.
-- [ ] 6.2 Выполнить `npm run check` с уникальным `E2E_PORT` и `openspec validate data-backup --strict`. Обе проверки проходят.
+- [x] 6.2 Выполнить `npm run check` с уникальным `E2E_PORT` и `openspec validate data-backup --strict`. Обе проверки проходят.

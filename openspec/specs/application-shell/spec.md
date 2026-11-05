@@ -7,7 +7,7 @@
 ## Requirements
 
 ### Requirement: Shared application bar across states
-The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, full card page, loading, storage-unavailable, and restart-required screens. Except on the full card page, the heading SHALL be the page's primary heading; on the full card page the bar SHALL show the card's project and status as plain-text context, and the card name in the content SHALL be the primary heading. With a card panel open, the application bar SHALL retain the board context. The settings panel opened from the bar SHALL contain the sole accessible language selector.
+The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, full card page, loading, storage-unavailable, and restart-required screens. Except on the full card page, the heading SHALL be the page's primary heading; on the full card page the bar SHALL show the card's project and status as plain-text context, and the card name in the content SHALL be the primary heading. With a card panel open, the application bar SHALL retain the board context. The settings menu opened from the bar SHALL contain the sole accessible language choice.
 
 #### Scenario: User navigates from catalogue to board
 - **WHEN** the user opens a project from the catalogue
@@ -15,11 +15,11 @@ The system SHALL show one application bar containing the EasyTrack brand, the cu
 
 #### Scenario: Application enters a service state
 - **WHEN** the application is loading, its storage is unavailable, or it requires a restart
-- **THEN** the application bar identifies that state and still provides a settings gear that opens the language selector
+- **THEN** the application bar identifies that state and still provides a settings gear that opens the language choice
 
 #### Scenario: User opens a dialog
 - **WHEN** the user opens a create, rename, move, or installation-guidance dialog
-- **THEN** the settings panel is closed, its language selector is unavailable, the application bar is unavailable, and the modal dialog contains no language selector
+- **THEN** the settings menu is closed, its language choice is unavailable, the application bar is unavailable, and the modal dialog contains no language choice
 
 #### Scenario: User opens a card page
 - **WHEN** пользователь открывает страницу карточки
@@ -30,7 +30,7 @@ The system SHALL show one application bar containing the EasyTrack brand, the cu
 - **THEN** общий AppBar сохраняет заголовок и действия доски, а панель имеет доступное название области и заголовок блока «Основное» с сохранённым названием карточки
 
 ### Requirement: Contextual navigation and primary action
-The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The full card page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming or project-deletion actions. The card panel SHALL provide close and full-page actions while retaining board navigation. Leaving either card presentation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming and project-deletion actions. On every screen the settings panel SHALL contain the installation entry.
+The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The full card page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming or project-deletion actions. The card panel SHALL provide close and full-page actions while retaining board navigation. Leaving either card presentation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming and project-deletion actions. On every screen the settings menu SHALL contain the installation entry.
 
 #### Scenario: User works in the catalogue
 - **WHEN** the catalogue is displayed, whether empty or populated
@@ -46,7 +46,7 @@ The application bar SHALL show an icon-only plus for project creation in the cat
 
 #### Scenario: User encounters a service state
 - **WHEN** the application is loading, its storage is unavailable, or a restart is required
-- **THEN** the application bar has no creation, project-renaming or project-deletion action, its settings panel provides the installation entry and language selection, and the state message retains its relevant guidance or recovery action
+- **THEN** the application bar has no creation, project-renaming or project-deletion action, its settings menu provides the installation entry and language selection, and the state message retains its relevant guidance or recovery action
 
 #### Scenario: User navigates from a card page
 - **WHEN** пользователь открывает страницу карточки
@@ -109,8 +109,8 @@ The system SHALL give the creation plus and settings gear localized accessible n
 - **WHEN** a user hovers or focuses the catalogue's plus
 - **THEN** its localized hint and accessible name explain «Создать проект»
 
-### Requirement: Settings panel interaction
-The settings gear SHALL open and close one non-modal panel. The panel SHALL support keyboard access to its controls, close on Escape or outside interaction, and restore focus to the gear on Escape. Starting project renaming, project deletion or installation SHALL close the panel before opening its dialog or the browser installation prompt. Cancelling a renaming or deletion dialog and closing the installation dialog SHALL return focus to the gear; successful renaming SHALL also return focus to the gear, while successful deletion SHALL follow project-deletion navigation and focus rules.
+### Requirement: Settings menu interaction
+The settings gear SHALL open and close one non-modal settings menu. Opening it SHALL move focus to its first available item. Arrow Up and Arrow Down SHALL move focus between available items, wrapping at the ends and skipping the separator and caption. The menu SHALL close on Escape or outside interaction and restore focus to the gear on Escape. Starting project renaming, project deletion or installation SHALL close the menu before opening its dialog or the browser installation prompt. Choosing a language SHALL keep the menu open. Cancelling a renaming or deletion dialog and closing the installation dialog SHALL return focus to the gear; successful renaming SHALL also return focus to the gear, while successful deletion SHALL follow project-deletion navigation and focus rules.
 
 #### Scenario: User renames the current project
 - **WHEN** the user opens board settings and chooses «Переименовать проект»
@@ -120,9 +120,17 @@ The settings gear SHALL open and close one non-modal panel. The panel SHALL supp
 - **WHEN** the user opens settings and chooses «Как установить EasyTrack»
 - **THEN** settings close, the installation dialog opens, and closing it returns focus to the gear
 
+#### Scenario: User navigates settings with the keyboard
+- **WHEN** the user opens board settings with the keyboard and presses Arrow Down repeatedly
+- **THEN** focus starts on «Переименовать проект» and moves through «Удалить проект», the installation entry, «Русский» and «English», then wraps to «Переименовать проект» without stopping on the separator or caption
+
+#### Scenario: User switches language with the keyboard
+- **WHEN** the user focuses «English» in the settings menu and activates it with Enter or Space
+- **THEN** the interface switches to English, the menu stays open, and focus remains on «English»
+
 #### Scenario: User dismisses settings with the keyboard
-- **WHEN** the user presses Escape while focus is within the settings panel
-- **THEN** the panel closes and focus returns to the gear
+- **WHEN** the user presses Escape while focus is within the settings menu
+- **THEN** the menu closes and focus returns to the gear
 
 #### Scenario: User opens a creation dialog
 - **WHEN** the user opens a create-project or create-status dialog with the plus
@@ -130,11 +138,11 @@ The settings gear SHALL open and close one non-modal panel. The panel SHALL supp
 
 #### Scenario: User starts deleting the current project
 - **WHEN** пользователь выбирает «Удалить проект» в настройках доски
-- **THEN** панель закрывается, открывается подтверждение текущего проекта, панель приложения и её выбор языка недоступны до закрытия диалога
+- **THEN** меню закрывается, открывается подтверждение текущего проекта, панель приложения и её выбор языка недоступны до закрытия диалога
 
 #### Scenario: User cancels deleting the current project
 - **WHEN** пользователь отменяет удаление проекта в диалоге
-- **THEN** доска сохраняется, фокус возвращается к шестерёнке, панель настроек остаётся закрытой
+- **THEN** доска сохраняется, фокус возвращается к шестерёнке, меню настроек остаётся закрытым
 
 ### Requirement: Shared notification area
 The system SHALL show notifications in one application-wide area at the bottom centre of the viewport, clear of the device safe area. Notifications SHALL overlay the content without shifting the layout. The area SHALL serve every screen, and callers SHALL not choose a different position per notification. Transient notifications SHALL appear above persistent notices without overlapping them.
@@ -192,3 +200,18 @@ A persistent notice SHALL show short text in the interface language with one or 
 #### Scenario: Dialog opens over a notice
 - **WHEN** a modal dialog opens while a persistent notice is visible
 - **THEN** Tab inside the dialog never reaches the notice's actions and assistive technology does not expose them until the dialog closes
+
+### Requirement: Settings menu layout
+The settings menu SHALL list its actions first and the language group last, with every item label aligned to the start edge. A horizontal separator SHALL divide the actions from the language group only when at least one action precedes the group. Directly above the language items the menu SHALL show a non-interactive caption «Язык приложения» / «Application language», which also names the group for assistive technology.
+
+#### Scenario: Board settings layout
+- **WHEN** the user opens settings on a project board in Russian
+- **THEN** the menu shows «Переименовать проект», «Удалить проект» and «Как установить EasyTrack», then a separator, the caption «Язык приложения», and the items «Русский» and «English», with all labels aligned to the same start edge
+
+#### Scenario: Settings without preceding actions
+- **WHEN** settings open in a state that offers no action before the language group
+- **THEN** the menu shows the caption and the two language items without a separator above them
+
+#### Scenario: Narrow viewport
+- **WHEN** the user opens settings at a 320 px viewport in either language
+- **THEN** the whole menu stays within the viewport, labels remain start-aligned, and the page has no horizontal overflow

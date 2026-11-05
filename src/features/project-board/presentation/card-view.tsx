@@ -4,7 +4,7 @@ import type { Card, CardPlacement, Id, Note, Status } from '../domain/model'
 import { appendPlacement, peerPlacement } from '../domain/order'
 import type { MoveCardStateResult } from '../state/project-board-store'
 import { ActionDialog, ActionMenu } from './controls'
-import { BoardIcon } from './board-icon'
+import { CardFlagBadges } from './card-flag-badges'
 import { useCardDrag } from './board-drag'
 
 export const CardView = memo(function CardView({ card, notes, peers, statuses, disabled, saveError, onMoveDialogChange, projectId, onOpen, onMove, onDelete }: {
@@ -64,7 +64,7 @@ export const CardView = memo(function CardView({ card, notes, peers, statuses, d
         { label: t('delete'), onSelect: () => onDelete(card, menuTrigger) },
       ]} />
     </div>
-    <div className="card-badges">{card.important ? <span className="card-badge card-badge-important"><BoardIcon name="important" />{t('important')}</span> : null}{card.urgent ? <span className="card-badge card-badge-urgent"><BoardIcon name="urgent" />{t('urgent')}</span> : null}</div>
+    <CardFlagBadges important={card.important} urgent={card.urgent} />
     {shownNotes.length ? <div className="card-notes">
       <ul id={notesId} className="card-note-list" aria-label={t('recentNotes')}>{shownNotes.map(note => <li key={note.id} className="card-note">{note.text}</li>)}</ul>
       {notes!.length > 1 ? <button type="button" className="card-notes-toggle" aria-expanded={notesOpen} aria-controls={notesId} onClick={() => setNotesOpen(open => !open)}>{t('recentNotesToggle', { name: card.name })}</button> : null}

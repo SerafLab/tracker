@@ -2,22 +2,22 @@
 
 ## 1. Формат и проверка копии
 
-- [ ] 1.1 Добавить `domain/backup.ts`: тип `BackupData` (`projects`, `statuses`, `cards`, `notes` доменных типов) и чистую `checkBackupIntegrity(data)`. Проверить unit-тестом каждое правило из «Backup integrity rules»: повтор ID, отсутствующий владелец, пропуск и дубль позиции, нарушение порядка групп, пустое имя после `trim`, некорректная дата; корректная и пустая копии проходят.
-- [ ] 1.2 Добавить `application/backup.ts`: константы маркера и `CURRENT_BACKUP_VERSION = 1`, конверт → `newer`/`invalid`, строгая Zod-схема v1, цепочка `migrations` и `parseBackup(text)` с результатом `{ ok, backup } | { ok: false, reason }`. Проверить unit-тестами: не JSON, чужой маркер, `formatVersion` 0, 2 и нецелый, лишнее поле, нарушенная целостность → `invalid`; будущая версия → `newer`; корректная v1 → `ok`. Отдельный тест — что для каждой версии ниже текущей есть миграция.
+- [x] 1.1 Добавить `domain/backup.ts`: тип `BackupData` (`projects`, `statuses`, `cards`, `notes` доменных типов) и чистую `checkBackupIntegrity(data)`. Проверить unit-тестом каждое правило из «Backup integrity rules»: повтор ID, отсутствующий владелец, пропуск и дубль позиции, нарушение порядка групп, пустое имя после `trim`, некорректная дата; корректная и пустая копии проходят.
+- [x] 1.2 Добавить `application/backup.ts`: константы маркера и `CURRENT_BACKUP_VERSION = 1`, конверт → `newer`/`invalid`, строгая Zod-схема v1, цепочка `migrations` и `parseBackup(text)` с результатом `{ ok, backup } | { ok: false, reason }`. Проверить unit-тестами: не JSON, чужой маркер, `formatVersion` 0, 2 и нецелый, лишнее поле, нарушенная целостность → `invalid`; будущая версия → `newer`; корректная v1 → `ok`. Отдельный тест — что для каждой версии ниже текущей есть миграция.
 
 ## 2. Хранилище и use cases
 
-- [ ] 2.1 Добавить в `ProjectBoardRepository` методы `snapshot()` и `replaceAll(data)` и реализовать их в Dexie по решению 4 design.md. Проверить на fake-indexeddb:
+- [x] 2.1 Добавить в `ProjectBoardRepository` методы `snapshot()` и `replaceAll(data)` и реализовать их в Dexie по решению 4 design.md. Проверить на fake-indexeddb:
   - snapshot возвращает все записи;
   - replaceAll заменяет данные целиком и очищает `workspace`;
   - сбой `bulkAdd` посреди замены оставляет прежние данные нетронутыми;
   - круговой тест «snapshot → replaceAll в чистую базу → snapshot» даёт равные данные.
-- [ ] 2.2 Добавить зависимость `build: { version, commit }` и use cases `exportBackup`, `summary`, `parseBackup`, `restoreBackup` в `createProjectBoardUseCases`. Экспортировать нужные типы и функции через `index.ts`. Проверить в `use-cases.test.ts`: копия содержит `exportedAt` из `now()` и `app` из `build`; числа сводки верны. `npm run check:architecture` проходит.
-- [ ] 2.3 Добавить в store действие `restoreBackup` с сериализацией по решению 6 design.md и сбросом кеша просмотра. Проверить unit-тестами:
+- [x] 2.2 Добавить зависимость `build: { version, commit }` и use cases `exportBackup`, `summary`, `parseBackup`, `restoreBackup` в `createProjectBoardUseCases`. Экспортировать нужные типы и функции через `index.ts`. Проверить в `use-cases.test.ts`: копия содержит `exportedAt` из `now()` и `app` из `build`; числа сводки верны. `npm run check:architecture` проходит.
+- [x] 2.3 Добавить в store действие `restoreBackup` с сериализацией по решению 6 design.md и сбросом кеша просмотра. Проверить unit-тестами:
   - при `agentPending` или незавершённой записи восстановление отклоняется;
   - пока оно идёт, команда агента получает `conflict`;
   - после успеха `showCatalogue` показывает данные копии.
-- [ ] 2.4 Добавить тест, связывающий версию Dexie (3) с `CURRENT_BACKUP_VERSION` (1) по решению «Risks» design.md, и комментарий у `database.ts`: любое изменение схемы требует решения о версии формата. Проверить, что тест проходит.
+- [x] 2.4 Добавить тест, связывающий версию Dexie (3) с `CURRENT_BACKUP_VERSION` (1) по решению «Risks» design.md, и комментарий у `database.ts`: любое изменение схемы требует решения о версии формата. Проверить, что тест проходит.
 
 ## 3. Версия сборки и пункты меню
 

@@ -9,7 +9,7 @@ async function setup() {
   const db = new ProjectBoardDatabase(`adapter-${crypto.randomUUID()}`); databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
   let id = 0, current = true, dirty = false
-  const api = createProjectBoardUseCases({ repository: repo, createId: () => `id-${++id}`, now: () => 'now' })
+  const api = createProjectBoardUseCases({ repository: repo, createId: () => `id-${++id}`, now: () => 'now', build: { version: 'test', commit: 'test' } })
   const store = createProjectBoardStore(api, () => current)
   await store.getState().openStorage()
   const project = await api.createProject({ name: 'Project', initialStatusNames: ['Only'] })

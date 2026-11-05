@@ -1,5 +1,6 @@
 import { CommandError, type CardAttributes, type RepositoryAgentCommand, type AgentCommandResult, type AgentSavedData } from '../../application/agent-command'
 import { Dexie } from 'dexie'
+import type { BackupData } from '../../domain/backup'
 import { moveByOffset, placeCardInGroup, placeCard } from '../../domain/order'
 import type { Card, CardPlacement, CardPlacementResult, CardDetails, CardInput, Note, Id, Project, ProjectBoard, BoardView, Status, WorkspacePreference } from '../../domain/model'
 import { RECENT_NOTE_LIMIT } from '../../domain/model'
@@ -102,6 +103,20 @@ export class DexieProjectBoardRepository implements ProjectBoardRepository {
   }
 
   async open() { await this.db.open() }
+  async snapshot(): Promise<BackupData> {
+    return this.db.transaction('r', this.db.projects, this.db.statuses, this.db.cards, this.db.notes, async () => ({
+      projects: await this.db.projects.toArray(), statuses: await this.db.statuses.toArray(), cards: await this.db.cards.toArray(), notes: await this.db.notes.toArray(),
+    }))
+  }
+  async replaceAll(data: BackupData): Promise<void> {
+    await this.db.transaction('rw', [this.db.projects, this.db.statuses, this.db.cards, this.db.notes, this.db.workspace], async () => {
+      await Promise.all([this.db.projects, this.db.statuses, this.db.cards, this.db.notes, this.db.workspace].map(table => table.clear()))
+      await this.db.projects.bulkAdd(data.projects)
+      await this.db.statuses.bulkAdd(data.statuses)
+      await this.db.cards.bulkAdd(data.cards)
+      await this.db.notes.bulkAdd(data.notes)
+    })
+  }
   async projects() { return this.db.projects.orderBy('createdAt').toArray() }
   async catalogue() {
     return this.db.transaction('r', this.db.projects, this.db.statuses, this.db.cards, async () => {

@@ -5,7 +5,7 @@ import type { ProjectBoardRepository } from './repository'
 function repository(): ProjectBoardRepository {
   return {
     executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
-    open: vi.fn(), catalogue: vi.fn().mockResolvedValue([]), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(),
+    open: vi.fn(), snapshot: vi.fn(), replaceAll: vi.fn(), catalogue: vi.fn().mockResolvedValue([]), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(),
     applyStatusSet: vi.fn(), createProject: vi.fn().mockImplementation(project => Promise.resolve(project)), deleteProject: vi.fn(), renameProject: vi.fn(),
     board: vi.fn(), boardView: vi.fn(), createStatus: vi.fn().mockImplementation(status => Promise.resolve({ ...status, position: 0 })),
     renameStatus: vi.fn(), moveStatus: vi.fn(), createCard: vi.fn().mockImplementation(card => Promise.resolve({ ...card, position: 0 })),
@@ -16,7 +16,7 @@ function repository(): ProjectBoardRepository {
 describe('project-board use cases', () => {
   it('creates trimmed project, status, and card records through the repository port', async () => {
     const port = repository()
-    const useCases = createProjectBoardUseCases({ repository: port, createId: vi.fn().mockReturnValueOnce('project').mockReturnValueOnce('status').mockReturnValueOnce('card'), now: () => '2026-10-07T00:00:00.000Z' })
+    const useCases = createProjectBoardUseCases({ repository: port, createId: vi.fn().mockReturnValueOnce('project').mockReturnValueOnce('status').mockReturnValueOnce('card'), now: () => '2026-10-07T00:00:00.000Z', build: { version: 'test', commit: 'test' } })
     await useCases.createProject({ name: '  Поиск квартиры  ', initialStatusNames: [] })
     await useCases.createStatus('project', 'Найдено')
     await useCases.createCard('status', { name: 'Квартира у парка', description: '', important: false, urgent: true })
@@ -27,7 +27,7 @@ describe('project-board use cases', () => {
 
   it('validates renames and passes ordering commands through the port', async () => {
     const port = repository()
-    const useCases = createProjectBoardUseCases({ repository: port, createId: () => 'id', now: () => 'now' })
+    const useCases = createProjectBoardUseCases({ repository: port, createId: () => 'id', now: () => 'now', build: { version: 'test', commit: 'test' } })
     await useCases.renameProject('project', 'Паспорт')
     await useCases.renameStatus('status', 'Просмотр')
     await useCases.updateCard('card', { name: 'Квартира', description: '', important: true, urgent: false })
@@ -43,7 +43,7 @@ describe('project-board use cases', () => {
   it('rejects invalid input and preserves repository failures such as cross-project transfers', async () => {
     const port = repository()
     vi.mocked(port.moveCard).mockRejectedValueOnce(new Error('Нельзя перенести карточку в другой проект'))
-    const useCases = createProjectBoardUseCases({ repository: port, createId: () => 'id', now: () => 'now' })
+    const useCases = createProjectBoardUseCases({ repository: port, createId: () => 'id', now: () => 'now', build: { version: 'test', commit: 'test' } })
     expect(() => useCases.createProject({ name: ' ', initialStatusNames: [] })).toThrow('Название обязательно')
     expect(port.createProject).not.toHaveBeenCalled()
     await expect(useCases.moveCard('card', { statusId: 'foreign-status', beforeCardId: null, expected: { statusId: 'initial', important: false, urgent: false } })).rejects.toThrow('другой проект')
@@ -53,7 +53,7 @@ describe('project-board use cases', () => {
 
 it('validates card names and preserves both independent flags for create and update', async () => {
   const port = repository()
-  const api = createProjectBoardUseCases({ repository: port, createId: () => 'id', now: () => 'now' })
+  const api = createProjectBoardUseCases({ repository: port, createId: () => 'id', now: () => 'now', build: { version: 'test', commit: 'test' } })
   for (const important of [false, true]) for (const urgent of [false, true]) {
     await api.createCard('s', { name: '  New  ', description: '', important, urgent })
     expect(port.createCard).toHaveBeenLastCalledWith({ id: 'id', statusId: 's', name: 'New', description: '', important, urgent })
@@ -67,7 +67,7 @@ it('validates card names and preserves both independent flags for create and upd
 
 it('deletes by selected ID and distinguishes nonempty status refusal from storage errors', async () => {
   const port = repository()
-  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => 'unused' })
+  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => 'unused', build: { version: 'test', commit: 'test' } })
   await api.deleteCard('selected-card')
   expect(port.deleteCard).toHaveBeenCalledWith('selected-card')
   expect(await api.deleteStatus('selected-status')).toBe('deleted')
@@ -84,7 +84,7 @@ it('validates all initial names before generating independent ordered records', 
   const port = repository()
   let next = 0
   const createId = vi.fn(() => `id-${++next}`)
-  const api = createProjectBoardUseCases({ repository: port, createId, now: () => 'now' })
+  const api = createProjectBoardUseCases({ repository: port, createId, now: () => 'now', build: { version: 'test', commit: 'test' } })
   expect(() => api.createProject({ name: 'Project', initialStatusNames: ['Good', '  '] })).toThrow('Название обязательно')
   expect(createId).not.toHaveBeenCalled()
   expect(port.createProject).not.toHaveBeenCalled()
@@ -98,7 +98,7 @@ it('validates all initial names before generating independent ordered records', 
 
 it('validates notes, gives new notes injected identifiers/dates and leaves edit metadata to the repository', async () => {
   const port = repository()
-  const api = createProjectBoardUseCases({ repository: port, createId: () => 'note', now: () => '2026-11-01T12:00:00Z' })
+  const api = createProjectBoardUseCases({ repository: port, createId: () => 'note', now: () => '2026-11-01T12:00:00Z', build: { version: 'test', commit: 'test' } })
   expect(() => api.createNote('card', ' \n ')).toThrow('Текст заметки обязателен')
   expect(() => api.updateNote('card', 'note', ' ')).toThrow('Текст заметки обязателен')
   expect(port.createNote).not.toHaveBeenCalled()
@@ -112,7 +112,7 @@ it('validates notes, gives new notes injected identifiers/dates and leaves edit 
 
 it('deletes exactly the requested project ID through the repository boundary', async () => {
   const port = repository()
-  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => 'unused' })
+  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => 'unused', build: { version: 'test', commit: 'test' } })
   await api.deleteProject('selected-project')
   expect(port.deleteProject).toHaveBeenCalledExactlyOnceWith('selected-project')
   vi.mocked(port.deleteProject).mockRejectedValueOnce(Error('quota'))
@@ -121,7 +121,7 @@ it('deletes exactly the requested project ID through the repository boundary', a
 
 it('prepares a nonempty set with independent IDs, normalized names and stable positions', async () => {
   const port = repository()
-  const api = createProjectBoardUseCases({ repository: port, createId: vi.fn().mockReturnValueOnce('first').mockReturnValueOnce('second'), now: () => 'unused' })
+  const api = createProjectBoardUseCases({ repository: port, createId: vi.fn().mockReturnValueOnce('first').mockReturnValueOnce('second'), now: () => 'unused', build: { version: 'test', commit: 'test' } })
   await api.applyStatusSet('project', ['  First  ', 'Second'])
   expect(port.applyStatusSet).toHaveBeenCalledExactlyOnceWith('project', [
     { id: 'first', projectId: 'project', name: 'First', position: 0 },
@@ -134,8 +134,26 @@ it('prepares a nonempty set with independent IDs, normalized names and stable po
 it('reads catalogue summaries through their own query without changing native project reads', async () => {
   const port = repository(), summaries = [{ id: 'p', name: 'P', createdAt: 'now', cardCount: 3 }]
   vi.mocked(port.catalogue).mockResolvedValue(summaries)
-  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => 'unused' })
+  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => 'unused', build: { version: 'test', commit: 'test' } })
   expect(await api.catalogue()).toEqual(summaries)
   expect(port.catalogue).toHaveBeenCalledOnce()
   expect(port.projects).not.toHaveBeenCalled()
+})
+
+it('exports a backup stamped with the clock and build, and summarizes the stored data', async () => {
+  const data = {
+    projects: [{ id: 'p', name: 'Проект', createdAt: '2026-11-01T10:00:00.000Z' }],
+    statuses: [{ id: 's', projectId: 'p', name: 'Найдено', position: 0 }],
+    cards: [{ id: 'c', statusId: 's', name: 'Карточка', description: '', position: 0, important: false, urgent: false }],
+    notes: [{ id: 'n1', cardId: 'c', text: 'Раз', createdAt: '2026-11-02T10:00:00.000Z' }, { id: 'n2', cardId: 'c', text: 'Два', createdAt: '2026-11-03T10:00:00.000Z' }],
+  }
+  const port = repository()
+  vi.mocked(port.snapshot).mockResolvedValue(data)
+  const api = createProjectBoardUseCases({ repository: port, createId: () => 'unused', now: () => '2026-11-06T11:30:00.000Z', build: { version: '0.1.0', commit: 'abc1234' } })
+  const backup = await api.exportBackup()
+  expect(backup).toEqual({ format: 'easytrack-backup', formatVersion: 1, exportedAt: '2026-11-06T11:30:00.000Z', app: { version: '0.1.0', commit: 'abc1234' }, data })
+  expect(api.parseBackup(JSON.stringify(backup))).toEqual({ ok: true, backup })
+  expect(await api.summary()).toEqual({ projects: 1, cards: 1, notes: 2 })
+  await api.restoreBackup(backup)
+  expect(port.replaceAll).toHaveBeenCalledWith(data)
 })

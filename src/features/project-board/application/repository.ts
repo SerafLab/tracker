@@ -1,4 +1,5 @@
 import type { AgentCommandResult, CardAttributes, RepositoryAgentCommand } from './agent-command'
+import type { BackupData } from '../domain/backup'
 import type { Card, CardPlacement, CardPlacementResult, CardDetails, CardInput, Note, Id, Project, ProjectSummary, ProjectBoard, BoardView, Status, WorkspacePreference } from '../domain/model'
 
 export type NewStatus = Omit<Status, 'position'>
@@ -9,6 +10,9 @@ export interface ProjectBoardRepository {
   executeAgentCommand(command: RepositoryAgentCommand): Promise<AgentCommandResult>
   updateCardAttributes(id: Id, attributes: CardAttributes): Promise<Card>
   open(): Promise<void>
+  snapshot(): Promise<BackupData>
+  /** Atomically replaces every table, including the workspace preference. */
+  replaceAll(data: BackupData): Promise<void>
   projects(): Promise<Project[]>
   catalogue(): Promise<ProjectSummary[]>
   preference(): Promise<WorkspacePreference | undefined>

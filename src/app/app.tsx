@@ -47,7 +47,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const [runtime] = useState(() => {
     const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { staleConnection.current = true; setRestartRequired(true) })
     const repository = suppliedRepository ?? new DexieProjectBoardRepository(database!)
-    const useCases = createProjectBoardUseCases({ repository, createId: () => crypto.randomUUID(), now: () => new Date().toISOString() })
+    const useCases = createProjectBoardUseCases({ repository, createId: () => crypto.randomUUID(), now: () => new Date().toISOString(), build: { version: 'dev', commit: 'unknown' } })
     return { useCases, store: createProjectBoardStore(useCases, () => !staleConnection.current) }
   })
   const registerDraftGuard = useCallback((guard: DraftGuard | null) => { draftGuard.current = guard }, [])

@@ -92,7 +92,7 @@ it('closes a committed creation after navigation fails without offering another 
   try {
     const repo = new DexieProjectBoardRepository(db)
     const create = vi.spyOn(repo, 'createProject')
-    const api = createProjectBoardUseCases({ repository: repo, createId: () => crypto.randomUUID(), now: () => 'now' })
+    const api = createProjectBoardUseCases({ repository: repo, createId: () => crypto.randomUUID(), now: () => 'now', build: { version: 'test', commit: 'test' } })
     const store = createProjectBoardStore(api)
     await store.getState().showCatalogue()
     const saved = vi.fn(), navigate = vi.fn().mockRejectedValue(Error('navigation failed'))

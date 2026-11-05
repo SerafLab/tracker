@@ -7,6 +7,7 @@ const paths = {
   sortNewest: <path d="M3 6h10M3 12h7M3 18h4M18 4v16m-4-4 4 4 4-4" />,
   sortOldest: <path d="M3 6h4M3 12h7M3 18h10M18 20V4m-4 4 4-4 4 4" />,
   plus: <path d="M12 5v14M5 12h14" />,
+  chevronDown: <path d="m6 9 6 6 6-6" />,
   more: <><circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" /></>,
   close: <path d="m6 6 12 12M6 18 18 6" />,
   important: <path d="m12 3 2.8 5.6 6.2.9-4.5 4.4 1.1 6.1-5.6-2.9L6.4 20l1.1-6.1L3 9.5l6.2-.9Z" />,

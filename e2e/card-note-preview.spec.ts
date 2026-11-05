@@ -64,6 +64,20 @@ for (const width of [320, 390, 1280, 1440]) test(`board preview of five long not
   await expect(card.getByRole('button', { name: 'Действия карточки Preview card' })).toBeEnabled()
   const cardBox = (await card.boundingBox())!, viewport = page.viewportSize()!
   expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(viewport.width + 1)
+  // The icon-only toggle closes the notes line: centred on it, below the last note, at least 24px.
+  const line = (await card.locator('.card-note').last().boundingBox())!
+  expect(toggleBox.width).toBeGreaterThanOrEqual(24)
+  expect(toggleBox.height).toBeGreaterThanOrEqual(24)
+  expect(Math.abs(toggleBox.x + toggleBox.width / 2 - (line.x + 1))).toBeLessThanOrEqual(1)
+  expect(toggleBox.y).toBeGreaterThanOrEqual(line.y + line.height)
+  await expect(toggle).toHaveText('')
+  await page.mouse.move(0, 0)
+  const hint = () => toggle.evaluate(button => { const style = getComputedStyle(button, '::after'); return `${style.visibility} ${style.content}` })
+  expect(await hint()).toBe('hidden "Свернуть заметки"')
+  await card.getByRole('button', { name: 'Действия карточки Preview card' }).focus()
+  await page.keyboard.press('Tab')
+  await expect(toggle).toBeFocused()
+  await expect.poll(hint).toBe('visible "Свернуть заметки"')
   await page.screenshot({ path: info.outputPath(`notes-${width}.png`), fullPage: true })
   // The toggle neither opens the card nor opens menus; the note text and the card link do open it.
   const hash = new URL(page.url()).hash

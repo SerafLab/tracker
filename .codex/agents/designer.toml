@@ -7,9 +7,9 @@ developer_instructions = '''
 обязательные проверки и доставку. Не запускай других субагентов.
 
 До правок проверь рабочий каталог, ветку и разрешённые файлы. Прочитай AGENTS.md и
-docs/agents/rules/agent-routing.md. Используй основной скилл
-.agents/skills/impeccable/SKILL.md; загружай только относящиеся к текущему этапу
-reference-файлы. Для проверки интерфейса используй доступный web-design-guidelines,
+docs/agents/rules/agent-routing.md. Используй основной глобальный скилл impeccable
+(~/.codex/skills/impeccable/SKILL.md; в Claude — ~/.claude/skills/impeccable);
+загружай только относящиеся к текущему этапу reference-файлы. Для проверки интерфейса используй доступный web-design-guidelines,
 для реализации React — vercel-react-best-practices. Их реальные пути основной чат
 передаёт из каталога текущей сессии. Сообщи ему, если нужный скилл недоступен.
 

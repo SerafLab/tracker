@@ -8,7 +8,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Shared application bar across states
-The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, full card page, loading, storage-unavailable, and restart-required screens. The heading SHALL be the page's primary heading. With a card panel open, the application bar SHALL retain the board context and the panel SHALL identify its own card. The settings menu opened from the bar SHALL contain the sole accessible language choice.
+The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, full card page, loading, storage-unavailable, and restart-required screens. Except on the full card page, the heading SHALL be the page's primary heading; on the full card page the bar SHALL show the card's project and status as plain-text context, and the card name in the content SHALL be the primary heading. With a card panel open, the application bar SHALL retain the board context. The settings menu opened from the bar SHALL contain the sole accessible language choice.
 
 #### Scenario: User navigates from catalogue to board
 - **WHEN** the user opens a project from the catalogue
@@ -24,11 +24,11 @@ The system SHALL show one application bar containing the EasyTrack brand, the cu
 
 #### Scenario: User opens a card page
 - **WHEN** пользователь открывает страницу карточки
-- **THEN** общий AppBar показывает сохранённое название карточки как единственный основной заголовок и настройки с единственным выбором языка; редактирование черновика не меняет заголовок до сохранения
+- **THEN** общий AppBar показывает «Проект › Статус» простым текстом без ссылок и настройки с единственным выбором языка, а единственным основным заголовком страницы является сохранённое название карточки в блоке «Основное»; редактирование черновика не меняет заголовок до сохранения
 
 #### Scenario: User opens a card panel
 - **WHEN** пользователь открывает карточку с доски
-- **THEN** общий AppBar сохраняет заголовок и действия доски, а панель имеет собственный доступный заголовок с сохранённым названием карточки
+- **THEN** общий AppBar сохраняет заголовок и действия доски, а панель имеет доступное название области и заголовок блока «Основное» с сохранённым названием карточки
 
 ### Requirement: Contextual navigation and primary action
 The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The full card page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming or project-deletion actions. The card panel SHALL provide close and full-page actions while retaining board navigation. Leaving either card presentation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming and project-deletion actions. On every screen the settings menu SHALL contain the installation entry.

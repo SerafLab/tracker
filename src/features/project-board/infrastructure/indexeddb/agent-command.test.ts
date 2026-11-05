@@ -10,7 +10,7 @@ async function setup() {
   const db = new ProjectBoardDatabase(`agent-command-${crypto.randomUUID()}`); databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
   let id = 0
-  const api = createProjectBoardUseCases({ repository: repo, createId: () => `id-${++id}`, now: () => 'now' })
+  const api = createProjectBoardUseCases({ repository: repo, createId: () => `id-${++id}`, now: () => 'now', build: { version: 'test', commit: 'test' } })
   const project = await api.createProject({ name: 'Same', initialStatusNames: ['One', 'Two'] })
   const board = (await api.board(project.id))!
   return { db, repo, api, project, statuses: board.statuses }

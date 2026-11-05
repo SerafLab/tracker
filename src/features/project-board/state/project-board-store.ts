@@ -1,6 +1,7 @@
 import { CommandError, type AgentCommand, type AgentSavedData } from '../application/agent-command'
 import { createStore } from 'zustand/vanilla'
 import type { CardDetails, CardPlacement, CardPlacementResult, CardInput, CreateProjectInput, Note, Id, Project, ProjectSummary, BoardView } from '../domain/model'
+import type { Backup } from '../application/backup'
 import type { DeleteStatusResult } from '../application/repository'
 import type { ProjectBoardUseCases } from '../application/use-cases'
 
@@ -54,6 +55,8 @@ export type ProjectBoardState = {
   updateCard(projectId: Id, cardId: Id, input: CardInput): Promise<boolean>
   deleteCard(projectId: Id, cardId: Id): Promise<boolean>
   moveCard(projectId: Id, cardId: Id, placement: CardPlacement): Promise<MoveCardStateResult>
+  /** False when rejected because another write is pending; rejects when the replacement fails. */
+  restoreBackup(backup: Backup): Promise<boolean>
 }
 
 
@@ -441,8 +444,21 @@ export function createProjectBoardStore(useCases: ProjectBoardUseCases, canMutat
         set({ placementPending: false })
         return result
       },
+      async restoreBackup(backup) {
+        if (!canMutate() || get().applyingStatusSet || get().agentPending || get().agentRefreshError || get().placementPending || get().placementRefreshError || pendingUiWrites > 1) return false
+        // agentPending makes agent commands and UI writes see a pending write until the replacement settles.
+        set({ agentPending: true })
+        try {
+          await preferenceWrite
+          await useCases.restoreBackup(backup)
+        } finally { set({ agentPending: false }) }
+        // Drop the cached board and card; the catalogue is re-read from the restored data.
+        set({ boardSnapshot: null })
+        await get().showCatalogue()
+        return true
+      },
     }
-    const tracked = ['createNote', 'updateNote', 'deleteNote', 'createProject', 'deleteProject', 'renameProject', 'createStatus', 'renameStatus', 'deleteStatus', 'moveStatus', 'createCard', 'updateCard', 'deleteCard', 'moveCard', 'clearLastProject', 'showBoard', 'showCard', 'showCatalogue'] as const
+    const tracked = ['createNote', 'updateNote', 'deleteNote', 'createProject', 'deleteProject', 'renameProject', 'createStatus', 'renameStatus', 'deleteStatus', 'moveStatus', 'createCard', 'updateCard', 'deleteCard', 'moveCard', 'clearLastProject', 'showBoard', 'showCard', 'showCatalogue', 'restoreBackup'] as const
     for (const name of tracked) {
       const action = state[name] as (...args: never[]) => Promise<unknown>
       ;(state as unknown as Record<string, (...args: never[]) => Promise<unknown>>)[name] = async (...args) => {

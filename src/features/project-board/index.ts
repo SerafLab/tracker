@@ -14,3 +14,6 @@ export type { StatusPresetId } from './presentation/status-presets'
 export type { ProjectBoardStore } from './state/project-board-store'
 
 export type { ProjectSummary } from './domain/model'
+export type { BackupData } from './domain/backup'
+export { BACKUP_FORMAT, CURRENT_BACKUP_VERSION } from './application/backup'
+export type { Backup, BackupSummary, ParseBackupResult } from './application/backup'

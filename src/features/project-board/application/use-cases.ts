@@ -1,5 +1,6 @@
 import type { AgentCommand, CardAttributes, RepositoryAgentCommand } from './agent-command'
 import { requiredName, type CardInput, type CardPlacement, type CreateProjectInput, type Id } from '../domain/model'
+import { CURRENT_BACKUP_VERSION, BACKUP_FORMAT, parseBackup, summarizeBackup, type Backup } from './backup'
 import type { ProjectBoardRepository } from './repository'
 
 export type IdGenerator = () => Id
@@ -11,8 +12,9 @@ export function createProjectBoardUseCases(dependencies: {
   repository: ProjectBoardRepository
   createId: IdGenerator
   now: Clock
+  build: { version: string; commit: string }
 }) {
-  const { repository, createId, now } = dependencies
+  const { repository, createId, now, build } = dependencies
   const name = (input: string) => {
     const value = requiredName(input)
     if (!value) throw new Error('Название обязательно')
@@ -40,6 +42,10 @@ export function createProjectBoardUseCases(dependencies: {
     },
     updateCardAttributes: (id: Id, attributes: CardAttributes) => repository.updateCardAttributes(id, { ...attributes, name: name(attributes.name) }),
     open: () => repository.open(),
+    exportBackup: async (): Promise<Backup> => ({ format: BACKUP_FORMAT, formatVersion: CURRENT_BACKUP_VERSION, exportedAt: now(), app: { version: build.version, commit: build.commit }, data: await repository.snapshot() }),
+    summary: async () => summarizeBackup(await repository.snapshot()),
+    parseBackup,
+    restoreBackup: (backup: Backup) => repository.replaceAll(backup.data),
     projects: () => repository.projects(),
     catalogue: () => repository.catalogue(),
     preference: () => repository.preference(),

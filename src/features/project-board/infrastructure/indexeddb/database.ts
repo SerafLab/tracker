@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie'
 import type { Card, Note, Project, Status, WorkspacePreference } from '../../domain/model'
 
+// Any schema or stored-data change needs a decision on CURRENT_BACKUP_VERSION (see database.test.ts).
 export class ProjectBoardDatabase extends Dexie {
   projects!: EntityTable<Project, 'id'>
   statuses!: EntityTable<Status, 'id'>

@@ -30,15 +30,15 @@ The system SHALL show one application bar containing the EasyTrack brand, the cu
 - **THEN** общий AppBar сохраняет заголовок и действия доски, а панель имеет доступное название области и заголовок блока «Основное» с сохранённым названием карточки
 
 ### Requirement: Contextual navigation and primary action
-The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The full card page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming or project-deletion actions. The card panel SHALL provide close and full-page actions while retaining board navigation. Leaving either card presentation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming and project-deletion actions. On every screen the settings menu SHALL contain the installation entry.
+The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The full card page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming or project-deletion actions. The card panel SHALL provide close and full-page actions while retaining board navigation. Leaving either card presentation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming and project-deletion actions. On every screen the settings menu SHALL contain the installation entry. On the catalogue, a board and the full card page the settings menu SHALL also contain «Выгрузить резервную копию» and «Восстановить из резервной копии» directly before the installation entry; service states SHALL omit both.
 
 #### Scenario: User works in the catalogue
 - **WHEN** the catalogue is displayed, whether empty or populated
-- **THEN** its application bar offers one plus with the localized accessible name «Создать проект» and a settings gear containing only the installation entry and application-language settings
+- **THEN** its application bar offers one plus with the localized accessible name «Создать проект» and a settings gear containing only «Выгрузить резервную копию», «Восстановить из резервной копии», the installation entry, application-language settings and color theme settings
 
 #### Scenario: User works on a board
 - **WHEN** a project board is displayed, whether or not it has statuses
-- **THEN** its application bar identifies the project and provides a plus with the localized accessible name «Добавить статус» and a settings gear containing «Переименовать проект», «Удалить проект», the installation entry and application-language settings, without a separate project-actions control
+- **THEN** its application bar identifies the project and provides a plus with the localized accessible name «Добавить статус» and a settings gear containing «Переименовать проект», «Удалить проект», «Выгрузить резервную копию», «Восстановить из резервной копии», the installation entry and application-language settings, without a separate project-actions control
 
 #### Scenario: User returns through the brand
 - **WHEN** the user activates the EasyTrack brand from a board using a pointer or keyboard
@@ -46,11 +46,11 @@ The application bar SHALL show an icon-only plus for project creation in the cat
 
 #### Scenario: User encounters a service state
 - **WHEN** the application is loading, its storage is unavailable, or a restart is required
-- **THEN** the application bar has no creation, project-renaming or project-deletion action, its settings menu provides the installation entry, language selection and color theme selection, and the state message retains its relevant guidance or recovery action
+- **THEN** the application bar has no creation, project-renaming or project-deletion action, its settings menu provides the installation entry, language selection and color theme selection without backup export or restore, and the state message retains its relevant guidance or recovery action
 
 #### Scenario: User navigates from a card page
 - **WHEN** пользователь открывает страницу карточки
-- **THEN** доступен возврат к её доске, бренд ведёт в каталог через защиту черновиков, настройки содержат пункт установки и выбор языка, а создание статуса, переименование и удаление проекта отсутствуют
+- **THEN** доступен возврат к её доске, бренд ведёт в каталог через защиту черновиков, настройки содержат «Выгрузить резервную копию», «Восстановить из резервной копии», пункт установки и выбор языка, а создание статуса, переименование и удаление проекта отсутствуют
 
 #### Scenario: User navigates from a card panel
 - **WHEN** пользователь открывает панель карточки на доске
@@ -110,7 +110,7 @@ The system SHALL give the creation plus and settings gear localized accessible n
 - **THEN** its localized hint and accessible name explain «Создать проект»
 
 ### Requirement: Settings menu interaction
-The settings gear SHALL open and close one non-modal settings menu. Opening it SHALL move focus to its first available item. Arrow Up and Arrow Down SHALL move focus between available items, wrapping at the ends and skipping the separator and caption. The menu SHALL close on Escape or outside interaction and restore focus to the gear on Escape. Starting project renaming, project deletion or installation SHALL close the menu before opening its dialog or the browser installation prompt. Choosing a language or color theme SHALL keep the menu open. Cancelling a renaming or deletion dialog and closing the installation dialog SHALL return focus to the gear; successful renaming SHALL also return focus to the gear, while successful deletion SHALL follow project-deletion navigation and focus rules.
+The settings gear SHALL open and close one non-modal settings menu. Opening it SHALL move focus to its first available item. Arrow Up and Arrow Down SHALL move focus between available items, wrapping at the ends and skipping the separator and caption. The menu SHALL close on Escape or outside interaction and restore focus to the gear on Escape. Starting project renaming, project deletion, backup export, backup restore or installation SHALL close the menu and move focus to the gear before opening its dialog, file chooser, share sheet or the browser installation prompt. Choosing a language or color theme SHALL keep the menu open. Cancelling a renaming or deletion dialog and closing the installation dialog SHALL return focus to the gear; successful renaming SHALL also return focus to the gear, while successful deletion SHALL follow project-deletion navigation and focus rules.
 
 #### Scenario: User renames the current project
 - **WHEN** the user opens board settings and chooses «Переименовать проект»
@@ -122,7 +122,7 @@ The settings gear SHALL open and close one non-modal settings menu. Opening it S
 
 #### Scenario: User navigates settings with the keyboard
 - **WHEN** the user opens board settings with the keyboard and presses Arrow Down repeatedly
-- **THEN** focus starts on «Переименовать проект» and moves through «Удалить проект», the installation entry, «Русский» and «English», then wraps to «Переименовать проект» without stopping on the separator or caption
+- **THEN** focus starts on «Переименовать проект» and moves through «Удалить проект», «Выгрузить резервную копию», «Восстановить из резервной копии», the installation entry, «Русский» and «English», then wraps to «Переименовать проект» without stopping on the separator or caption
 
 #### Scenario: User switches language with the keyboard
 - **WHEN** the user focuses «English» in the settings menu and activates it with Enter or Space
@@ -143,6 +143,10 @@ The settings gear SHALL open and close one non-modal settings menu. Opening it S
 #### Scenario: User cancels deleting the current project
 - **WHEN** пользователь отменяет удаление проекта в диалоге
 - **THEN** доска сохраняется, фокус возвращается к шестерёнке, меню настроек остаётся закрытым
+
+#### Scenario: User starts a backup action from settings
+- **WHEN** пользователь открывает настройки и выбирает «Выгрузить резервную копию» или «Восстановить из резервной копии»
+- **THEN** меню закрывается до начала выгрузки или выбора файла, а после завершения или отмены действия фокус находится на шестерёнке
 
 ### Requirement: Shared notification area
 The system SHALL show notifications in one application-wide area at the bottom centre of the viewport, clear of the device safe area. Notifications SHALL overlay the content without shifting the layout. The area SHALL serve every screen, and callers SHALL not choose a different position per notification. Transient notifications SHALL appear above persistent notices without overlapping them.
@@ -206,7 +210,7 @@ The settings menu SHALL list its actions first, then the language group, then th
 
 #### Scenario: Board settings layout
 - **WHEN** the user opens settings on a project board in Russian
-- **THEN** the menu shows «Переименовать проект», «Удалить проект» and «Как установить EasyTrack», then a separator, the caption «Язык приложения», the items «Русский» and «English», a separator, the caption «Цветовая тема приложения» and the items «Зелёная» and «Чернильная», with all labels aligned to the same start edge
+- **THEN** the menu shows «Переименовать проект», «Удалить проект», «Выгрузить резервную копию», «Восстановить из резервной копии» and «Как установить EasyTrack», then a separator, the caption «Язык приложения», the items «Русский» and «English», a separator, the caption «Цветовая тема приложения» and the items «Зелёная» and «Чернильная», with all labels aligned to the same start edge
 
 #### Scenario: Settings without preceding actions
 - **WHEN** settings open in a state that offers no action before the language group

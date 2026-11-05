@@ -7,7 +7,7 @@ const board = { id: 'project', name: 'Поиск квартиры', createdAt: '
 function useCases(overrides: Partial<ProjectBoardUseCases> = {}): ProjectBoardUseCases {
   return {
     executeAgentCommand: vi.fn(), updateCardAttributes: vi.fn(), cardDetails: vi.fn(), createNote: vi.fn(), updateNote: vi.fn(), deleteNote: vi.fn(),
-    open: vi.fn(), catalogue: vi.fn().mockResolvedValue([]), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(), board: vi.fn().mockResolvedValue(board), boardView: vi.fn().mockResolvedValue(board),
+    open: vi.fn(), exportBackup: vi.fn(), summary: vi.fn(), parseBackup: vi.fn(), restoreBackup: vi.fn(), catalogue: vi.fn().mockResolvedValue([]), projects: vi.fn().mockResolvedValue([]), preference: vi.fn(), setLastProject: vi.fn(), board: vi.fn().mockResolvedValue(board), boardView: vi.fn().mockResolvedValue(board),
     applyStatusSet: vi.fn(), createProject: vi.fn(), deleteProject: vi.fn(), renameProject: vi.fn(), createStatus: vi.fn(), renameStatus: vi.fn(), moveStatus: vi.fn(),
     createCard: vi.fn(), updateCard: vi.fn(), moveCard: vi.fn(), deleteCard: vi.fn(), deleteStatus: vi.fn().mockResolvedValue('deleted'), ...overrides,
   }
@@ -590,4 +590,65 @@ it('replaces a previous project snapshot with the board of a missing card', asyn
   expect(await store.getState().showCard('project', 'gone')).toBe('shown')
   expect(store.getState().workspace).toEqual({ kind: 'card-missing', project: board })
   expect(store.getState().boardSnapshot).toEqual(board)
+})
+
+
+describe('restoreBackup', () => {
+  const backup = { format: 'easytrack-backup' as const, formatVersion: 1, exportedAt: '2026-11-06T11:30:00.000Z', app: { version: 'test', commit: 'test' }, data: { projects: [], statuses: [], cards: [], notes: [] } }
+  const deferred = <T,>() => { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done }); return { promise, resolve } }
+
+  it('rejects restoration while an agent operation is pending', async () => {
+    const api = useCases()
+    const store = createProjectBoardStore(api)
+    await store.getState().openStorage()
+    const release = store.getState().beginAgentOperation()
+    expect(await store.getState().restoreBackup(backup)).toBe(false)
+    expect(api.restoreBackup).not.toHaveBeenCalled()
+    release()
+  })
+
+  it('rejects restoration while a UI write is pending', async () => {
+    const write = deferred<void>()
+    const api = useCases({ renameProject: vi.fn().mockReturnValue(write.promise) })
+    const store = createProjectBoardStore(api)
+    const rename = store.getState().renameProject('project', 'Имя')
+    expect(await store.getState().restoreBackup(backup)).toBe(false)
+    expect(api.restoreBackup).not.toHaveBeenCalled()
+    write.resolve()
+    await rename
+  })
+
+  it('answers agent commands with conflict while the replacement runs', async () => {
+    const replacement = deferred<void>()
+    const api = useCases({ restoreBackup: vi.fn().mockReturnValue(replacement.promise) })
+    const store = createProjectBoardStore(api)
+    await store.getState().openStorage()
+    const restoring = store.getState().restoreBackup(backup)
+    await expect(store.getState().executeAgentCommand({ kind: 'rename_project', projectId: 'project', name: 'Новое' })).rejects.toMatchObject({ code: 'conflict' })
+    expect(await store.getState().createProject({ name: 'Новый', initialStatusNames: [] })).toBeUndefined()
+    replacement.resolve()
+    expect(await restoring).toBe(true)
+    expect(store.getState().agentPending).toBe(false)
+  })
+
+  it('shows the restored catalogue and drops the cached board', async () => {
+    const restored = [{ id: 'restored', name: 'Из копии', createdAt: '2026-11-01T10:00:00.000Z', cardCount: 0 }]
+    const api = useCases()
+    vi.mocked(api.restoreBackup).mockImplementation(async () => { vi.mocked(api.catalogue).mockResolvedValue(restored) })
+    const store = createProjectBoardStore(api)
+    await store.getState().showBoard('project')
+    expect(store.getState().boardSnapshot).toEqual(board)
+    expect(await store.getState().restoreBackup(backup)).toBe(true)
+    expect(store.getState().boardSnapshot).toBeNull()
+    expect(store.getState().workspace).toEqual({ kind: 'catalogue', projects: restored })
+  })
+
+  it('propagates a write failure and releases the pending flag', async () => {
+    const api = useCases({ restoreBackup: vi.fn().mockRejectedValue(new Error('quota')) })
+    const store = createProjectBoardStore(api)
+    await store.getState().showBoard('project')
+    await expect(store.getState().restoreBackup(backup)).rejects.toThrow('quota')
+    expect(store.getState().agentPending).toBe(false)
+    expect(store.getState().workspace).toEqual({ kind: 'board', board })
+  })
 })

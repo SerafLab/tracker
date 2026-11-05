@@ -14,7 +14,7 @@ type AppBarProps = ({ title: string; context?: never } | { title?: never; contex
 export function AppBar({ title, context, onReturn, creation, rename, deleteProject }: AppBarProps) {
   const { t } = useTranslation()
   const modalOpen = useModalOpen()
-  const settingsEntry = useContext(SettingsEntryContext)
+  const settingsEntries = useContext(SettingsEntryContext)
   const [open, setOpen] = useState(false)
   const localGear = useRef<HTMLButtonElement>(null)
   const gear = rename?.triggerRef ?? deleteProject?.triggerRef ?? localGear
@@ -84,8 +84,8 @@ export function AppBar({ title, context, onReturn, creation, rename, deleteProje
             {rename ? <button disabled={rename.disabled} className="menu-item" role="menuitem" onClick={() => { setOpen(false); rename.onSelect() }}>{t('renameProject')}</button> : null}
             {deleteProject ? <button disabled={deleteProject.disabled} className="menu-item" role="menuitem" onClick={() => { setOpen(false); deleteProject.onSelect() }}>{t('deleteProject')}</button> : null}
             {/* Focus the gear first so a dialog opened by the entry returns focus there. */}
-            {settingsEntry ? <button className="menu-item" role="menuitem" onClick={() => { setOpen(false); gear.current?.focus(); settingsEntry.onSelect() }}>{settingsEntry.label}</button> : null}
-            {rename || deleteProject || settingsEntry ? <div role="separator" className="menu-separator" /> : null}
+            {settingsEntries.map(entry => <button key={entry.label} className="menu-item" role="menuitem" onClick={() => { setOpen(false); gear.current?.focus(); entry.onSelect() }}>{entry.label}</button>)}
+            {rename || deleteProject || settingsEntries.length ? <div role="separator" className="menu-separator" /> : null}
             <LanguageMenuGroup />
             <ThemeMenuGroup />
           </div>

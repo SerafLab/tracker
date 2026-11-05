@@ -7,7 +7,7 @@ import { localeStorageKey } from '../i18n/locale'
 import { RestartRequired } from '../app/pwa/restart-required'
 import { ActionDialog } from '../features/project-board/presentation/controls'
 import { AppBar } from './app-bar'
-import { SettingsEntryContext } from './settings-entry'
+import { SettingsEntries } from './settings-entry'
 
 afterEach(cleanup)
 
@@ -45,7 +45,7 @@ it.each(['ru', 'en'])('offers contextual icon controls and keyboard settings in 
 
 it('lists actions, a separator and the language group in order with a wrapping arrow-key cycle', async () => {
   const user = userEvent.setup()
-  render(<LocaleProvider><SettingsEntryContext value={{ label: 'Как установить EasyTrack', onSelect: () => {} }}><AppBar title="Проект" rename={{onSelect: () => {}, triggerRef: createRef()}} deleteProject={{onSelect: () => {}, triggerRef: createRef()}} /></SettingsEntryContext></LocaleProvider>)
+  render(<LocaleProvider><SettingsEntries entries={[{ label: 'Как установить EasyTrack', onSelect: () => {} }]}><AppBar title="Проект" rename={{onSelect: () => {}, triggerRef: createRef()}} deleteProject={{onSelect: () => {}, triggerRef: createRef()}} /></SettingsEntries></LocaleProvider>)
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
   const menu = await screen.findByRole('menu', { name: 'Настройки' })
   const items = [...within(menu).getAllByRole('menuitem'), ...within(menu).getAllByRole('menuitemradio')]
@@ -90,7 +90,7 @@ it('keeps the menu open and focus on the chosen language item', async () => {
 it('renders a supplied application settings entry before the language group and closes settings when it is chosen', async () => {
   const user = userEvent.setup()
   const select = vi.fn(() => expect(gear).toHaveFocus())
-  render(<LocaleProvider><SettingsEntryContext value={{ label: 'Как установить EasyTrack', onSelect: select }}><AppBar title="Каталог" /></SettingsEntryContext></LocaleProvider>)
+  render(<LocaleProvider><SettingsEntries entries={[{ label: 'Как установить EasyTrack', onSelect: select }]}><AppBar title="Каталог" /></SettingsEntries></LocaleProvider>)
   const gear = screen.getByRole('button', { name: 'Настройки' })
   await user.click(gear)
   const menu = await screen.findByRole('menu', { name: 'Настройки' })
@@ -201,4 +201,16 @@ it('only focuses truncated headings and remeasures title, resize and font change
   } finally {
     vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(document, 'fonts')
   }
+})
+
+it('lists inherited entries before nested ones and cycles through them with the keyboard', async () => {
+  const user = userEvent.setup()
+  render(<LocaleProvider><SettingsEntries entries={[{ label: 'Выгрузить резервную копию', onSelect: () => {} }, { label: 'Восстановить из резервной копии', onSelect: () => {} }]}><SettingsEntries entries={[{ label: 'Как установить EasyTrack', onSelect: () => {} }]}><AppBar title="Проект" rename={{onSelect: () => {}, triggerRef: createRef()}} deleteProject={{onSelect: () => {}, triggerRef: createRef()}} /></SettingsEntries></SettingsEntries></LocaleProvider>)
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  const menu = await screen.findByRole('menu', { name: 'Настройки' })
+  const items = [...within(menu).getAllByRole('menuitem'), ...within(menu).getAllByRole('menuitemradio')]
+  const names = ['Переименовать проект', 'Удалить проект', 'Выгрузить резервную копию', 'Восстановить из резервной копии', 'Как установить EasyTrack', 'Русский', 'English']
+  expect(items.map(item => item.textContent)).toEqual(names)
+  expect(items[0]).toHaveFocus()
+  for (const item of [...items.slice(1), items[0]]) { await user.keyboard('{ArrowDown}'); expect(item).toHaveFocus() }
 })

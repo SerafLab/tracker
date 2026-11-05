@@ -1,5 +1,6 @@
 import Dexie from 'dexie'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CURRENT_BACKUP_VERSION } from '../../application/backup'
 import { ProjectBoardDatabase } from './database'
 
 const databases: Dexie[] = []
@@ -83,4 +84,12 @@ it('rolls back the v3 description upgrade and note store creation after a record
   const reopened = new Dexie(name); databases.push(reopened); reopened.version(2).stores(schema); await reopened.open()
   expect(reopened.verno).toBe(2); expect(await reopened.table('cards').toArray()).toEqual(cards)
   expect(reopened.tables.map(table => table.name)).not.toContain('notes')
+})
+
+describe('backup format version', () => {
+  // Update this table together with CURRENT_BACKUP_VERSION and a backup migration whenever the stored data changes.
+  it('matches the Dexie schema version', () => {
+    const dexieVersionForBackupVersion: Record<number, number> = { 1: 3 }
+    expect(new ProjectBoardDatabase(`schema-${crypto.randomUUID()}`).verno).toBe(dexieVersionForBackupVersion[CURRENT_BACKUP_VERSION])
+  })
 })

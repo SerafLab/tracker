@@ -1,3 +1,4 @@
+import type { BackupData } from '../../domain/backup'
 import { appendPlacement } from '../../domain/order'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ProjectBoardDatabase } from './database'
@@ -512,5 +513,54 @@ describe('board view preview notes', () => {
     await repo.deleteNote('c12', 'c12-n1')
     notes = (await repo.boardView('p'))!.previewNotes.c12
     expect(notes.map(n => n.id)).toEqual(ids('c12', 2, 3, 4, 5, 6, 7, 8, 9, 10, 11))
+  })
+})
+
+describe('DexieProjectBoardRepository backup', () => {
+  const data: BackupData = {
+    projects: [{ id: 'p', name: 'Проект', createdAt: '2026-11-01T10:00:00.000Z' }],
+    statuses: [{ id: 's', projectId: 'p', name: 'Найдено', position: 0 }],
+    cards: [{ id: 'c', statusId: 's', name: 'Карточка', description: 'Текст', position: 0, important: true, urgent: false }],
+    notes: [{ id: 'n', cardId: 'c', text: 'Заметка', createdAt: '2026-11-02T10:00:00.000Z', updatedAt: '2026-11-03T10:00:00.000Z' }],
+  }
+
+  it('snapshots every record', async () => {
+    const { database, repository: repo } = repository()
+    await repo.open()
+    await database.projects.bulkAdd(data.projects)
+    await database.statuses.bulkAdd(data.statuses)
+    await database.cards.bulkAdd(data.cards)
+    await database.notes.bulkAdd(data.notes)
+    await repo.setLastProject('p')
+    expect(await repo.snapshot()).toEqual(data)
+  })
+
+  it('replaces all data and clears the workspace preference', async () => {
+    const { database, repository: repo } = repository()
+    await repo.open()
+    await repo.createProject({ id: 'old', name: 'Старый', createdAt: '2026-10-01T10:00:00.000Z' }, [{ id: 'old-status', projectId: 'old', name: 'Статус', position: 0 }], true)
+    await repo.replaceAll(data)
+    expect(await repo.snapshot()).toEqual(data)
+    expect(await database.workspace.count()).toBe(0)
+  })
+
+  it('keeps the previous data when a write fails mid-replacement', async () => {
+    const { database, repository: repo } = repository()
+    await repo.open()
+    await repo.createProject({ id: 'old', name: 'Старый', createdAt: '2026-10-01T10:00:00.000Z' }, [], true)
+    const before = await repo.snapshot()
+    vi.spyOn(database.cards, 'bulkAdd').mockRejectedValueOnce(new Error('quota'))
+    await expect(repo.replaceAll(data)).rejects.toThrow('quota')
+    expect(await repo.snapshot()).toEqual(before)
+    expect(await repo.preference()).toEqual({ id: 'workspace', lastProjectId: 'old' })
+  })
+
+  it('round-trips snapshot to replaceAll on a clean database', async () => {
+    const source = repository(), target = repository()
+    await source.repository.open()
+    await target.repository.open()
+    await source.repository.replaceAll(data)
+    await target.repository.replaceAll(await source.repository.snapshot())
+    expect(await target.repository.snapshot()).toEqual(data)
   })
 })

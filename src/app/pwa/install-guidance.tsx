@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ActionDialog } from '../../features/project-board'
-import { SettingsEntryContext } from '../../ui/settings-entry'
+import { SettingsEntries } from '../../ui/settings-entry'
 import { useModalOpen } from '../../ui/modal-state'
 import { dismissInvitation, isAppleMobile, isInvitationDismissed, useInstallState, type InstallState } from './install-state'
 
@@ -23,7 +23,7 @@ export function InstallProvider({ ready = false, children }: { ready?: boolean; 
   }, [ready, standalone, modalOpen, setDialog])
   const label = state.deferredPrompt ? t('install') : standalone ? t('localDataTitle') : t('installHelp')
   const onSelect = () => { if (state.deferredPrompt) void state.install(); else setDialog('guidance') }
-  return <SettingsEntryContext value={{ label, onSelect }}>{children}<InstallDialog state={state} /></SettingsEntryContext>
+  return <SettingsEntries entries={[{ label, onSelect }]}>{children}<InstallDialog state={state} /></SettingsEntries>
 }
 
 function InstallDialog({ state }: { state: InstallState }) {

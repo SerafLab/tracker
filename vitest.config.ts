@@ -1,8 +1,10 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import { fileURLToPath } from 'node:url'
+import { buildDefine } from './build-define.ts'
 
 export default defineConfig({
+  define: buildDefine,
   plugins: [react()],
   resolve: {
     alias: {

@@ -5,7 +5,7 @@ import { ToolError } from './webmcp/error'
 import { LocaleProvider } from '../i18n/provider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type DraftGuard, type Id, type ProjectBoardRepository } from '../features/project-board'
+import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type DraftGuard, type EditRequest, type Id, type ProjectBoardRepository } from '../features/project-board'
 import { InstallProvider } from './pwa/install-guidance'
 import { PwaUpdateRegistration } from './pwa/update-registration'
 import { usePersistentStorage } from './pwa/persistent-storage'
@@ -41,6 +41,8 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const [cardPresentation, setCardPresentation] = useState<CardPresentation>('page')
   const [panelIsolated, setPanelIsolated] = useState(false)
   const presentation = useRef<CardPresentation>('page')
+  const [editRequest, setEditRequest] = useState<EditRequest | null>(null)
+  const editSeq = useRef(0)
   const [runtime] = useState(() => {
     const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { staleConnection.current = true; setRestartRequired(true) })
     const repository = suppliedRepository ?? new DexieProjectBoardRepository(database!)
@@ -117,7 +119,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       await catalogue
       applyPresentation()
     }
-    const acceptPosition = (next: HistoryPosition) => { position = next; void showRoute() }
+    const acceptPosition = (next: HistoryPosition) => { position = next; setEditRequest(null); void showRoute() }
     const onHistory = () => {
       if (!active) return
       let index = indexFromState()
@@ -193,8 +195,11 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   }), restartRequired)
 
   const navigateToProject = async (id: Id) => { requestLeave(() => navigate.current(routeFor(id))) }
-  const navigateToCard = async (projectId: Id, cardId: Id) => {
-    requestLeave(() => navigate.current(routeFor(projectId, cardId), true, { presentation: 'panel', replace: !!routeFromHash()?.cardId && presentation.current === 'panel' }))
+  const navigateToCard = async (projectId: Id, cardId: Id, options: { edit?: boolean } = {}) => {
+    requestLeave(() => {
+      setEditRequest({ cardId, seq: ++editSeq.current, edit: !!options.edit })
+      return navigate.current(routeFor(projectId, cardId), true, { presentation: 'panel', replace: !!routeFromHash()?.cardId && presentation.current === 'panel' })
+    })
   }
   const expandCard = async () => { await navigate.current(location.hash, false, { presentation: 'page' }); presentation.current = 'page'; setCardPresentation('page') }
   const closeCard = async (projectId: Id) => {
@@ -207,7 +212,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   }, [])
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
   const onProjectDeleted = async (id: Id) => { if (routeFromHash()?.projectId === id) await navigate.current('', false) }
-  const content = restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><PwaUpdateRegistration requestUpdate={requestLeave} />
+  const content = restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} editRequest={editRequest} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><PwaUpdateRegistration requestUpdate={requestLeave} />
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
   return <NotificationProvider isolated={panelIsolated}><InstallProvider ready={workspaceReady && !restartRequired}>{content}</InstallProvider></NotificationProvider>

@@ -7,7 +7,7 @@
 ## Requirements
 
 ### Requirement: Shared application bar across states
-The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, full card page, loading, storage-unavailable, and restart-required screens. The heading SHALL be the page's primary heading. With a card panel open, the application bar SHALL retain the board context and the panel SHALL identify its own card. The settings panel opened from the bar SHALL contain the sole accessible language selector.
+The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, full card page, loading, storage-unavailable, and restart-required screens. Except on the full card page, the heading SHALL be the page's primary heading; on the full card page the bar SHALL show the card's project and status as plain-text context, and the card name in the content SHALL be the primary heading. With a card panel open, the application bar SHALL retain the board context. The settings panel opened from the bar SHALL contain the sole accessible language selector.
 
 #### Scenario: User navigates from catalogue to board
 - **WHEN** the user opens a project from the catalogue
@@ -23,11 +23,11 @@ The system SHALL show one application bar containing the EasyTrack brand, the cu
 
 #### Scenario: User opens a card page
 - **WHEN** пользователь открывает страницу карточки
-- **THEN** общий AppBar показывает сохранённое название карточки как единственный основной заголовок и настройки с единственным выбором языка; редактирование черновика не меняет заголовок до сохранения
+- **THEN** общий AppBar показывает «Проект › Статус» простым текстом без ссылок и настройки с единственным выбором языка, а единственным основным заголовком страницы является сохранённое название карточки в блоке «Основное»; редактирование черновика не меняет заголовок до сохранения
 
 #### Scenario: User opens a card panel
 - **WHEN** пользователь открывает карточку с доски
-- **THEN** общий AppBar сохраняет заголовок и действия доски, а панель имеет собственный доступный заголовок с сохранённым названием карточки
+- **THEN** общий AppBar сохраняет заголовок и действия доски, а панель имеет доступное название области и заголовок блока «Основное» с сохранённым названием карточки
 
 ### Requirement: Contextual navigation and primary action
 The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The full card page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming or project-deletion actions. The card panel SHALL provide close and full-page actions while retaining board navigation. Leaving either card presentation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming and project-deletion actions. On every screen the settings panel SHALL contain the installation entry.
@@ -76,7 +76,7 @@ The application bar SHALL be a visually distinct, full-width light surface with 
 - **THEN** every status scrolls together inside the viewport-bounded workspace, the application bar stays at the top of the viewport in full on every width, and the document itself does not scroll
 
 ### Requirement: Calm application bar hierarchy
-The system SHALL retain a warm light application bar with a restrained green creation plus and a visually secondary settings gear. The heading SHALL remain the single primary heading. Every application-bar heading SHALL occupy one line; text that exceeds the available width SHALL end with an ellipsis without changing the bar height, hiding controls, or causing page-level horizontal overflow. The complete heading SHALL remain available to assistive technology and, when truncated, in a hint on pointer hover or keyboard focus. The same visual tokens SHALL apply to service screens.
+The system SHALL retain a warm light application bar with a restrained green creation plus and a visually secondary settings gear. Every application-bar heading or card-page context SHALL occupy one line; text that exceeds the available width SHALL end with an ellipsis without changing the bar height, hiding controls, or causing page-level horizontal overflow. On the card page the project and status SHALL truncate independently. The complete text SHALL remain available to assistive technology and, when truncated, in a hint on pointer hover or keyboard focus. The same visual tokens SHALL apply to service screens.
 
 #### Scenario: User views the chosen board direction
 - **WHEN** a project board is displayed at 320, 390, 1280 or 1440 px
@@ -93,6 +93,10 @@ The system SHALL retain a warm light application bar with a restrained green cre
 #### Scenario: Another application state has a long heading
 - **WHEN** a catalogue or service-state heading exceeds the available width
 - **THEN** that heading also occupies one line with an ellipsis and retains its complete semantic text
+
+#### Scenario: Card page has a long project and status
+- **WHEN** на странице карточки названия проекта и статуса не помещаются в шапке на ширине 320 или 1280 px
+- **THEN** контекст занимает одну строку, проект и статус обрезаются многоточием каждый в своей части с видимым разделителем, высота шапки не меняется, а наведение или фокус на обрезанной части показывает её полный текст
 
 ### Requirement: Accessible compact application bar controls
 The system SHALL give the creation plus and settings gear localized accessible names and purpose tooltips available on hover and keyboard focus. The board's brand navigation SHALL retain EasyTrack in its accessible name and explain its catalogue destination. Interactive bar controls SHALL have targets of at least 44 by 44 CSS pixels and visible keyboard focus.

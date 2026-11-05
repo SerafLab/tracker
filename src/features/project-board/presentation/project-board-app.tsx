@@ -6,11 +6,12 @@ import type { Id, RegisterDraftGuard } from '../domain/model'
 import type { ProjectBoardStore } from '../state/project-board-store'
 import { ProjectBoardView } from './project-board-view'
 import { ProjectCatalogueView } from './project-catalogue-view'
-import { CardDetailView } from './card-detail-view'
+import { CardDetailView, type EditRequest } from './card-detail-view'
 
-export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'page', onExpandCard, onCloseCard, onPanelCardMissing, store, navigateToProject, navigateToCatalogue, navigateToCard, onProjectDeleted, registerDraftGuard, requestLeave, onMutationSaved }: {
+export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'page', editRequest, onExpandCard, onCloseCard, onPanelCardMissing, store, navigateToProject, navigateToCatalogue, navigateToCard, onProjectDeleted, registerDraftGuard, requestLeave, onMutationSaved }: {
   onPanelIsolationChange?: (isolated: boolean) => void
   cardPresentation?: 'panel' | 'page'
+  editRequest?: EditRequest | null
   onExpandCard?: () => Promise<void>
   onCloseCard?: (projectId: Id) => Promise<void>
   onPanelCardMissing?: (projectId: Id) => Promise<void>
@@ -18,7 +19,7 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
   navigateToProject: (id: Id) => Promise<void>
   navigateToCatalogue: () => Promise<void>
   onProjectDeleted: (id: Id) => Promise<void>
-  navigateToCard: (projectId: Id, cardId: Id) => Promise<void>
+  navigateToCard: (projectId: Id, cardId: Id, options?: { edit?: boolean }) => Promise<void>
   registerDraftGuard: RegisterDraftGuard
   requestLeave: (action: () => void | Promise<void>) => void
   onMutationSaved?: () => void
@@ -96,7 +97,7 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
 
   if (workspace.kind === 'card-missing' && !missingInPanel) return <><AppBar title={t('cardMissing')} onReturn={() => void navigateToCatalogue()} /><main className="app-shell"><p role="alert">{t('cardMissingHelp')}</p><button className="button button-secondary" onClick={() => void navigateToProject(workspace.project.id)}>{t('backToBoard')}</button></main></>
   const details = workspace.kind === 'card' ? workspace.details : null
-  const detailView = details ? <CardDetailView key={details.card.id} presentation={cardPresentation} narrow={narrow} onExpand={onExpandCard} details={details} refreshFailed={agentRefreshError} retrying={agentPending} onRetryRefresh={() => store.getState().retryAgentRefresh()} busy={agentPending || agentRefreshError} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave}
+  const detailView = details ? <CardDetailView key={details.card.id} presentation={cardPresentation} editRequest={editRequest} narrow={narrow} onExpand={onExpandCard} details={details} refreshFailed={agentRefreshError} retrying={agentPending} onRetryRefresh={() => store.getState().retryAgentRefresh()} busy={agentPending || agentRefreshError} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave}
       onReturn={() => onCloseCard ? onCloseCard(details.project.id) : navigateToProject(details.project.id)} onCatalogue={navigateToCatalogue}
       onSave={async input => { const saved = await updateCard(details.project.id, details.card.id, input); if (saved) onMutationSaved?.(); return saved }}
       onCreateNote={async text => { const saved = await store.getState().createNote(details.project.id, details.card.id, text); if (saved) onMutationSaved?.(); return saved }}
@@ -120,7 +121,7 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
     onRenameStatus={async (statusId, name) => { if (await renameStatus(board.id, statusId, name)) onMutationSaved?.() }}
     onMoveStatus={async (statusId, direction) => { if (await moveStatus(board.id, statusId, direction)) onMutationSaved?.() }}
     onCreateCard={async (statusId, name) => { const saved = await createCard(board.id, statusId, name); if (saved) onMutationSaved?.(); return saved }}
-    onOpenCard={cardId => navigateToCard(board.id, cardId)}
+    onOpenCard={(cardId, options) => navigateToCard(board.id, cardId, options)}
     onDeleteCard={async cardId => { const saved = await deleteCard(board.id, cardId); if (saved) onMutationSaved?.(); return saved }}
     onDeleteStatus={async statusId => { const result = await deleteStatus(board.id, statusId); if (result === 'deleted') onMutationSaved?.(); return result }}
     onMoveCard={async (cardId, placement) => { const result = await moveCard(board.id, cardId, placement); if (result === 'saved') onMutationSaved?.(); return result }}

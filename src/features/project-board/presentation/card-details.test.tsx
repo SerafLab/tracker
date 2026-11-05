@@ -27,7 +27,11 @@ async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectB
   return { repo, db, user }
 }
 async function editor(user: ReturnType<typeof userEvent.setup>) { await user.click(screen.getByRole('button', { name: 'Добавить заметку' })); return screen.getByLabelText('Новая заметка') }
-async function fields() { return within(await screen.findByRole('form', { name: 'Поля карточки' })) }
+const pencil = () => screen.findByRole('button', { name: 'Редактировать основное' })
+async function fields(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await pencil())
+  return within(await screen.findByRole('form', { name: 'Редактировать основное' }))
+}
 
 for (const [ids, deletedId, nextId, mode] of [
   [['a', 'b', 'c'], 'b', 'c', 'ready'],
@@ -80,7 +84,7 @@ for (const [ids, deletedId, nextId, mode] of [
 
 it('opens a direct detail address, hides project actions, returns to its board and rejects foreign cards', async () => {
   const { repo, user } = await setup()
-  await fields()
+  await pencil()
   expect(screen.getByRole('heading', { name: 'Card', level: 1 })).toBeInTheDocument()
   expect(screen.getByRole('main')).toHaveFocus()
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
@@ -90,7 +94,7 @@ it('opens a direct detail address, hides project actions, returns to its board a
   await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
   await screen.findByRole('heading', { name: 'Project', level: 1 })
   await user.click(screen.getByRole('link', { name: 'Card' }))
-  await fields()
+  await pencil()
   cleanup(); history.replaceState(null, '', '/#project/q/card/c'); render(<App repository={repo} />)
   expect(await screen.findByRole('heading', { name: 'Карточка недоступна' })).toBeInTheDocument()
   expect(screen.queryByDisplayValue('Card')).not.toBeInTheDocument()
@@ -99,7 +103,7 @@ it('opens a direct detail address, hides project actions, returns to its board a
 })
 
 it('validates basic fields, clears descriptions and retains independent note drafts when fields save', async () => {
-  const { repo, user } = await setup(); const form = await fields()
+  const { repo, user } = await setup(); let form = await fields(user)
   await user.clear(form.getByLabelText('Название карточки'))
   await user.click(form.getByRole('button', { name: 'Сохранить' }))
   expect(form.getByRole('alert')).toHaveTextContent('Название обязательно')
@@ -110,12 +114,35 @@ it('validates basic fields, clears descriptions and retains independent note dra
   expect(await screen.findByRole('heading', { name: 'Saved', level: 1 })).toBeInTheDocument()
   expect(note).toHaveValue('Unfinished note')
   expect((await repo.cardDetails('p', 'c'))!.notes).toEqual([])
+  await waitFor(() => expect(screen.queryByRole('form', { name: 'Редактировать основное' })).not.toBeInTheDocument())
+  expect(document.querySelector('.card-summary .detail-text')).toHaveTextContent('First Second')
+  form = await fields(user)
   await user.clear(form.getByLabelText('Описание карточки')); await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  expect(await screen.findByText('Нет описания')).toBeInTheDocument()
   expect((await repo.cardDetails('p', 'c'))!.card.description).toBe('')
 })
 
+it('keeps focus inside the details when the pencil is disabled after a successful save', async () => {
+  const details: CardDetails = {
+    project: { id: 'p', name: 'Project', createdAt: '2026-11-01T00:00:00Z' },
+    status: { id: 's', projectId: 'p', name: 'Status', position: 0 },
+    card: { id: 'c', statusId: 's', name: 'Card', description: '', important: false, urgent: false, position: 0 },
+    notes: [],
+  }
+  const props = { details, busy: false, onReturn: vi.fn(), onCatalogue: vi.fn(), onCreateNote: vi.fn(), onUpdateNote: vi.fn(), onDeleteNote: vi.fn(), registerDraftGuard: vi.fn(), requestLeave: vi.fn() }
+  // The save is written, but the follow-up read fails and makes the details busy.
+  const onSave = vi.fn(async () => { rerender(<LocaleProvider><CardDetailView {...props} onSave={onSave} busy /></LocaleProvider>); return true })
+  const { rerender } = render(<LocaleProvider><CardDetailView {...props} onSave={onSave} /></LocaleProvider>)
+  const user = userEvent.setup()
+  const form = await fields(user)
+  await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  const pencilButton = await pencil()
+  expect(pencilButton).toBeDisabled()
+  await waitFor(() => expect(document.querySelector('.card-detail')).toHaveFocus())
+})
+
 it('creates, edits without a no-op date, refuses blank notes, confirms deletion and restores focus', async () => {
-  const { repo, user } = await setup(); await fields()
+  const { repo, user } = await setup(); await pencil()
   let note = await editor(user)
   await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
   expect(screen.getByRole('alert')).toHaveTextContent('Текст заметки обязателен')
@@ -150,7 +177,7 @@ it('creates, edits without a no-op date, refuses blank notes, confirms deletion 
 })
 
 it('saves a note without saving pending card fields, and guards editor switches', async () => {
-  const { repo, user } = await setup(); const form = await fields()
+  const { repo, user } = await setup(); const form = await fields(user)
   await user.type(form.getByLabelText('Описание карточки'), 'Pending fields')
   await user.type(await editor(user), 'Saved note'); await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
   await waitFor(() => expect(screen.queryByLabelText('Новая заметка')).not.toBeInTheDocument())
@@ -167,7 +194,7 @@ it('saves a note without saving pending card fields, and guards editor switches'
 })
 
 it('keeps separately committed fields after a failed save-on-leave note and retries without duplicating writes', async () => {
-  const { repo, user } = await setup(); const form = await fields()
+  const { repo, user } = await setup(); const form = await fields(user)
   await user.type(form.getByLabelText('Описание карточки'), 'Committed first')
   await user.type(await editor(user), 'Pending second')
   const update = vi.spyOn(repo, 'updateCard')
@@ -186,7 +213,7 @@ it('keeps separately committed fields after a failed save-on-leave note and retr
 })
 
 it('preserves drafts for Stay/Escape and warns on unload only while dirty', async () => {
-  const { user } = await setup(); const form = await fields()
+  const { user } = await setup(); const form = await fields(user)
   const clean = new Event('beforeunload', { cancelable: true }); fireEvent(window, clean); expect(clean.defaultPrevented).toBe(false)
   await user.type(form.getByLabelText('Описание карточки'), 'Draft')
   const dirty = new Event('beforeunload', { cancelable: true }); fireEvent(window, dirty); expect(dirty.defaultPrevented).toBe(true)
@@ -206,7 +233,7 @@ it('renders markup literally and links only absolute HTTP(S) URLs in another con
 
 it('defers PWA activation until the dirty editor permits the update and saves before continuing', async () => {
   pwa.ready = true
-  const { repo, user } = await setup(); const form = await fields()
+  const { repo, user } = await setup(); const form = await fields(user)
   await user.type(form.getByLabelText('Описание карточки'), 'Save before update')
   await user.click(screen.getByRole('button', { name: 'Обновить' }))
   expect(screen.getByRole('dialog', { name: 'Несохранённые изменения' })).toBeInTheDocument()
@@ -230,7 +257,7 @@ it('keeps the requested card route and storage error when reading details fails'
 })
 
 it('focuses the retained new-note draft after deleting the last saved note', async () => {
-  const { repo, user } = await setup(); await fields()
+  const { repo, user } = await setup(); await pencil()
   await user.type(await editor(user), 'Saved note')
   await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
   await waitFor(() => expect(screen.queryByLabelText('Новая заметка')).not.toBeInTheDocument())
@@ -251,16 +278,18 @@ it('returns to the catalogue for a missing project without exposing another card
 })
 
 it('does not dispatch the same field save twice while persistence is pending', async () => {
-  const { repo, user } = await setup(); const form = await fields()
+  const { repo, user } = await setup(); const form = await fields(user)
   let finish!: () => void
   const update = vi.spyOn(repo, 'updateCard').mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve }))
   await user.type(form.getByLabelText('Описание карточки'), 'Pending save')
-  const element = screen.getByRole('form', { name: 'Поля карточки' })
+  const element = screen.getByRole('form', { name: 'Редактировать основное' })
   fireEvent.submit(element); fireEvent.submit(element)
   expect(update).toHaveBeenCalledOnce()
   expect(form.getByLabelText('Описание карточки')).toBeDisabled()
   finish()
-  await waitFor(() => expect(form.getByLabelText('Описание карточки')).toBeEnabled())
+  await waitFor(() => expect(screen.queryByRole('form', { name: 'Редактировать основное' })).not.toBeInTheDocument())
+  expect(summary().getByText('Pending save')).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Редактировать основное' })).toBeEnabled())
 })
 
 async function openPanel(user: ReturnType<typeof userEvent.setup>, name = 'Card') {
@@ -299,6 +328,7 @@ it('keeps the missing-card page for a direct link to a missing card', async () =
 it('deleting an unrelated card never prompts for or discards the open card draft; deleting the open card does', async () => {
   const { user } = await setup('#project/p', async r => { await r.createCard({ id: 'd', statusId: 's', name: 'Other card', description: '', important: false, urgent: false }) })
   await openPanel(user, 'Card')
+  await user.click(await pencil())
   const description = await screen.findByRole('textbox', { name: 'Описание карточки' })
   await user.type(description, 'Kept draft')
   await deleteFromBoard(user, 'Other card')
@@ -350,4 +380,132 @@ it('offers the captured install prompt from settings across board, catalogue, ca
   expect(prompt).toHaveBeenCalledOnce()
   expect(errors).not.toHaveBeenCalled()
   errors.mockRestore()
+})
+
+const richCard = async (repo: DexieProjectBoardRepository) => { await repo.updateCard('c', { name: 'Card', description: 'See https://example.com', important: true, urgent: true }) }
+const summary = () => within(screen.getByRole('region', { name: 'Основное' }))
+
+it('shows a read-only summary with board flags, a link and no repeated description or context', async () => {
+  await setup('#project/p/card/c', richCard)
+  await pencil()
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
+  expect(screen.queryByText('Сохранённое описание')).not.toBeInTheDocument()
+  expect(document.querySelectorAll('.detail-text')).toHaveLength(1)
+  expect(summary().getByText('Важная')).toHaveClass('card-badge-important')
+  expect(summary().getByText('Срочная')).toHaveClass('card-badge-urgent')
+  expect(summary().getByRole('link', { name: 'https://example.com' })).toHaveAttribute('href', 'https://example.com')
+  expect(summary().getByRole('heading', { level: 1, name: 'Card' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Назад к доске' }).textContent).toBe('Назад к доске')
+  expect(document.querySelector('.card-detail')).not.toHaveTextContent('Status')
+})
+
+it('shows no flags and a muted placeholder for a card without flags and description', async () => {
+  await setup()
+  await pencil()
+  expect(document.querySelector('.card-badge')).toBeNull()
+  expect(summary().getByText('Нет описания')).toHaveClass('muted-copy')
+})
+
+it('enters editing with focus in the name, shows flag symbols in labels, and returns focus to the pencil on cancel', async () => {
+  const { user } = await setup('#project/p/card/c', richCard)
+  const form = await fields(user)
+  await waitFor(() => expect(form.getByLabelText('Название карточки')).toHaveFocus())
+  expect(form.getByLabelText('Важная').closest('label')!.querySelector('.card-badge-important svg')).not.toBeNull()
+  expect(form.getByLabelText('Срочная')).toBeChecked()
+  await user.click(form.getByRole('button', { name: 'Отмена' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Редактировать основное' })).toHaveFocus())
+  expect(screen.queryByRole('form', { name: 'Редактировать основное' })).not.toBeInTheDocument()
+})
+
+it('returns to the pencil after saving and keeps editing with entered values when saving fails', async () => {
+  const { repo, user } = await setup()
+  let form = await fields(user)
+  await user.type(form.getByLabelText('Описание карточки'), 'Changed')
+  vi.spyOn(repo, 'updateCard').mockRejectedValueOnce(new Error('quota'))
+  await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  expect(await form.findByRole('alert')).toHaveTextContent('Не удалось сохранить')
+  await waitFor(() => expect(form.getByLabelText('Описание карточки')).toBeEnabled())
+  expect(form.getByLabelText('Описание карточки')).toHaveValue('Changed')
+  await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(() => expect(screen.queryByRole('form', { name: 'Редактировать основное' })).not.toBeInTheDocument())
+  expect(summary().getByText('Changed')).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Редактировать основное' })).toHaveFocus())
+  expect((await repo.cardDetails('p', 'c'))!.card.description).toBe('Changed')
+})
+
+it('guards cancel with changes: Stay keeps editing, discard returns to the saved view', async () => {
+  const { user } = await setup()
+  const form = await fields(user)
+  await user.type(form.getByLabelText('Название карточки'), ' edited')
+  await user.click(form.getByRole('button', { name: 'Отмена' }))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Несохранённые изменения' })).getByRole('button', { name: 'Остаться' }))
+  expect(form.getByLabelText('Название карточки')).toHaveValue('Card edited')
+  await user.click(form.getByRole('button', { name: 'Отмена' }))
+  await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Выйти без сохранения' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Редактировать основное' })).toHaveFocus())
+  expect(summary().getByRole('heading', { level: 1, name: 'Card' })).toBeInTheDocument()
+})
+
+it('saves and leaves editing from the cancel guard with the confirmed values', async () => {
+  const { repo, user } = await setup()
+  const form = await fields(user)
+  await user.type(form.getByLabelText('Название карточки'), ' saved')
+  await user.click(form.getByRole('button', { name: 'Отмена' }))
+  await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Сохранить и выйти' }))
+  expect(await summary().findByRole('heading', { level: 1, name: 'Card saved' })).toBeInTheDocument()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Редактировать основное' })).toHaveFocus())
+  expect((await repo.cardDetails('p', 'c'))!.card.name).toBe('Card saved')
+})
+
+it('edits the summary and a note draft independently', async () => {
+  const { repo, user } = await setup()
+  const form = await fields(user)
+  const note = await editor(user); await user.type(note, 'Draft note')
+  await user.type(form.getByLabelText('Описание карточки'), 'Text')
+  await user.click(form.getByRole('button', { name: 'Отмена' }))
+  await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Остаться' }))
+  expect(note).toHaveValue('Draft note')
+  await user.click(form.getByRole('button', { name: 'Сохранить' }))
+  await waitFor(() => expect(screen.queryByRole('form', { name: 'Редактировать основное' })).not.toBeInTheDocument())
+  expect(summary().getByText('Text')).toBeInTheDocument()
+  expect(note).toHaveValue('Draft note')
+  expect((await repo.cardDetails('p', 'c'))!.notes).toEqual([])
+})
+
+it('shows externally confirmed values while the summary is in view mode', async () => {
+  const details: CardDetails = {
+    project: { id: 'p', name: 'Project', createdAt: '2026-11-01T00:00:00Z' },
+    status: { id: 's', projectId: 'p', name: 'Status', position: 0 },
+    card: { id: 'c', statusId: 's', name: 'Card', description: '', important: false, urgent: false, position: 0 },
+    notes: [],
+  }
+  const props = { details, busy: false, onReturn: vi.fn(), onCatalogue: vi.fn(), onSave: vi.fn(), onCreateNote: vi.fn(), onUpdateNote: vi.fn(), onDeleteNote: vi.fn(), registerDraftGuard: vi.fn(), requestLeave: vi.fn() }
+  const { rerender } = render(<LocaleProvider><CardDetailView {...props} /></LocaleProvider>)
+  rerender(<LocaleProvider><CardDetailView {...props} details={{ ...details, card: { ...details.card, name: 'Agent name', description: 'Agent text', urgent: true } }} /></LocaleProvider>)
+  expect(await screen.findByRole('heading', { level: 1, name: 'Agent name' })).toBeInTheDocument()
+  expect(screen.getByText('Agent text')).toBeInTheDocument()
+  expect(screen.getByText('Срочная')).toBeInTheDocument()
+})
+
+it('keeps the panel header to expand and close only', async () => {
+  const { user } = await setup('#project/p')
+  const panel = await openPanel(user)
+  const header = panel.querySelector('header')!
+  expect(within(header).getAllByRole('button').map(button => button.textContent || button.getAttribute('aria-label'))).toEqual(['Открыть на всю страницу', 'Закрыть карточку'])
+  expect(within(panel).queryByRole('button', { name: 'Назад к доске' })).not.toBeInTheDocument()
+  expect(within(panel).getByRole('heading', { level: 2, name: 'Card' })).toBeInTheDocument()
+  expect(panel).not.toHaveTextContent('Status')
+  expect(panel).not.toHaveTextContent('Project')
+})
+
+it('keeps editing mode and entered values when the panel opens as a full page', async () => {
+  const { user } = await setup('#project/p')
+  await openPanel(user)
+  const form = await fields(user)
+  await user.type(form.getByLabelText('Описание карточки'), 'Typed in panel')
+  await user.click(screen.getByRole('button', { name: 'Открыть на всю страницу' }))
+  await screen.findByRole('button', { name: 'Назад к доске' })
+  expect(screen.getByRole('form', { name: 'Редактировать основное' })).toBeInTheDocument()
+  expect(screen.getByLabelText('Описание карточки')).toHaveValue('Typed in panel')
+  expect(screen.getByRole('heading', { level: 1, name: 'Card' })).toBeInTheDocument()
 })

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { leaveCard } from './card-helpers'
 
 async function createBoard(page: Page, en = false, statuses = ['Todo', 'Done']) {
   await page.goto('/tracker/')
@@ -105,7 +106,7 @@ for (const en of [false, true]) test(`note add, edit and delete are reflected on
     await expect(page.locator('.note', { hasText: text })).toBeVisible()
   }
   await add('First note'); await add('Second note')
-  await page.getByRole('button', { name: t('Назад к доске', 'Back to board'), exact: true }).click()
+  await leaveCard(page, en)
   const toggle = card.getByRole('button', { name: t('Последние заметки: Preview card', 'Recent notes: Preview card') })
   await expect(card.locator('.card-note')).toHaveText('Second note')
   await toggle.click(); await expect(card.locator('.card-note')).toHaveText(['First note', 'Second note'])
@@ -115,7 +116,7 @@ for (const en of [false, true]) test(`note add, edit and delete are reflected on
   await page.getByRole('textbox', { name: t('Редактировать заметку', 'Edit note'), exact: true }).fill('First note edited')
   await page.getByRole('button', { name: t('Сохранить заметку', 'Save note'), exact: true }).click()
   await expect(page.locator('.note', { hasText: 'First note edited' })).toBeVisible()
-  await page.getByRole('button', { name: t('Назад к доске', 'Back to board'), exact: true }).click()
+  await leaveCard(page, en)
   // The board stays mounted beside the panel, so the local expanded state is kept.
   await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   await expect(card.locator('.card-note')).toHaveText(['First note edited', 'Second note'])
@@ -124,7 +125,7 @@ for (const en of [false, true]) test(`note add, edit and delete are reflected on
   await page.getByRole('button', { name: t('Удалить заметку', 'Delete note'), exact: true }).last().click()
   await page.getByRole('dialog').getByRole('button', { name: t('Удалить', 'Delete'), exact: true }).click()
   await expect(page.locator('.note')).toHaveCount(1)
-  await page.getByRole('button', { name: t('Назад к доске', 'Back to board'), exact: true }).click()
+  await leaveCard(page, en)
   await expect(card.locator('.card-note')).toHaveText('First note edited')
   await expect(toggle).toHaveCount(0)
   await page.evaluate(async () => { await navigator.serviceWorker.ready })

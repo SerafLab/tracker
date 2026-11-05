@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { enterEdit, leaveCard, saveEdit, summaryOf } from './card-helpers'
 
 for (const language of ['ru', 'en'] as const) for (const width of [390, 1280]) {
   test(`combines a default status set, header card creation and durable details in ${language} at ${width}px`, async ({ page, context }) => {
@@ -19,15 +20,16 @@ for (const language of ['ru', 'en'] as const) for (const width of [390, 1280]) {
     await expect(creation).toBeHidden()
     await expect(column.locator('.add-card-header')).toBeFocused()
     await column.getByRole('link', { name: 'Integrated card', exact: true }).click()
-    const description = page.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true })
+    const form = await enterEdit(page, en)
+    const description = form.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true })
     await expect(description).toHaveValue('')
     await description.fill('Saved context\nhttps://example.org/context')
-    await page.getByRole('form', { name: en ? 'Card fields' : 'Поля карточки' }).getByRole('button', { name: en ? 'Save' : 'Сохранить', exact: true }).click()
+    await saveEdit(page, form, en)
     await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
     await page.getByLabel(en ? 'New note' : 'Новая заметка', { exact: true }).fill('Saved agreement')
     await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
     await expect(page.locator('.note')).toContainText('Saved agreement')
-    await page.getByRole('button', { name: en ? 'Back to board' : 'Назад к доске', exact: true }).click()
+    await leaveCard(page, en)
     await column.locator('.add-card-header').click()
     await creation.getByRole('textbox').fill('Another card')
     await creation.getByRole('button', { name: en ? 'Create card' : 'Создать карточку', exact: true }).click()
@@ -39,7 +41,7 @@ for (const language of ['ru', 'en'] as const) for (const width of [390, 1280]) {
     await page.reload()
     await expect(page.locator('.status-column')).toHaveCount(3)
     await page.getByRole('link', { name: 'Integrated card', exact: true }).click()
-    await expect(description).toHaveValue('Saved context\nhttps://example.org/context')
+    await expect(summaryOf(page, en).locator('.detail-text')).toHaveText('Saved context\nhttps://example.org/context')
     await expect(page.locator('.note')).toContainText('Saved agreement')
     await context.setOffline(false)
   })

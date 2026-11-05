@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { leaveCard } from './card-helpers'
 
 for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
   test(`persists card groups, stable order and keyboard focus in ${language} at ${width}px`, async ({ page }, testInfo) => {
@@ -41,13 +42,13 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
     const edit = async (name: string, nextName: string, toggle = false) => {
       await findCard(name).getByRole('button', { name: en ? `Card actions for ${name}` : `Действия карточки ${name}`, exact: true }).click()
       await page.getByRole('menuitem', { name: label.edit, exact: true }).click()
-      const form = page.getByRole('form', { name: en ? 'Card fields' : 'Поля карточки' })
+      const form = page.getByRole('form', { name: en ? 'Edit overview' : 'Редактировать основное' })
       await expect(form.getByLabel(label.name)).toHaveValue(name)
       await form.getByLabel(label.name).fill(nextName)
       if (toggle) await form.getByLabel(label.urgent, { exact: true }).uncheck()
       await form.getByRole('button', { name: label.save, exact: true }).click()
       await expect(page.getByRole('heading', { name: nextName, level: 2, exact: true })).toBeVisible()
-      await page.getByRole('button', { name: en ? 'Back to board' : 'Назад к доске', exact: true }).click()
+      await leaveCard(page, en)
       await expect(page.getByRole('heading', { name: 'Priority', exact: true })).toBeVisible()
     }
     await edit('Both', 'Changed', true)

@@ -1,3 +1,4 @@
+import { enterEdit, saveEdit } from './card-helpers'
 import { expect, test, type Page } from '@playwright/test'
 
 async function seededBoard(page: Page, en = false) {
@@ -30,23 +31,24 @@ for (const en of [false, true]) test(`panel history preserves board/editor, swit
   await expect(page.getByRole('heading', { level: 1, name: 'Panel project' })).toBeVisible()
   await expect(board).toHaveAttribute('data-identity', 'preserved')
   const cardUrl = page.url(), initialLength = await page.evaluate(() => history.length)
-  const description = panel.getByRole('textbox', { name: en ? 'Card description' : 'Описание карточки', exact: true })
-  await description.fill('Uncommitted description')
+  const form = await enterEdit(page, en)
+  await form.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true }).fill('Uncommitted description')
   await panel.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await panel.getByRole('textbox', { name: en ? 'New note' : 'Новая заметка', exact: true }).fill('Uncommitted note')
   await panel.getByRole('button', { name: en ? 'Open full page' : 'Открыть на всю страницу', exact: true }).click()
   await expect(page.locator('.card-panel')).toHaveCount(0)
+  await expect(page.getByRole('form', { name: en ? 'Edit overview' : 'Редактировать основное' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: en ? 'Card description' : 'Описание карточки', exact: true })).toHaveValue('Uncommitted description')
   await expect(page.getByRole('textbox', { name: en ? 'New note' : 'Новая заметка', exact: true })).toHaveValue('Uncommitted note')
   await expect(page).toHaveURL(cardUrl)
   expect(await page.evaluate(() => history.length)).toBe(initialLength + 1)
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await page.getByRole('form', { name: en ? 'Card fields' : 'Поля карточки' }).getByRole('button', { name: en ? 'Save' : 'Сохранить', exact: true }).click()
+  await saveEdit(page, page.getByRole('form', { name: en ? 'Edit overview' : 'Редактировать основное' }), en)
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await expect(page.getByRole('textbox', { name: en ? 'New note' : 'Новая заметка', exact: true })).toHaveCount(0)
   await page.goBack()
   await expect(panel).toBeVisible()
-  await expect(description).toHaveValue('Uncommitted description')
+  await expect(panel.locator('.detail-text').first()).toHaveText('Uncommitted description')
   await expect(page.locator('.card-description-preview').first()).toHaveText('Uncommitted description')
   await expect(board).toHaveAttribute('data-identity', 'preserved')
   // Switching several cards replaces the panel entry, so one Back closes the panel.
@@ -84,8 +86,14 @@ for (const width of [320, 390, 1280]) for (const en of [false, true]) test(`pane
   await expect(panel.locator('.card-detail')).toBeFocused()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: info.outputPath(`panel-${en ? 'en' : 'ru'}-${width}.png`) })
+  await expect(panel.getByRole('button', { name: en ? 'Back to board' : 'Назад к доске', exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: en ? 'Open full page' : 'Открыть на всю страницу', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Card 0', level: 1 })).toBeVisible()
+  // The board return precedes the summary heading without overlapping it and stays touch-sized.
+  const back = (await page.getByRole('button', { name: en ? 'Back to board' : 'Назад к доске', exact: true }).boundingBox())!
+  const title = (await page.getByRole('heading', { name: 'Card 0', level: 1 }).boundingBox())!
+  expect(back.y + back.height).toBeLessThanOrEqual(title.y)
+  expect(back.height).toBeGreaterThanOrEqual(44)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: info.outputPath(`page-${en ? 'en' : 'ru'}-${width}.png`) })
 })
@@ -93,6 +101,7 @@ for (const width of [320, 390, 1280]) for (const en of [false, true]) test(`pane
 test('guard keeps a dirty panel on switch/cancel, then saves both drafts before switching once', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 }); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
+  await enterEdit(page)
   await page.getByRole('textbox', { name: 'Описание карточки', exact: true }).fill('Fields first')
   await page.getByRole('button', { name: 'Добавить заметку', exact: true }).click()
   await page.getByRole('textbox', { name: 'Новая заметка' }).fill('Note second')
@@ -105,7 +114,7 @@ test('guard keeps a dirty panel on switch/cancel, then saves both drafts before 
   await dialog.getByRole('button', { name: 'Сохранить и выйти', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Подробности карточки' }).getByRole('heading', { name: 'Card 1' })).toBeVisible()
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
-  await expect(page.getByRole('textbox', { name: 'Описание карточки' })).toHaveValue('Fields first')
+  await expect(page.locator('.card-summary .detail-text')).toHaveText('Fields first')
   await expect(page.locator('.note')).toHaveCount(1)
   await expect(page.locator('.note .detail-text')).toHaveText('Note second')
 })
@@ -113,6 +122,7 @@ test('guard keeps a dirty panel on switch/cancel, then saves both drafts before 
 test('board actions preserve drafts and destructive actions ask the editor guard before confirmation', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 }); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
+  await enterEdit(page)
   await page.getByRole('textbox', { name: 'Описание карточки' }).fill('Retained while board changes')
   await page.locator('.add-card-header').click()
   let dialog = page.getByRole('dialog')
@@ -191,6 +201,7 @@ test('isolates all narrow-panel background actions while nested confirmations ke
     await page.keyboard.press('Tab')
     expect(await panel.evaluate(node => node.contains(document.activeElement))).toBe(true)
   }
+  await enterEdit(page)
   await panel.getByRole('textbox', { name: 'Описание карточки', exact: true }).fill('Unsaved')
   await panel.getByRole('button', { name: 'Закрыть карточку', exact: true }).click()
   const guard = page.getByRole('dialog', { name: 'Несохранённые изменения', exact: true })
@@ -209,6 +220,7 @@ test('narrow panel exposes read-only recovery after a committed field save canno
   await page.setViewportSize({ width: 390, height: 900 }); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
   const panel = page.getByRole('dialog', { name: 'Подробности карточки', exact: true })
+  await enterEdit(page)
   await panel.getByRole('textbox', { name: 'Описание карточки', exact: true }).fill('Committed despite failed read')
   await panel.getByRole('button', { name: 'Добавить заметку', exact: true }).click()
   await panel.getByRole('textbox', { name: 'Новая заметка', exact: true }).fill('Keep this independent draft')
@@ -219,7 +231,7 @@ test('narrow panel exposes read-only recovery after a committed field save canno
       return original.call(this, key)
     }
   })
-  await panel.getByRole('form', { name: 'Поля карточки' }).getByRole('button', { name: 'Сохранить', exact: true }).click()
+  await panel.getByRole('form', { name: 'Редактировать основное' }).getByRole('button', { name: 'Сохранить', exact: true }).click()
   await expect(panel.getByRole('alert')).toContainText('Изменения сохранены')
   const retry = panel.getByRole('button', { name: 'Обновить доску', exact: true })
   await expect(retry).toBeEnabled()
@@ -230,8 +242,8 @@ test('narrow panel exposes read-only recovery after a committed field save canno
   })
   await retry.click()
   await expect(panel.getByRole('alert')).toHaveCount(0)
-  await expect(panel.getByRole('textbox', { name: 'Описание карточки', exact: true })).toBeEnabled()
-  await expect(panel.getByRole('textbox', { name: 'Описание карточки', exact: true })).toHaveValue('Committed despite failed read')
+  await expect(panel.getByRole('button', { name: 'Редактировать основное', exact: true })).toBeEnabled()
+  await expect(panel.locator('.card-summary .detail-text')).toHaveText('Committed despite failed read')
   await expect(panel.getByRole('textbox', { name: 'Новая заметка', exact: true })).toHaveValue('Keep this independent draft')
   expect(await page.evaluate(() => (window as Window & { recoveryWrites: number }).recoveryWrites)).toBe(0)
 })
@@ -291,6 +303,7 @@ test('deleting the open card closes the panel to the board URL without an extra 
 test('deleting an unrelated card keeps the open card draft without a prompt', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 }); await seededBoard(page)
   await page.getByRole('link', { name: 'Card 0', exact: true }).click()
+  await enterEdit(page)
   const description = page.getByRole('textbox', { name: 'Описание карточки', exact: true })
   await description.fill('Draft survives unrelated deletion')
   await page.getByRole('button', { name: 'Действия карточки Card 5', exact: true }).click()
@@ -333,7 +346,7 @@ test('catalogue and full card page scroll the bar with the document', async ({ p
   expect(result.top).toBe(-result.y)
   await page.goto('/tracker/#project/panel-project/card/panel-card-0')
   await page.reload()
-  await expect(page.getByRole('textbox', { name: 'Описание карточки', exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Редактировать основное', exact: true })).toBeVisible()
   result = await barTopAfterScroll()
   expect(result.y).toBeGreaterThan(0)
   expect(result.top).toBe(-result.y)

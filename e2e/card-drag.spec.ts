@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { enterEdit, leaveCard, saveEdit, summaryOf } from './card-helpers'
 import { dismissedInstallInvitation } from './storage-state'
 
 async function setup(page: Page, en = false) {
@@ -85,13 +86,14 @@ for (const en of [false, true]) test(`projects exact legal gaps, cancels safely,
   expect(await writes(page)).toBe(saved)
   await card(page, 'A1').getByRole('link').click()
   await expect(page.locator('.card-detail')).toBeVisible()
-  await page.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true }).fill('Description survives drag')
-  await page.getByRole('form', { name: en ? 'Card fields' : 'Поля карточки' }).getByRole('button', { name: en ? 'Save' : 'Сохранить', exact: true }).click()
+  const form = await enterEdit(page, en)
+  await form.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true }).fill('Description survives drag')
+  await saveEdit(page, form, en)
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await page.getByLabel(en ? 'New note' : 'Новая заметка', { exact: true }).fill('Note survives drag')
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await expect(page.locator('.note')).toHaveCount(1)
-  await page.getByRole('button', { name: en ? 'Back to board' : 'Назад к доске', exact: true }).click()
+  await leaveCard(page, en)
   await start(page, card(page, 'A1')); await hover(page, column(page, 'Empty'), 'start'); await page.mouse.up()
   await expect(names(page, 'Empty')).toHaveText(['A1'])
   await page.evaluate(async () => { await navigator.serviceWorker.ready })
@@ -99,7 +101,7 @@ for (const en of [false, true]) test(`projects exact legal gaps, cancels safely,
   await expect(names(page, 'A')).toHaveText(['Both', 'A2', 'Urgent', 'None'])
   await expect(names(page, 'Empty')).toHaveText(['A1'])
   await card(page, 'A1').getByRole('link').focus(); await page.keyboard.press('Enter')
-  await expect(page.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true })).toHaveValue('Description survives drag')
+  await expect(summaryOf(page, en).locator('.detail-text')).toHaveText('Description survives drag')
   await expect(page.locator('.note')).toContainText('Note survives drag')
   await context.setOffline(false)
 })

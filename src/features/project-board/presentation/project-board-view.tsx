@@ -32,7 +32,7 @@ type BoardProps = {
   onRenameStatus: (statusId: Id, name: string) => Promise<void>
   onMoveStatus: (statusId: Id, direction: -1 | 1) => Promise<void>
   onCreateCard: (statusId: Id, input: CardInput) => Promise<boolean>
-  onOpenCard: (cardId: Id) => Promise<void>
+  onOpenCard: (cardId: Id, options?: { edit?: boolean }) => Promise<void>
   onDeleteCard: (cardId: Id) => Promise<boolean>
   onDeleteStatus: (statusId: Id) => Promise<DeleteStatusStateResult>
   onMoveCard: (cardId: Id, placement: CardPlacement) => Promise<MoveCardStateResult>
@@ -180,7 +180,7 @@ type StatusColumnProps = {
   onMove: (statusId: Id, direction: -1 | 1) => Promise<void>
   onCreateCard: (statusId: Id, input: CardInput) => Promise<boolean>
   projectId: Id
-  onOpenCard: (cardId: Id) => Promise<void>
+  onOpenCard: (cardId: Id, options?: { edit?: boolean }) => Promise<void>
   onMoveCard: (cardId: Id, placement: CardPlacement, focus?: boolean) => Promise<MoveCardStateResult>
 }
 

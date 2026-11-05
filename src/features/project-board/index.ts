@@ -6,6 +6,7 @@ export { DexieProjectBoardRepository } from './infrastructure/indexeddb/dexie-pr
 export { ProjectBoardApp } from './presentation/project-board-app'
 export { createProjectBoardStore } from './state/project-board-store'
 export { ActionDialog } from './presentation/controls'
+export type { EditRequest } from './presentation/card-detail-view'
 export { CommandError } from './application/agent-command'
 export type { AgentCommand, AgentCommandResult, AgentSavedData, CardAttributes } from './application/agent-command'
 export { presetStatusNames, statusPresets } from './presentation/status-presets'

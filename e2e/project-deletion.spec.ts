@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { leaveCard } from './card-helpers'
 
 async function createProject(page: Page, name: string, en: boolean, empty = false) {
   const create = en ? 'Create project' : 'Создать проект'
@@ -19,7 +20,7 @@ async function populate(page: Page, en: boolean) {
   await page.getByLabel(en ? 'New note' : 'Новая заметка', { exact: true }).fill('Cascade this note')
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await expect(page.locator('.note')).toHaveCount(1)
-  await page.getByRole('button', { name: en ? 'Back to board' : 'Назад к доске', exact: true }).click()
+  await leaveCard(page, en)
   await expect(page.locator('.status-columns')).toBeVisible()
   return detailUrl
 }

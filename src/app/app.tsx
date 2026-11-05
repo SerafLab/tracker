@@ -10,6 +10,7 @@ import { InstallProvider } from './pwa/install-guidance'
 import { PwaUpdateRegistration } from './pwa/update-registration'
 import { usePersistentStorage } from './pwa/persistent-storage'
 import { RestartRequired } from './pwa/restart-required'
+import { NotificationProvider } from '../ui/notifications'
 
 const routeFor = (id: Id, cardId?: Id) => `#project/${encodeURIComponent(id)}${cardId ? `/card/${encodeURIComponent(cardId)}` : ''}`
 function routeFromHash() {
@@ -206,9 +207,9 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   }, [])
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
   const onProjectDeleted = async (id: Id) => { if (routeFromHash()?.projectId === id) await navigate.current('', false) }
-  const content = restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><div inert={panelIsolated} aria-hidden={panelIsolated || undefined}><PwaUpdateRegistration requestUpdate={requestLeave} /></div>
+  const content = restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><PwaUpdateRegistration requestUpdate={requestLeave} />
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
-  return <InstallProvider ready={workspaceReady && !restartRequired}>{content}</InstallProvider>
+  return <NotificationProvider isolated={panelIsolated}><InstallProvider ready={workspaceReady && !restartRequired}>{content}</InstallProvider></NotificationProvider>
 }
 export function App(props: Parameters<typeof WorkspaceApp>[0]) { return <LocaleProvider><WorkspaceApp {...props} /></LocaleProvider> }

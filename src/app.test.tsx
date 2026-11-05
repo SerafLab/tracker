@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import Dexie from 'dexie'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -6,6 +6,8 @@ import { App } from './app/app'
 import { ProjectBoardDatabase } from './features/project-board/infrastructure/indexeddb/database'
 import { DexieProjectBoardRepository } from './features/project-board/infrastructure/indexeddb/dexie-project-board-repository'
 import { ActionMenu } from './features/project-board/presentation/controls'
+import { simulateUpdateReady } from './test/pwa-register'
+import { TOAST_DURATION_MS } from './ui/notifications'
 
 const databases: ProjectBoardDatabase[] = []
 function repository() { const database = new ProjectBoardDatabase(`app-${crypto.randomUUID()}`); databases.push(database); return new DexieProjectBoardRepository(database) }
@@ -444,4 +446,86 @@ it('opens one form for the status of the activated entry', async () => {
     expect(within(done()).getByText(`From ${entry}`)).toBeInTheDocument()
   }
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+describe('notification area', () => {
+  async function boardWithCards() {
+    const repo = repository()
+    await repo.createProject({ id: 'p', name: 'Project', createdAt: 'now' }, [], true)
+    await repo.createStatus({ id: 's', projectId: 'p', name: 'Status' })
+    for (const id of ['First', 'Second']) await repo.createCard({ id, statusId: 's', name: id, description: '', important: false, urgent: false })
+    location.hash = '#project/p'
+    render(<App repository={repo} />)
+    await screen.findByRole('heading', { level: 1, name: 'Project' })
+    return repo
+  }
+  const transient = () => document.querySelector<HTMLElement>('.notification-transient')!
+  const offer = () => screen.queryByRole('status', { name: 'Обновление EasyTrack' })
+  async function moveDown(user: ReturnType<typeof userEvent.setup>, name: string) {
+    await user.click(screen.getByRole('button', { name: `Действия карточки ${name}` }))
+    await user.click(screen.getByRole('menuitem', { name: 'Опустить ниже' }))
+    await waitFor(() => expect(transient()).toHaveTextContent('Расположение карточки сохранено.'))
+  }
+  afterEach(() => { vi.unstubAllGlobals() })
+
+  it('renders outside main and inert content, so a toast stays announced while a dialog is open', async () => {
+    await boardWithCards()
+    const user = userEvent.setup()
+    await moveDown(user, 'First')
+    const area = document.querySelector('.notification-area')!
+    expect(area).toHaveAttribute('data-placement', 'bottom-center')
+    expect(area.closest('main')).toBeNull()
+    await user.click(screen.getAllByRole('button', { name: 'Добавить статус' })[0])
+    await screen.findByRole('dialog')
+    expect(transient().closest('[inert], [aria-hidden="true"]')).toBeNull()
+    expect(transient()).toHaveTextContent('Расположение карточки сохранено.')
+  })
+
+  it('stacks a toast above the update offer and keeps the offer when the toast disappears', async () => {
+    await boardWithCards()
+    act(() => simulateUpdateReady())
+    expect(await screen.findByRole('status', { name: 'Обновление EasyTrack' })).toHaveTextContent('Доступно обновление EasyTrack.')
+    const user = userEvent.setup()
+    await moveDown(user, 'First')
+    const persistent = document.querySelector('.notification-persistent')!
+    expect(transient().compareDocumentPosition(persistent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(persistent).toContainElement(offer())
+    await waitFor(() => expect(transient()).toBeEmptyDOMElement(), { timeout: TOAST_DURATION_MS + 1000 })
+    expect(within(offer()!).getByRole('button', { name: 'Обновить' })).toBeInTheDocument()
+    expect(within(offer()!).getByRole('button', { name: 'Позже' })).toBeInTheDocument()
+  })
+
+  it('keeps the update offer out of reach while a dialog is open and returns it afterwards', async () => {
+    await boardWithCards()
+    act(() => simulateUpdateReady())
+    await screen.findByRole('status', { name: 'Обновление EasyTrack' })
+    const user = userEvent.setup()
+    await user.click(screen.getAllByRole('button', { name: 'Добавить статус' })[0])
+    const dialog = await screen.findByRole('dialog')
+    expect(offer()).toBeNull()
+    expect(document.querySelector('.notification-persistent')).toHaveAttribute('inert')
+    for (let step = 0; step < 6; step++) {
+      await user.tab()
+      expect(dialog).toContainElement(document.activeElement as HTMLElement)
+    }
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(within(offer()!).getByRole('button', { name: 'Обновить' })).toBeInTheDocument()
+  })
+
+  it('keeps the update offer out of reach while the card panel isolates a narrow workspace', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({ matches: query === '(max-width: 60rem)', media: query, addEventListener() {}, removeEventListener() {} }))
+    await boardWithCards()
+    act(() => simulateUpdateReady())
+    await screen.findByRole('status', { name: 'Обновление EasyTrack' })
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('link', { name: 'First' }))
+    // On a narrow screen the panel covers the workspace as a modal surface.
+    await screen.findByRole('dialog', { name: 'Подробности карточки' })
+    await waitFor(() => expect(offer()).toBeNull())
+    expect(document.querySelector('.notification-persistent')).toHaveAttribute('inert')
+    await user.click(screen.getByRole('button', { name: 'Закрыть карточку' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Подробности карточки' })).toBeNull())
+    await waitFor(() => expect(offer()).not.toBeNull())
+  })
 })

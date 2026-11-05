@@ -20,6 +20,8 @@ async function setup(locale = 'ru') {
   return { repo, user: userEvent.setup() }
 }
 const names = () => Array.from(document.querySelectorAll('.card-name')).map(element => element.textContent)
+/** The transient notification slot of the app-wide notification area. */
+const toast = () => document.querySelector<HTMLElement>('.notification-transient')!
 
 it.each(['ru', 'en'])('offers only available within-group steps in %s and restores focus after reordering', async locale => {
   const { user } = await setup(locale), en = locale === 'en'
@@ -34,7 +36,8 @@ it.each(['ru', 'en'])('offers only available within-group steps in %s and restor
   await user.click(menu('Middle')); await user.click(screen.getByRole('menuitem', { name: en ? 'Move up' : 'Поднять выше' }))
   await waitFor(() => expect(names()).toEqual(['Both', 'Middle', 'First', 'Last', 'None']))
   expect(menu('Middle')).toHaveFocus()
-  await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(en ? 'Card placement saved' : 'Расположение карточки сохранено'))
+  await waitFor(() => expect(toast()).toHaveTextContent(en ? 'Card placement saved.' : 'Расположение карточки сохранено.'))
+  expect(document.querySelector('.placement-status')).not.toBeInTheDocument()
   expect(location.hash).toBe('#project/p')
 })
 
@@ -56,7 +59,7 @@ it('preserves the confirmed board after refresh failure, blocks conflicting acti
   await waitFor(() => expect(names()).toEqual(['Both', 'Middle', 'First', 'Last', 'None']))
   expect(committed).toHaveBeenCalledOnce()
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-  expect(screen.getByRole('status')).toHaveTextContent('Расположение карточки сохранено')
+  expect(toast()).toHaveTextContent('Расположение карточки сохранено.')
   expect(screen.getByRole('button', { name: 'Действия карточки First' })).toHaveFocus()
 })
 
@@ -72,7 +75,9 @@ it('keeps catalogue navigation after reload while a placement commit is pending'
   await waitFor(async () => expect((await repo.preference())?.lastProjectId).toBe('p'))
   await user.click(screen.getByRole('button', { name: 'Действия карточки First' }))
   await user.click(screen.getByRole('menuitem', { name: 'Опустить ниже' }))
-  expect(screen.getByRole('status')).toHaveTextContent('Сохраняем расположение карточки')
+  expect(document.querySelector('.status-columns')).toHaveAttribute('inert')
+  expect(document.body).not.toHaveTextContent('Сохраняем расположение карточки')
+  expect(toast()).toBeEmptyDOMElement()
   await user.click(screen.getByRole('button', { name: /Все проекты/ }))
   await screen.findByRole('heading', { name: 'Трекер личных проектов' })
   await waitFor(async () => expect((await repo.preference())?.lastProjectId).toBeUndefined())
@@ -82,4 +87,24 @@ it('keeps catalogue navigation after reload while a placement commit is pending'
   expect(await screen.findByRole('heading', { name: 'Трекер личных проектов' })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Project' })).not.toBeInTheDocument()
   expect(location.hash).toBe('')
+})
+
+it.each(['ru', 'en'])('announces an unchanged placement as a toast in %s', async locale => {
+  const { repo, user } = await setup(locale), en = locale === 'en'
+  vi.spyOn(repo, 'moveCard').mockResolvedValueOnce('unchanged')
+  await user.click(screen.getByRole('button', { name: en ? 'Card actions for First' : 'Действия карточки First' }))
+  await user.click(screen.getByRole('menuitem', { name: en ? 'Move down' : 'Опустить ниже' }))
+  await waitFor(() => expect(toast()).toHaveTextContent(en ? 'Card placement did not change.' : 'Расположение карточки не изменилось.'))
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+})
+
+it('reports a rejected placement only through the save-error alert', async () => {
+  const { repo, user } = await setup()
+  vi.spyOn(repo, 'moveCard').mockRejectedValueOnce(new Error('quota'))
+  await user.click(screen.getByRole('button', { name: 'Действия карточки First' }))
+  await user.click(screen.getByRole('menuitem', { name: 'Опустить ниже' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить изменения')
+  expect(names()).toEqual(['Both', 'First', 'Middle', 'Last', 'None'])
+  expect(toast()).toBeEmptyDOMElement()
+  expect(screen.getAllByText(/Не удалось сохранить изменения/)).toHaveLength(1)
 })

@@ -142,7 +142,7 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
           index={index}
           total={board.statuses.length}
           statuses={statuses}
-          recentNotes={board.recentNotes}
+          previewNotes={board.previewNotes}
           saveError={saveError}
           disabled={busy}
           onDeleteStatus={requestStatusDeletion}
@@ -170,7 +170,7 @@ type StatusColumnProps = {
   index: number
   total: number
   statuses: Status[]
-  recentNotes: BoardView['recentNotes']
+  previewNotes: BoardView['previewNotes']
   saveError: boolean
   disabled: boolean
   onDeleteStatus: (status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => void
@@ -184,7 +184,7 @@ type StatusColumnProps = {
   onMoveCard: (cardId: Id, placement: CardPlacement, focus?: boolean) => Promise<MoveCardStateResult>
 }
 
-const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, recentNotes, saveError, disabled, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
+const StatusColumn = memo(function StatusColumn({ projectId, status, index, total, statuses, previewNotes, saveError, disabled, onMoveDialogChange, onRename, onMove, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: StatusColumnProps) {
   const { t } = useTranslation()
   const [renaming, setRenaming] = useState(false)
   const { ref: dropRef } = useStatusDrop(status.id)
@@ -212,7 +212,7 @@ const StatusColumn = memo(function StatusColumn({ projectId, status, index, tota
       card={card}
       onDelete={onDeleteCard}
       statuses={statuses}
-      notes={recentNotes[card.id]}
+      notes={previewNotes[card.id]}
       saveError={saveError}
       onMoveDialogChange={onMoveDialogChange}
       peers={status.cards}

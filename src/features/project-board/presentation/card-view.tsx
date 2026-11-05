@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Card, CardPlacement, Id, Note, Status } from '../domain/model'
+import { RECENT_NOTE_LIMIT, type Card, type CardPlacement, type Id, type Note, type Status } from '../domain/model'
 import { appendPlacement, peerPlacement } from '../domain/order'
 import type { MoveCardStateResult } from '../state/project-board-store'
 import { ActionDialog, ActionMenu } from './controls'
@@ -35,8 +35,8 @@ export const CardView = memo(function CardView({ card, notes, peers, statuses, d
   const noteCount = notes?.length ?? 0
   useEffect(() => { if (noteCount < 2) setNotesOpen(false) }, [noteCount])
   const { order } = useNoteOrder()
-  // Collapsed cards always show the newest note; expanded ones follow the chosen order.
-  const shownNotes = notes?.length ? (notesOpen && notes.length > 1 ? orderNotes(notes, order) : notes.slice(-1)) : []
+  // The board shows the start of the history in the chosen order: one note collapsed, up to five expanded.
+  const shownNotes = orderNotes(notes ?? [], order).slice(0, notesOpen ? RECENT_NOTE_LIMIT : 1)
   const closeMoving = useCallback(() => { if (!pending.current) setMoving(false) }, [])
   const above = peerPlacement(peers, card, -1), below = peerPlacement(peers, card, 1)
   useEffect(() => {

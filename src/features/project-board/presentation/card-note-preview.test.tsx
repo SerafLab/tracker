@@ -58,30 +58,34 @@ it('expands four notes newest first by default without repeating the last, and c
   expect(toggle()).toHaveAttribute('aria-expanded', 'false')
 })
 
-it('shows only the five newest of six notes when expanded', async () => {
-  const { user } = await setup(['1', '2', '3', '4', '5', '6'])
+const eight = ['1', '2', '3', '4', '5', '6', '7', '8']
+
+it.each([
+  ['newest', '8', ['8', '7', '6', '5', '4']],
+  ['oldest', '1', ['1', '2', '3', '4', '5']],
+])('shows the start of an eight-note history %s first: one note collapsed, five expanded', async (order, collapsed, expanded) => {
+  localStorage.setItem(noteOrderStorageKey, order)
+  const { user } = await setup(eight)
+  expect(shown()).toEqual([collapsed])
   await user.click(toggle()!)
-  expect(shown()).toEqual(['6', '5', '4', '3', '2'])
+  expect(shown()).toEqual(expanded)
+  await user.click(toggle()!)
+  expect(shown()).toEqual([collapsed])
 })
 
-it('expands notes oldest first when that order is stored, keeping the newest when collapsed', async () => {
-  localStorage.setItem(noteOrderStorageKey, 'oldest')
-  const { user } = await setup(['one', 'two', 'three'])
-  expect(shown()).toEqual(['three'])
-  await user.click(toggle()!)
-  expect(shown()).toEqual(['one', 'two', 'three'])
-})
-
-it('reorders expanded board notes as soon as the order changes in the open card panel', async () => {
-  const { user } = await setup(['one', 'two', 'three'])
-  await user.click(toggle()!)
-  expect(shown()).toEqual(['three', 'two', 'one'])
+it('rebuilds collapsed and expanded board notes as soon as the order changes in the open card panel', async () => {
+  const { user } = await setup(eight)
   await user.click(screen.getByRole('link', { name: 'Card' }))
   const panel = await screen.findByRole('region', { name: 'Подробности карточки' })
   await user.click(within(panel).getByRole('button', { name: 'Порядок заметок: сначала новые' }))
   await within(panel).findByRole('button', { name: 'Порядок заметок: сначала старые' })
-  expect(shown()).toEqual(['one', 'two', 'three'])
-  expect(localStorage.getItem(noteOrderStorageKey)).toBe('oldest')
+  expect(shown()).toEqual(['1'])
+  await user.click(toggle()!)
+  expect(shown()).toEqual(['1', '2', '3', '4', '5'])
+  await user.click(within(panel).getByRole('button', { name: 'Порядок заметок: сначала старые' }))
+  await within(panel).findByRole('button', { name: 'Порядок заметок: сначала новые' })
+  expect(shown()).toEqual(['8', '7', '6', '5', '4'])
+  expect(localStorage.getItem(noteOrderStorageKey)).toBe('newest')
 })
 
 it('toggles by keyboard without opening the card or the actions menu', async () => {
@@ -117,7 +121,7 @@ it('reflects only confirmed note add, edit and delete after the board snapshot r
 
 it('keeps the local expand toggle enabled and focused while a board write is pending', async () => {
   const { ProjectBoardView } = await import('./project-board-view')
-  const board = { id: 'p', name: 'Project', createdAt: 'now', recentNotes: { c: [{ id: 'a', cardId: 'c', text: 'old', createdAt: '1' }, { id: 'b', cardId: 'c', text: 'new', createdAt: '2' }] },
+  const board = { id: 'p', name: 'Project', createdAt: 'now', previewNotes: { c: [{ id: 'a', cardId: 'c', text: 'old', createdAt: '1' }, { id: 'b', cardId: 'c', text: 'new', createdAt: '2' }] },
     statuses: [{ id: 's', name: 'S', projectId: 'p', position: 0, cards: [{ id: 'c', statusId: 's', name: 'Card', position: 0, description: '', important: false, urgent: false }] }] }
   const props = { onApplyStatusSet: async () => 'saved' as const, onDeleteProject: async () => true, saveError: false, placementPending: false, refreshFailed: false, onRetryRefresh: vi.fn(), focusCreation: false, onCreationFocused: vi.fn(), onReturn: vi.fn(), onRenameProject: vi.fn(), onCreateStatus: vi.fn(), onRenameStatus: vi.fn(), onMoveStatus: vi.fn(), onCreateCard: vi.fn(), onOpenCard: vi.fn(), onDeleteCard: vi.fn(), onDeleteStatus: vi.fn(), onMoveCard: vi.fn() }
   const view = (busy: boolean) => <ProjectBoardView {...props} board={board} busy={busy} />

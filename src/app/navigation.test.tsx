@@ -5,7 +5,7 @@ import { App } from './app'
 import type { ProjectBoardRepository } from '../features/project-board'
 
 const project = { id: 'a', name: 'Project A', createdAt: 'now' }
-const board = { ...project, statuses: [], recentNotes: {} }
+const board = { ...project, statuses: [], previewNotes: {} }
 function deferred<T>() {
   let resolve!: (value: T) => void
   const promise = new Promise<T>(yes => { resolve = yes })

@@ -21,13 +21,13 @@ async function createBoard(page: Page, en: boolean, cards: string[]) {
     await expect(dialog).toBeHidden()
   }
   await expect(page.locator('[data-card-id]')).toHaveCount(cards.length)
-  // Seed three notes per card straight into Dexie so ordering checks do not depend on the editor.
+  // Seed eight notes per card straight into Dexie so ordering checks do not depend on the editor.
   await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const r = indexedDB.open('personal-project-tracker'); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error) })
     const cardIds = Array.from(document.querySelectorAll<HTMLElement>('[data-card-id]'), card => card.dataset.cardId!)
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction('notes', 'readwrite')
-      for (const cardId of cardIds) for (const n of [1, 2, 3]) tx.objectStore('notes').put({ id: `${cardId}-${n}`, cardId, text: `Note ${n}`, createdAt: `2026-11-02T00:00:0${n}.000Z` })
+      for (const cardId of cardIds) for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) tx.objectStore('notes').put({ id: `${cardId}-${n}`, cardId, text: `Note ${n}`, createdAt: `2026-11-02T00:00:0${n}.000Z` })
       tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error)
     })
     db.close()
@@ -36,13 +36,14 @@ async function createBoard(page: Page, en: boolean, cards: string[]) {
 }
 
 const history = (page: Page) => page.locator('.note-list .note .detail-text')
+const notes = (...ns: number[]) => ns.map(n => `Note ${n}`)
 
 for (const en of [false, true]) {
   test(`note order toggle fits a 320px screen ${en ? 'en' : 'ru'}`, async ({ page }, info) => {
     await page.setViewportSize({ width: 320, height: 800 })
     await createBoard(page, en, ['Order card'])
     await page.getByRole('link', { name: 'Order card', exact: true }).click()
-    await expect(history(page)).toHaveText(['Note 3', 'Note 2', 'Note 1'])
+    await expect(history(page)).toHaveText(notes(8, 7, 6, 5, 4, 3, 2, 1))
     // The accessible name changes with the order, so locate the toggle by its place.
     const toggle = page.locator('.note-history-header').getByRole('button')
     await expect(toggle).toHaveAccessibleName(t(en, 'Порядок заметок: сначала новые', 'Note order: newest first'))
@@ -58,7 +59,7 @@ for (const en of [false, true]) {
     await page.screenshot({ path: info.outputPath(`note-order-newest-${en ? 'en' : 'ru'}-320.png`), fullPage: true })
     await toggle.focus()
     await page.keyboard.press('Enter')
-    await expect(history(page)).toHaveText(['Note 1', 'Note 2', 'Note 3'])
+    await expect(history(page)).toHaveText(notes(1, 2, 3, 4, 5, 6, 7, 8))
     await expect(toggle).toHaveAccessibleName(t(en, 'Порядок заметок: сначала старые', 'Note order: oldest first'))
     await expect(toggle).toBeFocused()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
@@ -66,28 +67,33 @@ for (const en of [false, true]) {
   })
 }
 
-test('note order applies to the board at once and to every card after reload', async ({ page }, info) => {
+test('note order rebuilds collapsed and expanded board cards at once and after reload', async ({ page }, info) => {
   await page.setViewportSize({ width: 1280, height: 900 })
-  await createBoard(page, false, ['First card', 'Second card'])
-  const second = page.locator('.work-card', { has: page.getByRole('link', { name: 'Second card', exact: true }) })
-  const preview = second.locator('.card-note')
-  await expect(preview).toHaveText(['Note 3'])
-  await second.getByRole('button', { name: 'Последние заметки: Second card' }).click()
-  await expect(preview).toHaveText(['Note 3', 'Note 2', 'Note 1'])
+  await createBoard(page, false, ['First card', 'Second card', 'Third card'])
+  const boardCard = (name: string) => page.locator('.work-card', { has: page.getByRole('link', { name, exact: true }) })
+  const expanded = boardCard('Second card').locator('.card-note'), collapsed = boardCard('Third card').locator('.card-note')
+  await expect(collapsed).toHaveText(notes(8))
+  await boardCard('Second card').getByRole('button', { name: 'Последние заметки: Second card' }).click()
+  await expect(expanded).toHaveText(notes(8, 7, 6, 5, 4))
   await page.getByRole('link', { name: 'First card', exact: true }).click()
   const panel = page.getByRole('region', { name: 'Подробности карточки' })
   await panel.getByRole('button', { name: 'Порядок заметок: сначала новые', exact: true }).click()
-  await expect(history(page)).toHaveText(['Note 1', 'Note 2', 'Note 3'])
-  // The board beside the panel follows the choice immediately.
-  await expect(preview).toHaveText(['Note 1', 'Note 2', 'Note 3'])
-  await page.screenshot({ path: info.outputPath('note-order-board-1280.png') })
+  await expect(history(page)).toHaveText(notes(1, 2, 3, 4, 5, 6, 7, 8))
+  // The board beside the panel shows the start of the same history immediately.
+  await expect(expanded).toHaveText(notes(1, 2, 3, 4, 5))
+  await expect(collapsed).toHaveText(notes(1))
+  await page.screenshot({ path: info.outputPath('note-order-board-oldest-1280.png') })
   await panel.getByRole('button', { name: 'Закрыть карточку', exact: true }).click()
   await expect(panel).toBeHidden()
   await page.reload()
+  await expect(collapsed).toHaveText(notes(1))
+  await boardCard('Third card').getByRole('button', { name: 'Последние заметки: Third card' }).click()
+  await expect(collapsed).toHaveText(notes(1, 2, 3, 4, 5))
   await page.getByRole('link', { name: 'Second card', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Подробности карточки' }).getByRole('button', { name: 'Порядок заметок: сначала старые', exact: true })).toBeVisible()
-  await expect(history(page)).toHaveText(['Note 1', 'Note 2', 'Note 3'])
+  await expect(history(page)).toHaveText(notes(1, 2, 3, 4, 5, 6, 7, 8))
   // The add action follows to the newest side, below the history.
   const list = (await page.locator('.note-list').boundingBox())!
   expect((await page.getByRole('button', { name: 'Добавить заметку', exact: true }).boundingBox())!.y).toBeGreaterThan(list.y + list.height - 1)
+  await page.screenshot({ path: info.outputPath('note-order-board-oldest-reload-1280.png') })
 })

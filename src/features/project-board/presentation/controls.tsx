@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useEffectEvent, useId, useRef, useState, ty
 
 import type { CardInput } from '../domain/model'
 import { BoardIcon } from './board-icon'
+import { hiddenInBoard } from './board-viewport'
 
 type Action = { label: string; onSelect: () => void; disabled?: boolean }
 
@@ -20,7 +21,8 @@ export function ActionMenu({ label, actions, triggerRef, disabled = false }: { d
       if (!button.current) return
       const trigger = button.current.getBoundingClientRect()
       const bounds = panel.getBoundingClientRect()
-      if (afterScroll && (trigger.bottom <= 0 || trigger.top >= window.innerHeight || trigger.right <= 0 || trigger.left >= window.innerWidth)) {
+      const hidden = hiddenInBoard(button.current) ?? (trigger.bottom <= 0 || trigger.top >= window.innerHeight || trigger.right <= 0 || trigger.left >= window.innerWidth)
+      if (afterScroll && hidden) {
         setOpen(false)
         return
       }

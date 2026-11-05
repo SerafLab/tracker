@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 for (const language of ['ru', 'en'] as const) for (const width of [390, 1280]) {
-  test(`combines a default status set, both card creation entries and durable details in ${language} at ${width}px`, async ({ page, context }) => {
+  test(`combines a default status set, header card creation and durable details in ${language} at ${width}px`, async ({ page, context }) => {
     const en = language === 'en'
     await page.addInitScript(locale => localStorage.setItem('easytrack.locale', locale), language)
     await page.setViewportSize({ width, height: 900 })
@@ -28,11 +28,11 @@ for (const language of ['ru', 'en'] as const) for (const width of [390, 1280]) {
     await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
     await expect(page.locator('.note')).toContainText('Saved agreement')
     await page.getByRole('button', { name: en ? 'Back to board' : 'Назад к доске', exact: true }).click()
-    await column.locator('.add-card').click()
+    await column.locator('.add-card-header').click()
     await creation.getByRole('textbox').fill('Another card')
     await creation.getByRole('button', { name: en ? 'Create card' : 'Создать карточку', exact: true }).click()
     await expect(creation).toBeHidden()
-    await expect(column.locator('.add-card')).toBeFocused()
+    await expect(column.locator('.add-card-header')).toBeFocused()
     await expect(column.locator('.work-card')).toHaveCount(2)
     await page.evaluate(() => navigator.serviceWorker.ready)
     await context.setOffline(true)

@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import type { Card, CardPlacement, Id, ProjectBoard } from '../domain/model'
 import { appendPlacement, cardPriority, sameCardGroup } from '../domain/order'
 import type { MoveCardStateResult } from '../state/project-board-store'
+import { boardScroller, statusHeaderBottom } from './board-viewport'
 
 export type PlacementPreview = { card: Card; placement: CardPlacement }
 type Interaction = { disabled: boolean; active: Id | null; suppression: RefObject<Id | null>; resetPointer(): void }
@@ -36,19 +37,21 @@ export function BoardDrag({ board, disabled, onPlace, children }: { board: Proje
   const boardRef = useRef(board); boardRef.current = board
   const project = (point: { x: number; y: number }): PlacementPreview | null => {
     const card = source.current
-    const scroller = surface.current?.querySelector<HTMLElement>('.status-columns')
-    if (!card || !scroller) return null
+    const scroller = boardScroller(surface.current)
+    if (!card || !scroller || !surface.current) return null
     const bounds = scroller.getBoundingClientRect()
     if (point.x < bounds.left || point.x > bounds.right || point.y < bounds.top || point.y > bounds.bottom) return null
-    const column = Array.from(scroller.querySelectorAll<HTMLElement>('[data-status-id]')).find(element => { const box = element.getBoundingClientRect(); return point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom })
+    const column = Array.from(surface.current.querySelectorAll<HTMLElement>('[data-status-id]')).find(element => { const box = element.getBoundingClientRect(); return point.x >= box.left && point.x <= box.right && point.y >= box.top && point.y <= box.bottom })
     const status = boardRef.current.statuses.find(item => item.id === column?.dataset.statusId)
     if (!column || !status) return null
+    // Over a sticky header, place as at the top of the visible list rather than among the cards hidden beneath it.
+    const y = Math.max(point.y, statusHeaderBottom(column) ?? point.y)
     const peers = status.cards.filter(item => item.id !== card.id && sameCardGroup(item, card))
     const before = peers.find(peer => {
       const element = Array.from(column.querySelectorAll<HTMLElement>('[data-card-id]')).find(item => item.dataset.cardId === peer.id)
       if (!element) return false
       const box = element.getBoundingClientRect()
-      return point.y < box.top + box.height / 2
+      return y < box.top + box.height / 2
     })
     return { card, placement: { ...appendPlacement(card, status.id), beforeCardId: before?.id ?? null } }
   }

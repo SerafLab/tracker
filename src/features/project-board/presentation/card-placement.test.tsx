@@ -48,6 +48,9 @@ it('preserves the confirmed board after refresh failure, blocks conflicting acti
   await user.click(screen.getByRole('button', { name: 'Действия карточки First' }))
   await user.click(screen.getByRole('menuitem', { name: 'Опустить ниже' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('Расположение сохранено, но не удалось обновить доску')
+  // Board errors stay outside the board scroller, between the bar and the board.
+  expect(screen.getByRole('alert').closest('.board-alerts')).not.toBeNull()
+  expect(screen.getByRole('alert').closest('[data-board-scroller]')).toBeNull()
   expect(names()).toEqual(['Both', 'First', 'Middle', 'Last', 'None'])
   expect(screen.getByRole('button', { name: 'Действия карточки First' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Добавить статус' })).toBeDisabled()
@@ -104,6 +107,8 @@ it('reports a rejected placement only through the save-error alert', async () =>
   await user.click(screen.getByRole('button', { name: 'Действия карточки First' }))
   await user.click(screen.getByRole('menuitem', { name: 'Опустить ниже' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить изменения')
+  expect(screen.getByRole('alert').closest('.board-alerts')).not.toBeNull()
+  expect(screen.getByRole('alert').closest('[data-board-scroller]')).toBeNull()
   expect(names()).toEqual(['Both', 'First', 'Middle', 'Last', 'None'])
   expect(toast()).toBeEmptyDOMElement()
   expect(screen.getAllByText(/Не удалось сохранить изменения/)).toHaveLength(1)

@@ -17,4 +17,4 @@
 
 - [x] 4.1 Add a shared Playwright helper that switches language through the settings menu and replace every `combobox`-based language switch and `region` settings query in `e2e/` and `src/**/*.test.tsx`. Verify with a search that no language `combobox` query remains, and run each changed e2e file with `--repeat-each=5` and each changed unit file with `--repeats=10`.
 - [x] 4.2 Extend `e2e/app-bar.spec.ts` to assert start-aligned labels (equal left offsets of item text), the separator and caption, and no horizontal overflow at 320 px and 1280 px in both languages. Verify that the spec passes.
-- [ ] 4.3 Run `npm run check`, then visually inspect the open settings menu on the board and the catalogue at 320 px and 1280 px in Russian and English, including keyboard focus on a language item and the storage-failure warning. Report what was viewed and the result.
+- [x] 4.3 Run `npm run check`, then visually inspect the open settings menu on the board and the catalogue at 320 px and 1280 px in Russian and English, including keyboard focus on a language item and the storage-failure warning. Report what was viewed and the result.

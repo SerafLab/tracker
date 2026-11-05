@@ -77,7 +77,8 @@ export function ActionDialog({ title, children, onClose, returnFocus }: { title:
   useEffect(() => {
     const releaseModal = registerModal()
     const focusable = () => Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]') ?? [])
-    ;(panel.current?.querySelector<HTMLElement>('input, select, textarea') ?? focusable()[0])?.focus()
+    // Text entry gets initial focus; an option checkbox does not take it from the dialog's first action.
+    ;(panel.current?.querySelector<HTMLElement>('input:not([type="checkbox"]), select, textarea') ?? focusable()[0])?.focus()
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); closeFromKeyboard() }
       if (event.key === 'Tab') {

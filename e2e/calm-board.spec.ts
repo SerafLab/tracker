@@ -106,10 +106,6 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(locale.locator('option')).toHaveText(['RU', 'EN'])
     await page.keyboard.press('Escape')
     await expect(first.locator('.card-badge')).toHaveCount(4)
-    if (width < 1280) {
-      expect(await page.locator('.install-help').evaluate(element => getComputedStyle(element).position)).toBe('static')
-      expect(await page.locator('.install-help').evaluate(element => element.closest('main') !== null && element.getBoundingClientRect().top >= document.querySelector('.status-columns')!.getBoundingClientRect().bottom)).toBe(true)
-    }
     await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur() })
     await page.screenshot({ path: testInfo.outputPath(`calm-${language}-${width}.png`), fullPage: true })
 
@@ -313,36 +309,17 @@ for (const [width, height] of [[390, 844], [320, 568], [1280, 800], [1440, 900]]
   await statusColumn(page, 'Done').scrollIntoViewIfNeeded()
   await expect(statusColumn(page, 'Done').locator('.add-card-header')).toBeInViewport()
   await page.screenshot({ path: testInfo.outputPath(`bounded-board-${width}.png`), fullPage: false })
-  if (width < 1280) {
-    // The single install entry follows the board in the same scroll area without overlapping it.
-    await expect(page.locator('.install-help')).toHaveCount(1)
-    await main.evaluate(element => { element.scrollTop = element.scrollHeight })
-    await expect(page.locator('.install-help button')).toBeInViewport()
-    expect(await page.evaluate(() => document.querySelector('.install-help')!.getBoundingClientRect().top >= document.querySelector('.status-columns')!.getBoundingClientRect().bottom - 1)).toBe(true)
-  }
 })
 
-for (const [width, height] of [[568, 320], [844, 390], [1024, 600]]) test(`short ${width}x${height} viewport keeps the lower entry reachable and the install entry clear`, async ({ page }) => {
+for (const [width, height] of [[568, 320], [844, 390], [1024, 600]]) test(`short ${width}x${height} viewport keeps the lower entry reachable`, async ({ page }) => {
   await page.setViewportSize({ width, height })
   await seedBoard(page, [{ name: 'Todo', cards: 30 }, { name: 'Doing', cards: 25 }, { name: 'Short', cards: 1 }])
   const state = () => page.evaluate(() => {
-    const visible = (element: Element) => { const box = element.getBoundingClientRect(); return box.width > 0 && box.right > 0 && box.left < innerWidth }
-    const install = document.querySelector('.install-help button')!.getBoundingClientRect()
-    const hits: string[] = []
-    const overlapped = Array.from(document.querySelectorAll('.add-card, .add-card-header, .status-columns .menu button')).filter(element => {
-      const box = element.getBoundingClientRect()
-      const clip = element.closest('.card-list')?.getBoundingClientRect()
-      const clipped = !!clip && (box.bottom <= clip.top || box.top >= clip.bottom)
-      const hit = !clipped && visible(element) && box.left < install.right && box.right > install.left && box.top < install.bottom && box.bottom > install.top
-      if (hit) hits.push(`${element.className} ${JSON.stringify([box.left, box.top, box.right, box.bottom])} install ${JSON.stringify([install.left, install.top, install.right, install.bottom])} ${getComputedStyle(document.querySelector('.install-help')!).position}`)
-      return hit
-    }).length
     const footer = document.querySelector('.add-card')!.getBoundingClientRect()
-    return { hits, doc: document.scrollingElement!.scrollHeight <= innerHeight, scrollY, bar: document.querySelector('.app-bar')!.getBoundingClientRect().top, footerTop: footer.top, footerBottom: footer.bottom, inner: innerHeight, overlapped }
+    return { doc: document.scrollingElement!.scrollHeight <= innerHeight, scrollY, bar: document.querySelector('.app-bar')!.getBoundingClientRect().top, footerTop: footer.top, footerBottom: footer.bottom, inner: innerHeight }
   })
   const first = await state()
   expect(first.doc).toBe(true); expect(first.scrollY).toBe(0); expect(first.bar).toBe(0)
-  expect(first.overlapped, JSON.stringify(first.hits)).toBe(0)
   // The list row keeps a usable minimum height, and the card focus ring (2px + 3px offset) fits inside the list box.
   const todoList = statusColumn(page, 'Todo').locator('.card-list')
   expect((await todoList.boundingBox())!.height).toBeGreaterThanOrEqual(79)
@@ -354,8 +331,8 @@ for (const [width, height] of [[568, 320], [844, 390], [1024, 600]]) test(`short
   await page.mouse.wheel(0, 3000); await page.mouse.wheel(0, 3000)
   await expect.poll(async () => { const now = await state(); return now.footerTop >= 0 && now.footerBottom <= now.inner }).toBe(true)
   const last = await state()
-  expect(last.doc).toBe(true); expect(last.bar).toBe(0); expect(last.overlapped).toBe(0)
-  await expect(page.locator('.install-help')).toHaveCount(1)
+  expect(last.doc).toBe(true); expect(last.bar).toBe(0)
+  await expect(page.locator('.install-help')).toHaveCount(0)
 })
 
 test('a card can be dropped into a scrolled list and the list autoscrolls during a drag', async ({ page }) => {

@@ -7,6 +7,7 @@ import { localeStorageKey } from '../i18n/locale'
 import { RestartRequired } from '../app/pwa/restart-required'
 import { ActionDialog } from '../features/project-board/presentation/controls'
 import { AppBar } from './app-bar'
+import { SettingsEntryContext } from './settings-entry'
 
 afterEach(cleanup)
 
@@ -40,6 +41,27 @@ it.each(['ru', 'en'])('offers contextual icon controls and keyboard settings in 
   await user.click(screen.getByRole('button', {name: en ? 'Rename project' : 'Переименовать проект'}))
   expect(rename).toHaveBeenCalledOnce()
   expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+})
+
+it('renders a supplied application settings entry before the language selector and closes settings when it is chosen', async () => {
+  const user = userEvent.setup()
+  const select = vi.fn(() => expect(gear).toHaveFocus())
+  render(<LocaleProvider><SettingsEntryContext value={{ label: 'Как установить EasyTrack', onSelect: select }}><AppBar title="Каталог" /></SettingsEntryContext></LocaleProvider>)
+  const gear = screen.getByRole('button', { name: 'Настройки' })
+  await user.click(gear)
+  const panel = screen.getByRole('region', { name: 'Настройки' })
+  const entry = within(panel).getByRole('button', { name: 'Как установить EasyTrack' })
+  expect(entry.compareDocumentPosition(within(panel).getByRole('combobox')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  await user.click(entry)
+  expect(select).toHaveBeenCalledOnce()
+  expect(screen.queryByRole('region', { name: 'Настройки' })).not.toBeInTheDocument()
+})
+
+it('omits the application settings entry without a provider', async () => {
+  const user = userEvent.setup()
+  render(<LocaleProvider><AppBar title="Каталог" /></LocaleProvider>)
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  expect(within(screen.getByRole('region', { name: 'Настройки' })).queryAllByRole('button')).toHaveLength(0)
 })
 
 it('keeps settings and recovery on the restart screen without project actions', async () => {

@@ -132,3 +132,48 @@ for (const width of [1280, 320]) {
     await expect(page.getByRole('heading', { name: 'Незавершённый черновик' })).toBeVisible()
   })
 }
+
+test.describe('first-visit installation invitation', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  for (const [language, width] of [['ru', 320], ['en', 1280]] as const) test(`opens on first visit until dismissed permanently in ${language} at ${width}px`, async ({ page }) => {
+    const en = language === 'en'
+    await page.setViewportSize({ width, height: 720 })
+    await page.addInitScript(locale => localStorage.setItem('easytrack.locale', locale), language)
+    await page.goto(app)
+    const invitation = page.getByRole('dialog', { name: en ? 'You can install EasyTrack' : 'EasyTrack можно установить' })
+    await expect(invitation).toBeVisible()
+    await expect(invitation).toContainText(en ? 'do not sync' : 'не синхронизируются')
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    // Closing without the checkbox brings the invitation back on the next launch.
+    await invitation.getByRole('button', { name: en ? 'Close' : 'Закрыть' }).last().click()
+    await expect(invitation).toBeHidden()
+    await page.reload()
+    await expect(invitation).toBeVisible()
+    await invitation.getByRole('checkbox', { name: en ? 'Don’t show again' : 'Больше не показывать' }).check()
+    await page.keyboard.press('Escape')
+    await expect(invitation).toBeHidden()
+    await page.reload()
+    await expect(page.getByRole('button', { name: en ? 'Create project' : 'Создать проект' })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    // The settings entry stays available after dismissal.
+    await page.getByRole('button', { name: en ? 'Settings' : 'Настройки' }).click()
+    await page.getByRole('button', { name: en ? 'How to install EasyTrack' : 'Как установить EasyTrack' }).click()
+    await expect(page.getByRole('dialog', { name: en ? 'Install EasyTrack' : 'Установить EasyTrack' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('button', { name: en ? 'Settings' : 'Настройки' })).toBeFocused()
+  })
+
+  test('does not open in the installed application', async ({ page }) => {
+    await page.addInitScript(() => {
+      const original = window.matchMedia.bind(window)
+      window.matchMedia = query => query === '(display-mode: standalone)' ? { ...original(query), matches: true, media: query } as MediaQueryList : original(query)
+    })
+    await page.goto(app)
+    await expect(page.getByRole('button', { name: 'Создать проект' })).toBeVisible()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await page.getByRole('button', { name: 'Настройки' }).click()
+    await page.getByRole('button', { name: 'Где хранятся проекты' }).click()
+    await expect(page.getByRole('dialog', { name: 'Где хранятся проекты' })).toContainText('не синхронизируются')
+  })
+})

@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { dismissedInstallInvitation } from './storage-state'
 
 // A deterministic host contract fixture, NOT proof of native WebMCP availability.
 async function fixture(page: Page) {
@@ -154,7 +155,7 @@ test('native-contract fixture isolates tabs/sessions and deduplicates identical 
   expect(saved.filter((project: any) => project.name === 'Lost acknowledgement')).toHaveLength(1)
   expect(await raw(page, 'create_project', lost)).toMatchObject({ ok: true, data: { saved: true } })
   expect((await raw(page, 'list_projects', { sessionId: host.session() })).data.projects).toHaveLength(2)
-  const isolated = await context.browser()!.newContext(), isolatedPage = await isolated.newPage()
+  const isolated = await context.browser()!.newContext({ storageState: dismissedInstallInvitation }), isolatedPage = await isolated.newPage()
   const isolatedHost = await fixture(isolatedPage)
   expect((await isolatedHost.call('list_projects')).data.projects).toEqual([])
   await isolated.close()

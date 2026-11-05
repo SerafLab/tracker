@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../app/app'
 import { ProjectBoardDatabase, DexieProjectBoardRepository, type ProjectBoardRepository } from '../features/project-board'
-import { InstallGuidance } from '../app/pwa/install-guidance'
+import { InstallProvider } from '../app/pwa/install-guidance'
 import { PwaUpdateNotice } from '../app/pwa/update-notice'
 import { RestartRequired } from '../app/pwa/restart-required'
 import { AppBar } from '../ui/app-bar'
@@ -138,15 +138,19 @@ it.each(['en', 'ru'] as const)('translates platform installation, update and res
   localStorage.setItem(localeStorageKey, locale)
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone')
   const user = userEvent.setup()
-  const view = render(<LocaleProvider><InstallGuidance /><PwaUpdateNotice needRefresh onUpdate={async () => {}} onLater={() => {}} /><RestartRequired onRestart={() => {}} /></LocaleProvider>)
-  await user.click(screen.getByRole('button', { name: locale === 'en' ? 'How to install EasyTrack' : 'Как установить EasyTrack' }))
+  const openInstallGuidance = async () => {
+    await user.click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
+    await user.click(screen.getByRole('button', { name: locale === 'en' ? 'How to install EasyTrack' : 'Как установить EasyTrack' }))
+  }
+  const view = render(<LocaleProvider><InstallProvider><PwaUpdateNotice needRefresh onUpdate={async () => {}} onLater={() => {}} /><RestartRequired onRestart={() => {}} /></InstallProvider></LocaleProvider>)
+  await openInstallGuidance()
   expect(screen.getByRole('dialog')).toHaveTextContent(locale === 'en' ? 'Add to Home Screen' : 'На экран')
   expect(screen.getByRole('status')).toHaveAccessibleName(locale === 'en' ? 'EasyTrack update' : 'Обновление EasyTrack')
   expect(document.querySelector('h1')).toHaveTextContent(locale === 'en' ? 'Restart EasyTrack' : 'Нужно перезапустить EasyTrack')
   await user.click(screen.getByRole('button', { name: locale === 'en' ? 'Close' : 'Закрыть' }))
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Chrome')
-  view.rerender(<LocaleProvider><InstallGuidance /><RestartRequired onRestart={() => {}} /></LocaleProvider>)
-  await user.click(screen.getByRole('button', { name: locale === 'en' ? 'How to install EasyTrack' : 'Как установить EasyTrack' }))
+  view.rerender(<LocaleProvider><InstallProvider><RestartRequired onRestart={() => {}} /></InstallProvider></LocaleProvider>)
+  await openInstallGuidance()
   expect(screen.getByRole('dialog')).toHaveTextContent(locale === 'en' ? 'Open the browser menu' : 'Откройте меню браузера')
   expect(within(screen.getByRole('dialog')).queryByRole('combobox')).not.toBeInTheDocument()
   await user.keyboard('{Escape}')
@@ -158,12 +162,13 @@ it.each(['en', 'ru'] as const)('translates platform installation, update and res
 
 it('keeps the preference warning in the app bar after a dialog closes', async () => {
   const user = userEvent.setup()
-  render(<LocaleProvider><AppBar title="EasyTrack" /><InstallGuidance /></LocaleProvider>)
+  render(<LocaleProvider><InstallProvider><AppBar title="EasyTrack" /></InstallProvider></LocaleProvider>)
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw Error('blocked') })
   await user.click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
   await user.selectOptions(screen.getByRole('combobox'), 'en')
   expect(screen.getByRole('alert')).toHaveTextContent('Could not save your language')
   await user.click(screen.getByRole('button', { name: 'How to install EasyTrack' }))
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   expect(within(screen.getByRole('dialog')).queryByRole('combobox')).not.toBeInTheDocument()
   await user.keyboard('{Escape}')
   await user.click(screen.getByRole('button', { name: 'Settings' }))

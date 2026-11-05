@@ -16,6 +16,6 @@
 .probe-card[data-dragging] { -webkit-touch-callout: none; }
 .probe-card[data-dragging] a { -webkit-touch-callout: none; }
 .probe-overlay { width: 16rem; padding: 1rem; box-shadow: 0 4px 24px #0003; pointer-events: none; }
-.probe-gap { border: 2px dashed var(--accent); background: #dbe7dd; color: var(--accent); padding: .5rem; list-style: none; }
+.probe-gap { border: 2px dashed var(--accent); background: var(--marker-bg); color: var(--accent); padding: .5rem; list-style: none; }
 .probe-empty { padding: 2rem .5rem; color: var(--text-secondary); list-style: none; }
 .probe-detail { border: 2px solid var(--accent); }

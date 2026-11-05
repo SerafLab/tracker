@@ -2,6 +2,7 @@ import { useContext, useId, useLayoutEffect, useRef, useState, type RefObject } 
 import { useTranslation } from 'react-i18next'
 import { useModalOpen } from './modal-state'
 import { LanguageMenuGroup, LanguagePreferenceWarning } from '../i18n/provider'
+import { ThemeMenuGroup, ThemePreferenceWarning } from './theme-provider'
 import { focusFirstMenuItem, moveMenuFocus } from './menu-focus'
 import { SettingsEntryContext } from './settings-entry'
 import { TruncatedText } from './truncated-text'
@@ -86,8 +87,10 @@ export function AppBar({ title, context, onReturn, creation, rename, deleteProje
             {settingsEntry ? <button className="menu-item" role="menuitem" onClick={() => { setOpen(false); gear.current?.focus(); settingsEntry.onSelect() }}>{settingsEntry.label}</button> : null}
             {rename || deleteProject || settingsEntry ? <div role="separator" className="menu-separator" /> : null}
             <LanguageMenuGroup />
+            <ThemeMenuGroup />
           </div>
           <LanguagePreferenceWarning />
+          <ThemePreferenceWarning />
         </div> : null}
       </div>
     </div>

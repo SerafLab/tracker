@@ -3,6 +3,7 @@ import { createBrowserAdapter } from './webmcp/adapter'
 import { useWebMcp } from './webmcp/use-webmcp'
 import { ToolError } from './webmcp/error'
 import { LocaleProvider } from '../i18n/provider'
+import { ThemeProvider } from '../ui/theme-provider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type DraftGuard, type EditRequest, type Id, type ProjectBoardRepository } from '../features/project-board'
@@ -217,4 +218,4 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   </>
   return <NotificationProvider isolated={panelIsolated}><InstallProvider ready={workspaceReady && !restartRequired}>{content}</InstallProvider></NotificationProvider>
 }
-export function App(props: Parameters<typeof WorkspaceApp>[0]) { return <LocaleProvider><WorkspaceApp {...props} /></LocaleProvider> }
+export function App(props: Parameters<typeof WorkspaceApp>[0]) { return <LocaleProvider><ThemeProvider><WorkspaceApp {...props} /></ThemeProvider></LocaleProvider> }

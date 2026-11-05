@@ -94,6 +94,9 @@ for (const locale of ['ru', 'en'] as const) {
     await context.setOffline(true)
     await page.reload()
     await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
+    await expect(page.getByRole('group')).toHaveCount(2)
+    await expect(page.getByRole('group', { name: /^(Application language|Язык приложения)$/ })).toHaveCount(1)
+    await expect(page.getByRole('group', { name: /^(Application color theme|Цветовая тема приложения)$/ })).toHaveCount(1)
     await expect(page.getByRole('menuitemradio', { name: locale === 'en' ? 'English' : 'Русский' })).toHaveAttribute('aria-checked', 'true')
     await expect(page.getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' })).toBeVisible()
     expect(await page.evaluate(async () => {

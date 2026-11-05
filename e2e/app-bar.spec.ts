@@ -139,6 +139,8 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(page.getByRole('heading', {level: 1})).toHaveText(state === 'loading' ? (en ? 'Opening workspace…' : 'Открываем рабочее пространство…') : state === 'unavailable' ? (en ? 'Project board unavailable' : 'Рабочая доска недоступна') : (en ? 'Restart EasyTrack' : 'Нужно перезапустить EasyTrack'))
     await expect(page.getByRole('button', {name: /^(Создать проект|Create project|Добавить статус|Add status)$/})).toHaveCount(0)
     await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
+    await expect(page.getByRole('group')).toHaveCount(2)
+    await expect(page.getByRole('group', {name: en ? 'Application color theme' : 'Цветовая тема приложения'})).toHaveCount(1)
     await expect(page.getByRole('menuitemradio', {name: en ? 'English' : 'Русский'})).toHaveAttribute('aria-checked', 'true')
     await expect(page.getByRole('menuitem', {name: /^(Переименовать проект|Rename project|Удалить проект|Delete project)$/})).toHaveCount(0)
     expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
@@ -229,9 +231,13 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) f
     const menu = page.getByRole('menu', {name: en ? 'Settings' : 'Настройки'})
     const caption = menu.getByText(en ? 'Application language' : 'Язык приложения', {exact: true})
     await expect(caption).toBeVisible()
-    await expect(menu.getByRole('separator')).toHaveCount(1)
+    await expect(menu.getByRole('separator')).toHaveCount(2)
     await expect(menu.getByRole('menuitem')).toHaveCount(screen === 'board' ? 3 : 1)
-    await expect(menu.getByRole('menuitemradio')).toHaveText(['Русский', 'English'])
+    await expect(menu.getByRole('group')).toHaveCount(2)
+    await expect(menu.getByRole('group', {name: en ? 'Application language' : 'Язык приложения'})).toHaveCount(1)
+    await expect(menu.getByRole('group', {name: en ? 'Application color theme' : 'Цветовая тема приложения'})).toHaveCount(1)
+    await expect(menu.getByRole('group', {name: en ? 'Application language' : 'Язык приложения'}).getByRole('menuitemradio')).toHaveText(['Русский', 'English'])
+    await expect(menu.getByRole('group', {name: en ? 'Application color theme' : 'Цветовая тема приложения'}).getByRole('menuitemradio')).toHaveText(en ? ['Green', 'Ink'] : ['Зелёная', 'Чернильная'])
     await expect(menu.getByRole('menuitem').first()).toBeFocused()
     // Text starts at the item's inline start plus its padding; the caption shares that edge.
     const starts = await menu.locator('.menu-item, .menu-caption').evaluateAll(elements => elements.map(element => Math.round(element.getBoundingClientRect().left + parseFloat(getComputedStyle(element).paddingLeft))))
@@ -240,6 +246,7 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) f
     expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight})).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await menu.getByRole('menuitemradio').last().focus()
+    await expect(menu.getByRole('menuitemradio').last()).toBeFocused()
     await page.screenshot({path: testInfo.outputPath(`settings-menu-${screen}-${language}-${width}.png`)})
   })
 }
@@ -255,6 +262,19 @@ test('shows the preference warning below the settings menu', async ({page}, test
   await expect(page.getByRole('menu')).toBeVisible()
   expect(await page.getByRole('menu').evaluate((menu, alert) => !menu.contains(alert) && !!(menu.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING), await alert.elementHandle())).toBe(true)
   await page.screenshot({path: testInfo.outputPath('settings-menu-warning-320.png')})
+})
+
+test('shows the theme warning below the menu alongside the language warning', async ({page}) => {
+  await page.setViewportSize({width: 320, height: 740})
+  await page.addInitScript(() => { Storage.prototype.setItem = () => {throw Error('blocked')} })
+  await page.goto('/tracker/')
+  await page.getByRole('button', {name: 'Настройки'}).click()
+  await page.getByRole('menuitemradio', {name: 'Чернильная'}).click()
+  await page.getByRole('menuitemradio', {name: 'English'}).click()
+  await expect(page.getByRole('alert')).toHaveCount(2)
+  await expect(page.getByRole('alert').first()).toContainText('Could not save your language')
+  await expect(page.getByRole('alert').last()).toContainText('Could not save your color theme')
+  expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
 })
 
 async function seedCardPage(page: Page, en: boolean, project: string, status: string) {

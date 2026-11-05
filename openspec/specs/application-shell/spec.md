@@ -7,7 +7,7 @@
 ## Requirements
 
 ### Requirement: Shared application bar across states
-The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, full card page, loading, storage-unavailable, and restart-required screens. Except on the full card page, the heading SHALL be the page's primary heading; on the full card page the bar SHALL show the card's project and status as plain-text context, and the card name in the content SHALL be the primary heading. With a card panel open, the application bar SHALL retain the board context. The settings menu opened from the bar SHALL contain the sole accessible language choice.
+The system SHALL show one application bar containing the EasyTrack brand, the current screen or state heading, and a settings gear on the catalogue, board, full card page, loading, storage-unavailable, and restart-required screens. Except on the full card page, the heading SHALL be the page's primary heading; on the full card page the bar SHALL show the card's project and status as plain-text context, and the card name in the content SHALL be the primary heading. With a card panel open, the application bar SHALL retain the board context. The settings menu opened from the bar SHALL contain the sole accessible language choice and the sole accessible color theme choice.
 
 #### Scenario: User navigates from catalogue to board
 - **WHEN** the user opens a project from the catalogue
@@ -46,7 +46,7 @@ The application bar SHALL show an icon-only plus for project creation in the cat
 
 #### Scenario: User encounters a service state
 - **WHEN** the application is loading, its storage is unavailable, or a restart is required
-- **THEN** the application bar has no creation, project-renaming or project-deletion action, its settings menu provides the installation entry and language selection, and the state message retains its relevant guidance or recovery action
+- **THEN** the application bar has no creation, project-renaming or project-deletion action, its settings menu provides the installation entry, language selection and color theme selection, and the state message retains its relevant guidance or recovery action
 
 #### Scenario: User navigates from a card page
 - **WHEN** пользователь открывает страницу карточки
@@ -76,7 +76,7 @@ The application bar SHALL be a visually distinct, full-width light surface with 
 - **THEN** every status scrolls together inside the viewport-bounded workspace, the application bar stays at the top of the viewport in full on every width, and the document itself does not scroll
 
 ### Requirement: Calm application bar hierarchy
-The system SHALL retain a warm light application bar with a restrained green creation plus and a visually secondary settings gear. Every application-bar heading or card-page context SHALL occupy one line; text that exceeds the available width SHALL end with an ellipsis without changing the bar height, hiding controls, or causing page-level horizontal overflow. On the card page the project and status SHALL truncate independently. The complete text SHALL remain available to assistive technology and, when truncated, in a hint on pointer hover or keyboard focus. The same visual tokens SHALL apply to service screens.
+The system SHALL retain a warm light application bar with a restrained creation plus in the active color theme's accent and a visually secondary settings gear. Every application-bar heading or card-page context SHALL occupy one line; text that exceeds the available width SHALL end with an ellipsis without changing the bar height, hiding controls, or causing page-level horizontal overflow. On the card page the project and status SHALL truncate independently. The complete text SHALL remain available to assistive technology and, when truncated, in a hint on pointer hover or keyboard focus. The same visual tokens SHALL apply to service screens.
 
 #### Scenario: User views the chosen board direction
 - **WHEN** a project board is displayed at 320, 390, 1280 or 1440 px
@@ -110,7 +110,7 @@ The system SHALL give the creation plus and settings gear localized accessible n
 - **THEN** its localized hint and accessible name explain «Создать проект»
 
 ### Requirement: Settings menu interaction
-The settings gear SHALL open and close one non-modal settings menu. Opening it SHALL move focus to its first available item. Arrow Up and Arrow Down SHALL move focus between available items, wrapping at the ends and skipping the separator and caption. The menu SHALL close on Escape or outside interaction and restore focus to the gear on Escape. Starting project renaming, project deletion or installation SHALL close the menu before opening its dialog or the browser installation prompt. Choosing a language SHALL keep the menu open. Cancelling a renaming or deletion dialog and closing the installation dialog SHALL return focus to the gear; successful renaming SHALL also return focus to the gear, while successful deletion SHALL follow project-deletion navigation and focus rules.
+The settings gear SHALL open and close one non-modal settings menu. Opening it SHALL move focus to its first available item. Arrow Up and Arrow Down SHALL move focus between available items, wrapping at the ends and skipping the separator and caption. The menu SHALL close on Escape or outside interaction and restore focus to the gear on Escape. Starting project renaming, project deletion or installation SHALL close the menu before opening its dialog or the browser installation prompt. Choosing a language or color theme SHALL keep the menu open. Cancelling a renaming or deletion dialog and closing the installation dialog SHALL return focus to the gear; successful renaming SHALL also return focus to the gear, while successful deletion SHALL follow project-deletion navigation and focus rules.
 
 #### Scenario: User renames the current project
 - **WHEN** the user opens board settings and chooses «Переименовать проект»
@@ -202,15 +202,15 @@ A persistent notice SHALL show short text in the interface language with one or 
 - **THEN** Tab inside the dialog never reaches the notice's actions and assistive technology does not expose them until the dialog closes
 
 ### Requirement: Settings menu layout
-The settings menu SHALL list its actions first and the language group last, with every item label aligned to the start edge. A horizontal separator SHALL divide the actions from the language group only when at least one action precedes the group. Directly above the language items the menu SHALL show a non-interactive caption «Язык приложения» / «Application language», which also names the group for assistive technology.
+The settings menu SHALL list its actions first, then the language group, then the color theme group last, with every item label aligned to the start edge. A horizontal separator SHALL divide the actions from the language group only when at least one action precedes the group, and another separator SHALL divide the language group from the color theme group. Directly above the language items the menu SHALL show a non-interactive caption «Язык приложения» / «Application language», and directly above the theme items «Цветовая тема приложения» / «Application color theme»; each caption also names its group for assistive technology.
 
 #### Scenario: Board settings layout
 - **WHEN** the user opens settings on a project board in Russian
-- **THEN** the menu shows «Переименовать проект», «Удалить проект» and «Как установить EasyTrack», then a separator, the caption «Язык приложения», and the items «Русский» and «English», with all labels aligned to the same start edge
+- **THEN** the menu shows «Переименовать проект», «Удалить проект» and «Как установить EasyTrack», then a separator, the caption «Язык приложения», the items «Русский» and «English», a separator, the caption «Цветовая тема приложения» and the items «Зелёная» and «Чернильная», with all labels aligned to the same start edge
 
 #### Scenario: Settings without preceding actions
 - **WHEN** settings open in a state that offers no action before the language group
-- **THEN** the menu shows the caption and the two language items without a separator above them
+- **THEN** the menu shows the language caption and its two items without a separator above them, followed by a separator and the color theme group
 
 #### Scenario: Narrow viewport
 - **WHEN** the user opens settings at a 320 px viewport in either language

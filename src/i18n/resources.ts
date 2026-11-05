@@ -73,7 +73,7 @@ export const ru = {
   "stay": "Остаться",
   "cardContentsLost": "Описание и все заметки этой карточки также будут удалены.",
 
-  "settings": "Настройки", "applicationLanguage": "Язык приложения",
+  "settings": "Настройки", "applicationLanguage": "Язык приложения", "colorTheme": "Цветовая тема", "themeGreen": "Зелёная", "themeInk": "Чернильная",
   "title": "Трекер личных проектов",
   "subtitle": "Держите важные дела в понятном порядке.",
   "firstProject": "Начните с первого проекта",
@@ -153,6 +153,7 @@ export const ru = {
   "saveError": "Не удалось сохранить изменения. Проверьте доступность локального хранилища и повторите попытку.",
   "language": "Язык интерфейса",
   "preferenceWarning": "Не удалось сохранить язык. Выбор может не сохраниться после закрытия приложения.",
+  "themePreferenceWarning": "Не удалось сохранить цветовую тему. Выбор может не сохраниться после закрытия приложения.",
   "pageTitle": "EasyTrack — трекер личных проектов",
   "description": "EasyTrack — трекер личных проектов"
 } as const
@@ -232,7 +233,7 @@ export const en: { [Key in keyof typeof ru]: string } = {
   "stay": "Stay",
   "cardContentsLost": "This card’s description and all notes will also be deleted.",
 
-  "settings": "Settings", "applicationLanguage": "Application language",
+  "settings": "Settings", "applicationLanguage": "Application language", "colorTheme": "Color theme", "themeGreen": "Green", "themeInk": "Ink",
   "title": "Personal project tracker",
   "subtitle": "Keep important tasks in clear order.",
   "firstProject": "Start with your first project",
@@ -312,6 +313,7 @@ export const en: { [Key in keyof typeof ru]: string } = {
   "saveError": "Could not save changes. Check local storage availability and try again.",
   "language": "Interface language",
   "preferenceWarning": "Could not save your language. Your choice may not persist after closing the app.",
+  "themePreferenceWarning": "Could not save your color theme. Your choice may not persist after closing the app.",
   "pageTitle": "EasyTrack — personal project tracker",
   "description": "EasyTrack — personal project tracker"
 }

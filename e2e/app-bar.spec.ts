@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
 
+const languageName = /^(Application language|Язык приложения)$/
 for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] as const) {
   test(`shares app bar controls in ${language} at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 740 })
     await page.goto('/tracker/')
     const en = language === 'en'
-    if (en) { await page.getByRole('button', {name: 'Настройки'}).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) { await page.getByRole('button', {name: 'Настройки'}).click(); await page.getByRole('combobox', {name: languageName}).selectOption('en'); await page.keyboard.press('Escape') }
     const createName = en ? 'Create project' : 'Создать проект'
     const addName = en ? 'Add status' : 'Добавить статус'
     const create = page.getByRole('button', { name: createName, exact: true })
@@ -138,13 +139,13 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(page.getByRole('heading', {level: 1})).toHaveText(state === 'loading' ? (en ? 'Opening workspace…' : 'Открываем рабочее пространство…') : state === 'unavailable' ? (en ? 'Project board unavailable' : 'Рабочая доска недоступна') : (en ? 'Restart EasyTrack' : 'Нужно перезапустить EasyTrack'))
     await expect(page.getByRole('button', {name: /^(Создать проект|Create project|Добавить статус|Add status)$/})).toHaveCount(0)
     await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
-    await expect(page.getByRole('combobox')).toHaveValue(language)
+    await expect(page.getByRole('combobox', {name: languageName})).toHaveValue(language)
     await expect(page.getByRole('button', {name: /^(Переименовать проект|Rename project|Удалить проект|Delete project)$/})).toHaveCount(0)
     expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({path: testInfo.outputPath(`${state}-${language}-${width}.png`), fullPage: true})
-    await page.getByRole('combobox').selectOption(en ? 'ru' : 'en')
-    await expect(page.getByRole('combobox')).toHaveValue(en ? 'ru' : 'en')
+    await page.getByRole('combobox', {name: languageName}).selectOption(en ? 'ru' : 'en')
+    await expect(page.getByRole('combobox', {name: languageName})).toHaveValue(en ? 'ru' : 'en')
     await expect(page.locator('.settings-panel')).toBeVisible()
     await expect.poll(() => page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
   })
@@ -156,7 +157,7 @@ test('repositions settings after language and preference warning resize', async 
   await page.addInitScript(() => { localStorage.setItem('easytrack.locale', 'en'); Storage.prototype.setItem = () => {throw Error('blocked')} })
   await page.goto('/tracker/')
   await page.getByRole('button', {name: 'Settings'}).click()
-  const select = page.getByRole('combobox')
+  const select = page.getByRole('combobox', {name: languageName})
   await select.focus()
   await select.selectOption('ru')
   await expect(select).toBeFocused()

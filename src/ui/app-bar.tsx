@@ -2,6 +2,7 @@ import { useContext, useId, useLayoutEffect, useRef, useState, type RefObject } 
 import { useTranslation } from 'react-i18next'
 import { useModalOpen } from './modal-state'
 import { LocaleSelector } from '../i18n/provider'
+import { ThemeSelector } from './theme-provider'
 import { SettingsEntryContext } from './settings-entry'
 import { TruncatedText } from './truncated-text'
 
@@ -80,6 +81,7 @@ export function AppBar({ title, context, onReturn, creation, rename, deleteProje
           {/* Focus the gear first so a dialog opened by the entry returns focus there. */}
           {settingsEntry ? <button className="button button-quiet" onClick={() => { setOpen(false); gear.current?.focus(); settingsEntry.onSelect() }}>{settingsEntry.label}</button> : null}
           <LocaleSelector />
+          <ThemeSelector />
         </div> : null}
       </div>
     </div>

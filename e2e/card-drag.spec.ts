@@ -12,7 +12,7 @@ async function setup(page: Page, en = false) {
     }
   })
   await page.goto('/tracker/')
-  if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+  if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
   await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox').fill('Drag project')
   await page.getByRole('dialog').getByRole('combobox').selectOption('empty')

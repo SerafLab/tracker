@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test'
 async function seededBoard(page: Page, en = false) {
   await page.goto('/tracker/')
   await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
-  if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+  if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
   await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
     await new Promise<void>((resolve, reject) => {

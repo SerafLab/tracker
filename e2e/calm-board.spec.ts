@@ -5,7 +5,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     const en = language === 'en'
     await page.setViewportSize({ width, height: width === 320 ? 568 : 900 })
     await page.goto('/tracker/')
-    if (en) { await page.getByRole('button', {name: 'Настройки'}).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) { await page.getByRole('button', {name: 'Настройки'}).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
     await expect(page.getByRole('heading', { name: en ? 'Start with your first project' : 'Начните с первого проекта' })).toBeVisible()
     await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await page.getByRole('dialog').getByRole('textbox').fill('Поиск квартиры')
@@ -218,7 +218,7 @@ for (const language of ['ru', 'en'] as const) {
     const en = language === 'en'
     await page.setViewportSize({ width: 390, height: 844 })
     await seedBoard(page, [{ name: 'Todo', cards: 14 }, { name: 'Done', cards: 14 }])
-    if (en) { await page.getByRole('button', { name: 'Настройки' }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) { await page.getByRole('button', { name: 'Настройки' }).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
     const column = statusColumn(page, 'Todo')
     const header = column.locator('.add-card-header'), count = column.locator('.card-count [aria-hidden="true"]')
     for (const [key, action] of [['Enter', 'create'], ['Enter', 'cancel'], ['Space', 'escape']] as const) {
@@ -431,7 +431,7 @@ for (const width of [1280, 1440]) for (const language of ['ru', 'en'] as const) 
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/tracker/')
     await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
-    if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
     await page.evaluate(async () => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
       await new Promise<void>((resolve, reject) => {

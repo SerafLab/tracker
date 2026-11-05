@@ -6,12 +6,14 @@ import { LocaleProvider } from '../i18n/provider'
 import { ThemeProvider } from '../ui/theme-provider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type DraftGuard, type EditRequest, type Id, type ProjectBoardRepository } from '../features/project-board'
+import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type Backup, type DraftGuard, type EditRequest, type Id, type ProjectBoardRepository } from '../features/project-board'
+import { BackupProvider } from './backup/backup-provider'
 import { InstallProvider } from './pwa/install-guidance'
 import { PwaUpdateRegistration } from './pwa/update-registration'
 import { usePersistentStorage } from './pwa/persistent-storage'
 import { RestartRequired } from './pwa/restart-required'
 import { NotificationProvider } from '../ui/notifications'
+import { build } from './build'
 
 const routeFor = (id: Id, cardId?: Id) => `#project/${encodeURIComponent(id)}${cardId ? `/card/${encodeURIComponent(cardId)}` : ''}`
 function routeFromHash() {
@@ -47,7 +49,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const [runtime] = useState(() => {
     const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { staleConnection.current = true; setRestartRequired(true) })
     const repository = suppliedRepository ?? new DexieProjectBoardRepository(database!)
-    const useCases = createProjectBoardUseCases({ repository, createId: () => crypto.randomUUID(), now: () => new Date().toISOString(), build: { version: 'dev', commit: 'unknown' } })
+    const useCases = createProjectBoardUseCases({ repository, createId: () => crypto.randomUUID(), now: () => new Date().toISOString(), build })
     return { useCases, store: createProjectBoardStore(useCases, () => !staleConnection.current) }
   })
   const registerDraftGuard = useCallback((guard: DraftGuard | null) => { draftGuard.current = guard }, [])
@@ -216,6 +218,8 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const content = restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} editRequest={editRequest} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><PwaUpdateRegistration requestUpdate={requestLeave} />
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
-  return <NotificationProvider isolated={panelIsolated}><InstallProvider ready={workspaceReady && !restartRequired}>{content}</InstallProvider></NotificationProvider>
+  const actions = { exportBackup: runtime.useCases.exportBackup, summary: runtime.useCases.summary, parseBackup: runtime.useCases.parseBackup, restore: (backup: Backup) => runtime.store.getState().restoreBackup(backup) }
+  const backupEnabled = workspaceReady && !restartRequired
+  return <NotificationProvider isolated={panelIsolated}><BackupProvider enabled={backupEnabled} actions={actions} requestLeave={requestLeave} showCatalogue={() => navigate.current('')}><InstallProvider ready={backupEnabled}>{content}</InstallProvider></BackupProvider></NotificationProvider>
 }
 export function App(props: Parameters<typeof WorkspaceApp>[0]) { return <LocaleProvider><ThemeProvider><WorkspaceApp {...props} /></ThemeProvider></LocaleProvider> }

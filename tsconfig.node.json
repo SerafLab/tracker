@@ -1,9 +1,11 @@
 {
   "compilerOptions": {
     "composite": true,
+    "allowImportingTsExtensions": true,
+    "emitDeclarationOnly": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "allowSyntheticDefaultImports": true
   },
-  "include": ["vite.config.ts"]
+  "include": ["vite.config.ts", "build-define.ts"]
 }

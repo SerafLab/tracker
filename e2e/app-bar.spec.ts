@@ -232,7 +232,7 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) f
     const caption = menu.getByText(en ? 'Application language' : 'Язык приложения', {exact: true})
     await expect(caption).toBeVisible()
     await expect(menu.getByRole('separator')).toHaveCount(2)
-    await expect(menu.getByRole('menuitem')).toHaveCount(screen === 'board' ? 3 : 1)
+    await expect(menu.getByRole('menuitem')).toHaveCount(screen === 'board' ? 5 : 3)
     await expect(menu.getByRole('group')).toHaveCount(2)
     await expect(menu.getByRole('group', {name: en ? 'Application language' : 'Язык приложения'})).toHaveCount(1)
     await expect(menu.getByRole('group', {name: en ? 'Application color theme' : 'Цветовая тема приложения'})).toHaveCount(1)

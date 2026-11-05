@@ -185,3 +185,11 @@ it('keeps the preference warning in the app bar after a dialog closes', async ()
   expect(screen.getAllByRole('alert')).toHaveLength(1)
   expect(within(screen.getByRole('banner')).getByRole('alert')).toHaveTextContent('Could not save your language')
 })
+
+describe('resources', () => {
+  it('has the same non-empty keys in both languages', async () => {
+    const { ru, en } = await import('./resources')
+    expect(Object.keys(en).sort()).toEqual(Object.keys(ru).sort())
+    expect(Object.values(en).every(Boolean) && Object.values(ru).every(Boolean)).toBe(true)
+  })
+})

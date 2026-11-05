@@ -76,7 +76,7 @@ The application bar SHALL be a visually distinct, full-width light surface with 
 - **THEN** every status scrolls together inside the viewport-bounded workspace, the application bar stays at the top of the viewport in full on every width, and the document itself does not scroll
 
 ### Requirement: Calm application bar hierarchy
-The system SHALL retain a warm light application bar with a restrained green creation plus and a visually secondary settings gear. Every application-bar heading or card-page context SHALL occupy one line; text that exceeds the available width SHALL end with an ellipsis without changing the bar height, hiding controls, or causing page-level horizontal overflow. On the card page the project and status SHALL truncate independently. The complete text SHALL remain available to assistive technology and, when truncated, in a hint on pointer hover or keyboard focus. The same visual tokens SHALL apply to service screens.
+The system SHALL retain a warm light application bar with a restrained creation plus in the active color theme's accent and a visually secondary settings gear. Every application-bar heading or card-page context SHALL occupy one line; text that exceeds the available width SHALL end with an ellipsis without changing the bar height, hiding controls, or causing page-level horizontal overflow. On the card page the project and status SHALL truncate independently. The complete text SHALL remain available to assistive technology and, when truncated, in a hint on pointer hover or keyboard focus. The same visual tokens SHALL apply to service screens.
 
 #### Scenario: User views the chosen board direction
 - **WHEN** a project board is displayed at 320, 390, 1280 or 1440 px

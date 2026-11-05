@@ -234,7 +234,7 @@ for (const width of [320, 1280]) for (const en of [false, true]) {
   test(`Card page has a long project and status in ${en ? 'en' : 'ru'} at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 740 })
     await page.goto('/tracker/')
-    if (en) { await page.getByRole('button', { name: 'Настройки' }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) { await page.getByRole('button', { name: 'Настройки' }).click(); await page.getByRole('combobox', { name: languageName }).selectOption('en'); await page.keyboard.press('Escape') }
     await seedCardPage(page, en, 'Short', 'Todo')
     const bar = page.locator('.card-page .app-bar')
     await expect(bar.locator('h1')).toHaveCount(0)

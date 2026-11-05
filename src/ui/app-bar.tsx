@@ -1,7 +1,8 @@
 import { useContext, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalOpen } from './modal-state'
-import { LocaleSelector } from '../i18n/provider'
+import { LanguageMenuGroup, LanguagePreferenceWarning } from '../i18n/provider'
+import { focusFirstMenuItem, moveMenuFocus } from './menu-focus'
 import { SettingsEntryContext } from './settings-entry'
 import { TruncatedText } from './truncated-text'
 
@@ -17,6 +18,7 @@ export function AppBar({ title, context, onReturn, creation, rename, deleteProje
   const localGear = useRef<HTMLButtonElement>(null)
   const gear = rename?.triggerRef ?? deleteProject?.triggerRef ?? localGear
   const panel = useRef<HTMLDivElement>(null)
+  const menu = useRef<HTMLDivElement>(null)
   const id = useId()
   useLayoutEffect(() => { if (modalOpen) setOpen(false) }, [modalOpen])
   useLayoutEffect(() => {
@@ -35,9 +37,11 @@ export function AppBar({ title, context, onReturn, creation, rename, deleteProje
     }
     const keyboard = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); setOpen(false); gear.current?.focus() }
+      else if (moveMenuFocus(menu.current, event.key)) event.preventDefault()
     }
     const toggle = (event: Event) => { if ((event as ToggleEvent).newState === 'closed') setOpen(false) }
     position()
+    focusFirstMenuItem(menu.current)
     const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(position)
     observer?.observe(element)
     if (gear.current?.closest('.app-bar-inner')) observer?.observe(gear.current.closest('.app-bar-inner')!)
@@ -73,13 +77,17 @@ export function AppBar({ title, context, onReturn, creation, rename, deleteProje
         : <TruncatedText as="h1" text={title ?? ''} className="page-title" />}
       <div className="app-bar-controls">
         {creation ? <button disabled={creation.disabled} ref={creation.triggerRef} className="button button-primary button-icon bar-hint" data-hint={creation.label} aria-label={creation.label} onClick={() => { setOpen(false); creation.onSelect() }}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></button> : null}
-        <button ref={gear} className="button button-quiet button-icon bar-hint" data-hint={t('settings')} aria-label={t('settings')} aria-expanded={open && !modalOpen} aria-controls={id} onClick={() => setOpen(value => !value)}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 3-.6 2.4-2 .9L4 5.6 2 9l1.8 1.7v2.6L2 15l2 3.4 2.4-.7 2 .9L9 21h4l.6-2.4 2-.9 2.4.7 2-3.4-1.8-1.7v-2.6L20 9l-2-3.4-2.4.7-2-.9L13 3Z" /><circle cx="11" cy="12" r="3" /></svg></button>
-        {open && !modalOpen ? <div id={id} ref={panel} className="settings-panel" popover="auto" role="region" aria-label={t('settings')}>
-          {rename ? <button disabled={rename.disabled} className="button button-quiet" onClick={() => { setOpen(false); rename.onSelect() }}>{t('renameProject')}</button> : null}
-          {deleteProject ? <button disabled={deleteProject.disabled} className="button button-quiet" onClick={() => { setOpen(false); deleteProject.onSelect() }}>{t('deleteProject')}</button> : null}
-          {/* Focus the gear first so a dialog opened by the entry returns focus there. */}
-          {settingsEntry ? <button className="button button-quiet" onClick={() => { setOpen(false); gear.current?.focus(); settingsEntry.onSelect() }}>{settingsEntry.label}</button> : null}
-          <LocaleSelector />
+        <button ref={gear} className="button button-quiet button-icon bar-hint" data-hint={t('settings')} aria-label={t('settings')} aria-haspopup="menu" aria-expanded={open && !modalOpen} aria-controls={id} onClick={() => setOpen(value => !value)}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 3-.6 2.4-2 .9L4 5.6 2 9l1.8 1.7v2.6L2 15l2 3.4 2.4-.7 2 .9L9 21h4l.6-2.4 2-.9 2.4.7 2-3.4-1.8-1.7v-2.6L20 9l-2-3.4-2.4.7-2-.9L13 3Z" /><circle cx="11" cy="12" r="3" /></svg></button>
+        {open && !modalOpen ? <div id={id} ref={panel} className="settings-panel menu-items" popover="auto">
+          <div ref={menu} role="menu" aria-label={t('settings')} className="menu-list">
+            {rename ? <button disabled={rename.disabled} className="menu-item" role="menuitem" onClick={() => { setOpen(false); rename.onSelect() }}>{t('renameProject')}</button> : null}
+            {deleteProject ? <button disabled={deleteProject.disabled} className="menu-item" role="menuitem" onClick={() => { setOpen(false); deleteProject.onSelect() }}>{t('deleteProject')}</button> : null}
+            {/* Focus the gear first so a dialog opened by the entry returns focus there. */}
+            {settingsEntry ? <button className="menu-item" role="menuitem" onClick={() => { setOpen(false); gear.current?.focus(); settingsEntry.onSelect() }}>{settingsEntry.label}</button> : null}
+            {rename || deleteProject || settingsEntry ? <div role="separator" className="menu-separator" /> : null}
+            <LanguageMenuGroup />
+          </div>
+          <LanguagePreferenceWarning />
         </div> : null}
       </div>
     </div>

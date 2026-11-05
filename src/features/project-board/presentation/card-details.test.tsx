@@ -88,7 +88,7 @@ it('opens a direct detail address, hides project actions, returns to its board a
   expect(screen.getByRole('heading', { name: 'Card', level: 1 })).toBeInTheDocument()
   expect(screen.getByRole('main')).toHaveFocus()
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(screen.queryByRole('button', { name: 'Переименовать проект' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Переименовать проект' })).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Добавить статус' })).not.toBeInTheDocument()
   await user.keyboard('{Escape}')
   await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
@@ -362,7 +362,7 @@ it('offers the captured install prompt from settings across board, catalogue, ca
   const settingsEntry = async () => {
     expect(document.querySelector('.install-help')).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Настройки' }))
-    return within(screen.getByRole('region', { name: 'Настройки' })).getByRole('button', { name: 'Установить EasyTrack' })
+    return within(await screen.findByRole('menu', { name: 'Настройки' })).getByRole('menuitem', { name: 'Установить EasyTrack' })
   }
   const checkEntry = async () => { await settingsEntry(); await user.keyboard('{Escape}') }
   await screen.findByRole('link', { name: 'Card' })

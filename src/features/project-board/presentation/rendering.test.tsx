@@ -52,7 +52,7 @@ it('isolates board dialogs, column dialogs and a card move dialog from unchanged
   }
   menuRenders.mockClear()
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  await user.click(screen.getByRole('button', { name: 'Переименовать проект' }))
+  await user.click(screen.getByRole('menuitem', { name: 'Переименовать проект' }))
   expect(screen.getByRole('dialog')).toBeInTheDocument()
   await user.keyboard('{Escape}')
   expectUnchangedBoard()

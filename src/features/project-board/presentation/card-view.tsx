@@ -17,7 +17,7 @@ export const CardView = memo(function CardView({ card, notes, peers, statuses, d
   onMoveDialogChange: (cardId: Id | null) => void
   onDelete: (card: Card, returnFocus: React.RefObject<HTMLButtonElement | null>) => void
   projectId: Id
-  onOpen: (cardId: Id) => Promise<void>
+  onOpen: (cardId: Id, options?: { edit?: boolean }) => Promise<void>
   onMove: (cardId: Id, placement: CardPlacement, focus?: boolean) => Promise<MoveCardStateResult>
 }) {
   const { t } = useTranslation()
@@ -57,7 +57,7 @@ export const CardView = memo(function CardView({ card, notes, peers, statuses, d
         if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); void onOpen(card.id) }
       }}><span className="card-name">{card.name}</span>{card.description.trim() ? <span className="card-description-preview">{card.description}</span> : null}</a>
       <ActionMenu disabled={disabled} triggerRef={menuTrigger} label={t('cardActions', { name: card.name })} actions={[
-        { label: t('edit'), onSelect: () => void onOpen(card.id) },
+        { label: t('edit'), onSelect: () => void onOpen(card.id, { edit: true }) },
         ...(otherStatuses.length ? [{ label: t('moveToOther'), onSelect: () => { setDestination(otherStatuses[0].id); setMoving(true) } }] : []),
         ...(above ? [{ label: t('cardMoveUp'), onSelect: () => void move(above) }] : []),
         ...(below ? [{ label: t('cardMoveDown'), onSelect: () => void move(below) }] : []),

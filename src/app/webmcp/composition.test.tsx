@@ -45,7 +45,7 @@ it('native-contract fixture applies actual checked board/catalogue navigation, k
 it('native-contract fixture retains mounted field/note drafts through unrelated refresh failure and retries reading only', async () => {
   const { call, repo, user } = await fixture()
   await user.click(screen.getByRole('link', { name: 'Card' }))
-  await screen.findByRole('heading', { name: 'Card' })
+  await user.click(await screen.findByRole('button', { name: 'Редактировать основное' }))
   const description = screen.getByLabelText('Описание карточки')
   await user.clear(description); await user.type(description, 'Unsaved field draft')
   await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))

@@ -335,7 +335,7 @@ it('edits fields on the detail page atomically, preserves failed drafts, and kee
   let column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
   await addCard(user, column, 'First'); await addCard(user, column, 'Second')
   await user.click(screen.getByRole('button', { name: 'Действия карточки Second' })); await user.click(screen.getByRole('menuitem', { name: 'Редактировать' }))
-  const form = await screen.findByRole('form', { name: 'Поля карточки' })
+  const form = await screen.findByRole('form', { name: 'Редактировать основное' })
   expect(within(form).getByLabelText('Название карточки')).toHaveValue('Second')
   await user.clear(within(form).getByLabelText('Название карточки')); await user.type(within(form).getByLabelText('Название карточки'), 'Edited')
   await user.click(within(form).getByLabelText('Важная'))
@@ -348,9 +348,10 @@ it('edits fields on the detail page atomically, preserves failed drafts, and kee
   expect(within(form).getByLabelText('Важная')).toBeChecked()
   await user.click(within(form).getByRole('button', { name: 'Сохранить' }))
   await screen.findByRole('heading', { name: 'Edited', level: 2 })
-  await waitFor(() => expect(within(form).getByRole('button', { name: 'Сохранить' })).toBeEnabled())
-  await user.click(within(form).getByLabelText('Срочная'))
-  await user.click(screen.getByRole('button', { name: 'Назад к доске' }))
+  await waitFor(() => expect(form).not.toBeInTheDocument())
+  await user.click(screen.getByRole('button', { name: 'Редактировать основное' }))
+  await user.click(await screen.findByLabelText('Срочная'))
+  await user.click(screen.getByRole('button', { name: 'Закрыть карточку' }))
   await user.click(screen.getByRole('button', { name: 'Выйти без сохранения' }))
   await screen.findByRole('heading', { name: 'Todo' })
   column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
@@ -509,4 +510,58 @@ describe('notification area', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Подробности карточки' })).toBeNull())
     await waitFor(() => expect(offer()).not.toBeNull())
   })
+})
+
+async function boardWithCards(...names: string[]) {
+  const user = userEvent.setup(); const repo = repository(); render(<App repository={repo} />)
+  await fill(user, 'Новый проект', 'Menu project', 'Создать проект'); await addStatus(user, 'Todo')
+  const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
+  for (const name of names) await addCard(user, column, name)
+  return user
+}
+const chooseEdit = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+  await user.click(screen.getByRole('button', { name: `Действия карточки ${name}` }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Редактировать' }))
+}
+
+it('shows the project and status as plain-text context in the card page bar and no bar heading', async () => {
+  const user = await boardWithCards('First')
+  await user.click(screen.getByRole('link', { name: 'First' }))
+  await user.click(await screen.findByRole('button', { name: 'Открыть на всю страницу' }))
+  await screen.findByRole('button', { name: 'Назад к доске' })
+  const bar = document.querySelector('.card-page .app-bar')!
+  expect(bar.querySelector('h1')).toBeNull()
+  expect(bar.querySelector('a')).toBeNull()
+  expect(bar).toHaveTextContent('Menu project›Todo')
+  expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)
+  expect(screen.getByRole('heading', { level: 1, name: 'First' })).toBeInTheDocument()
+})
+
+it('opens the panel in editing from the card menu, but in view mode from a plain click', async () => {
+  const user = await boardWithCards('First')
+  await user.click(screen.getByRole('link', { name: 'First' }))
+  await screen.findByRole('button', { name: 'Редактировать основное' })
+  expect(screen.queryByRole('form', { name: 'Редактировать основное' })).not.toBeInTheDocument()
+  await chooseEdit(user, 'First')
+  const form = await screen.findByRole('form', { name: 'Редактировать основное' })
+  await waitFor(() => expect(within(form).getByLabelText('Название карточки')).toHaveFocus())
+})
+
+it('opens editing from the menu directly for a closed card, with focus in the name', async () => {
+  const user = await boardWithCards('First')
+  await chooseEdit(user, 'First')
+  const form = await screen.findByRole('form', { name: 'Редактировать основное' })
+  await waitFor(() => expect(within(form).getByLabelText('Название карточки')).toHaveFocus())
+})
+
+it('keeps the current card in view mode when the draft guard Stay blocks Edit on another card', async () => {
+  const user = await boardWithCards('First', 'Second')
+  await user.click(screen.getByRole('link', { name: 'First' }))
+  await user.click(await screen.findByRole('button', { name: 'Добавить заметку' }))
+  await user.type(screen.getByLabelText('Новая заметка'), 'Draft')
+  await chooseEdit(user, 'Second')
+  await user.click(within(await screen.findByRole('dialog', { name: 'Несохранённые изменения' })).getByRole('button', { name: 'Остаться' }))
+  expect(screen.getByRole('heading', { level: 2, name: 'First' })).toBeInTheDocument()
+  expect(screen.queryByRole('form', { name: 'Редактировать основное' })).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Новая заметка')).toHaveValue('Draft')
 })

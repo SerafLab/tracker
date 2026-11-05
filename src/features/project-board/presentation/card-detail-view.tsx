@@ -4,6 +4,7 @@ import Linkify from 'linkify-react'
 import type { CardDetails, CardInput, Id, Note, RegisterDraftGuard } from '../domain/model'
 import { AppBar } from '../../../ui/app-bar'
 import { BoardIcon } from './board-icon'
+import { CardFlagBadges, CardFlagLabel } from './card-flag-badges'
 import { ActionDialog } from './controls'
 import { useModalOpen } from '../../../ui/modal-state'
 
@@ -12,12 +13,15 @@ export function PlainText({ text }: { text: string }) { return <div className="d
 const fieldsOf = (details: CardDetails): CardInput => ({ name: details.card.name, description: details.card.description, important: details.card.important, urgent: details.card.urgent })
 const sameFields = (a: CardInput, b: CardInput) => a.name === b.name && a.description === b.description && a.important === b.important && a.urgent === b.urgent
 
+export type EditRequest = { cardId: Id; seq: number; edit: boolean }
+
 type Props = {
   refreshFailed?: boolean
   retrying?: boolean
   onRetryRefresh?: () => Promise<boolean>
   narrow?: boolean
   presentation?: 'panel' | 'page'
+  editRequest?: EditRequest | null
   onExpand?: () => Promise<void>
   details: CardDetails
   busy: boolean
@@ -31,7 +35,7 @@ type Props = {
   requestLeave(action: () => void | Promise<void>): void
 }
 
-export function CardDetailView({ refreshFailed = false, retrying = false, onRetryRefresh, narrow = false, presentation = 'page', onExpand, details, busy, onReturn, onCatalogue, onSave, onCreateNote, onUpdateNote, onDeleteNote, registerDraftGuard, requestLeave }: Props) {
+export function CardDetailView({ refreshFailed = false, retrying = false, onRetryRefresh, narrow = false, presentation = 'page', editRequest = null, onExpand, details, busy, onReturn, onCatalogue, onSave, onCreateNote, onUpdateNote, onDeleteNote, registerDraftGuard, requestLeave }: Props) {
   const { t, i18n } = useTranslation()
   const modalOpen = useModalOpen()
   const [fields, setFields] = useState<CardInput>(() => fieldsOf(details))
@@ -42,6 +46,12 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   const [deleting, setDeleting] = useState<Note | null>(null)
   const [deleteError, setDeleteError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const confirmedRef = useRef(confirmed)
+  const editButton = useRef<HTMLButtonElement>(null)
+  const nameInput = useRef<HTMLInputElement>(null)
+  const handledRequest = useRef<number | null>(null)
+  const editedBefore = useRef(false)
   const pending = useRef(false)
   const main = useRef<HTMLElement>(null)
   const history = useRef<HTMLElement>(null)
@@ -57,9 +67,18 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   useEffect(() => {
     if (sameFields(savedFields, confirmed)) return
     if (!fieldsDirty) setFields(savedFields)
-    setConfirmed(savedFields)
+    confirmedRef.current = savedFields; setConfirmed(savedFields)
   }, [details.card])
   useLayoutEffect(() => { main.current?.focus({ preventScroll: true }) }, [details.card.id])
+  useLayoutEffect(() => {
+    if (!editRequest || editRequest.cardId !== details.card.id || handledRequest.current === editRequest.seq) return
+    handledRequest.current = editRequest.seq
+    if (editRequest.edit) setEditing(true)
+  }, [editRequest, details.card.id])
+  useLayoutEffect(() => {
+    if (!editedBefore.current) { editedBefore.current = true; return }
+    ;(editing ? nameInput.current : editButton.current)?.focus({ preventScroll: true })
+  }, [editing])
 
   const saveFields = async () => {
     if (!fields.name.trim()) { setFieldError('nameRequired'); return false }
@@ -67,7 +86,7 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
     const saved = await onSave(fields)
     if (!saved) { setFieldError('saveError'); return false }
     const next = { ...fields, name: fields.name.trim() }
-    setFields(next); setConfirmed(next)
+    confirmedRef.current = next; setFields(next); setConfirmed(next)
     return true
   }
   const saveNote = async () => {
@@ -89,6 +108,9 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
       return true
     } finally { pending.current = false; setSaving(false) }
   }
+  const leaveEditing = () => { setFields(confirmedRef.current); setFieldError(null); setEditing(false) }
+  const cancelEditing = () => { if (fieldsDirty) requestLeave(leaveEditing); else leaveEditing() }
+  const submitFields = () => run(async () => { if (await saveFields()) setEditing(false) })
   const discard = () => { setFields(confirmed); setEditor(null); setFieldError(null); setNoteError(null) }
   const current = useRef({ fieldsDirty, noteDirty, saveAll, discard })
   current.current = { fieldsDirty, noteDirty, saveAll, discard }
@@ -152,8 +174,9 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
     <div className="form-actions"><button type="button" className="button button-secondary" disabled={saving || busy} onClick={closeEditor}>{t('cancel')}</button><button className="button button-primary" disabled={saving || busy}>{t(editor.id ? 'saveNote' : 'addNote')}</button></div>
   </form> : null
   const panel = presentation === 'panel'
+  const Heading = panel ? 'h2' : 'h1'
   return <div className={panel ? 'card-detail-container card-panel' : 'card-detail-container card-page'}>
-    {!panel ? <AppBar title={details.card.name} onReturn={() => void onCatalogue()} /> : null}
+    {!panel ? <AppBar context={{ project: details.project.name, status: details.status.name }} onReturn={() => void onCatalogue()} /> : null}
     <section ref={main} role={panel ? narrow ? 'dialog' : 'region' : 'main'} aria-modal={panel && narrow || undefined} aria-label={panel ? t('cardDetailsRegion') : undefined} onKeyDown={event => {
       if (!panel || !narrow || modalOpen || event.key !== 'Tab') return
       const elements = Array.from(main.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]') ?? [])
@@ -161,18 +184,28 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
       if (event.shiftKey && (document.activeElement === first || document.activeElement === main.current)) { event.preventDefault(); last?.focus() }
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
     }} tabIndex={-1} className="app-shell card-detail">
-      {panel ? <header className="card-panel-header"><h2>{details.card.name}</h2><div className="card-panel-actions"><button className="button button-secondary" onClick={() => void onExpand?.()}>{t('openCardPage')}</button><button className="button button-secondary button-icon" aria-label={t('closeCard')} onClick={() => void onReturn()}><BoardIcon name="close" /></button></div></header> : null}
-      <button className="button button-secondary card-board-return" aria-label={t('backToBoard')} onClick={() => void onReturn()}><BoardIcon name="back" /><span>{t('backToBoard')}<span className="card-board-name">{details.project.name}</span></span></button>
-      <p className="muted-copy detail-context">{details.status.name}</p>
+      {panel
+        ? <header className="card-panel-header"><div className="card-panel-actions"><button className="button button-secondary" onClick={() => void onExpand?.()}>{t('openCardPage')}</button><button className="button button-secondary button-icon" aria-label={t('closeCard')} onClick={() => void onReturn()}><BoardIcon name="close" /></button></div></header>
+        : <button className="button button-secondary card-board-return" onClick={() => void onReturn()}><BoardIcon name="back" />{t('backToBoard')}</button>}
       {refreshFailed ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={retrying} onClick={() => void onRetryRefresh?.()}>{t('retryBoardRead')}</button></div> : null}
-      <form className="detail-fields surface-card" aria-label={t('cardFields')} onSubmit={event => { event.preventDefault(); void run(saveFields) }}>
-        <label className="field"><span className="field-label">{t('cardName')}</span><input className="text-input" value={fields.name} disabled={saving || busy} aria-invalid={fieldError === 'nameRequired' || undefined} aria-describedby={fieldError ? fieldErrorId : undefined} onChange={event => setFields({ ...fields, name: event.target.value })} /></label>
-        <div className="field"><label className="field-label" htmlFor={descriptionId}>{t('cardDescription')}</label><textarea id={descriptionId} className="text-input" rows={6} value={fields.description} disabled={saving || busy} onChange={event => setFields({ ...fields, description: event.target.value })} /></div>
-        <div className="card-flags">{(['important', 'urgent'] as const).map(flag => <label className="card-flag-toggle" key={flag}><input type="checkbox" checked={fields[flag]} disabled={saving || busy} onChange={event => setFields({ ...fields, [flag]: event.target.checked })} /><span>{t(flag)}</span></label>)}</div>
-        {fieldError ? <p id={fieldErrorId} className="field-error" role="alert">{t(fieldError)}</p> : null}
-        <div className="form-actions"><button className="button button-primary" disabled={saving || busy}>{t('save')}</button></div>
-      </form>
-      {details.card.description ? <section className="saved-description surface-card" aria-label={t('savedDescription')}><h2>{t('savedDescription')}</h2><PlainText text={details.card.description} /></section> : null}
+      <section className="card-summary surface-card" aria-label={t('cardSummary')}>
+        <div className="card-summary-header">
+          <Heading className="card-summary-title">{confirmed.name}</Heading>
+          {editing ? null : <button ref={editButton} className="button button-quiet button-icon" aria-label={t('editCardSummary')} disabled={saving || busy} onClick={() => setEditing(true)}><BoardIcon name="edit" /></button>}
+        </div>
+        {editing
+          ? <form className="detail-fields" aria-label={t('editCardSummary')} onSubmit={event => { event.preventDefault(); void submitFields() }}>
+            <label className="field"><span className="field-label">{t('cardName')}</span><input ref={nameInput} className="text-input" value={fields.name} disabled={saving || busy} aria-invalid={fieldError === 'nameRequired' || undefined} aria-describedby={fieldError ? fieldErrorId : undefined} onChange={event => setFields({ ...fields, name: event.target.value })} /></label>
+            <div className="field"><label className="field-label" htmlFor={descriptionId}>{t('cardDescription')}</label><textarea id={descriptionId} className="text-input" rows={6} value={fields.description} disabled={saving || busy} onChange={event => setFields({ ...fields, description: event.target.value })} /></div>
+            <div className="card-flags">{(['important', 'urgent'] as const).map(flag => <label className="card-flag-toggle" key={flag}><input type="checkbox" checked={fields[flag]} disabled={saving || busy} onChange={event => setFields({ ...fields, [flag]: event.target.checked })} /><CardFlagLabel flag={flag} /></label>)}</div>
+            {fieldError ? <p id={fieldErrorId} className="field-error" role="alert">{t(fieldError)}</p> : null}
+            <div className="form-actions"><button type="button" className="button button-secondary" disabled={saving || busy} onClick={cancelEditing}>{t('cancel')}</button><button className="button button-primary" disabled={saving || busy}>{t('save')}</button></div>
+          </form>
+          : <>
+            <CardFlagBadges important={confirmed.important} urgent={confirmed.urgent} />
+            {confirmed.description ? <PlainText text={confirmed.description} /> : <p className="muted-copy">{t('noDescription')}</p>}
+          </>}
+      </section>
       <section ref={history} className="note-history" aria-label={t('noteHistory')}><h2>{t('noteHistory')}</h2>
         {details.notes.length === 0 ? <p className="muted-copy">{t('noNotes')}</p> : <ol className="note-list">{details.notes.map(note => <li className="note surface-card" key={note.id} data-note-id={note.id}>
           <div className="note-header"><p className="note-date"><time dateTime={note.createdAt}>{date(note.createdAt)}</time>{note.updatedAt ? <> · {t('noteEdited')} <time dateTime={note.updatedAt}>{date(note.updatedAt)}</time></> : null}</p>

@@ -178,7 +178,7 @@ it('shows storage unavailability after a committed deletion with a failed refres
 it('does not expose project deletion in card-page language settings', async () => {
   const { repo, user } = await setup({ board: true })
   await user.click(screen.getByRole('link', { name: 'Card' }))
-  await screen.findByRole('form', { name: 'Поля карточки' })
+  await screen.findByRole('button', { name: 'Редактировать основное' })
   await user.click(screen.getByRole('button', { name: 'Открыть на всю страницу' }))
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
   expect(screen.getByRole('combobox', { name: 'Язык приложения' })).toBeInTheDocument()

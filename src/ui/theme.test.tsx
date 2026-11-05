@@ -7,25 +7,25 @@ import { LocaleProvider } from '../i18n/provider'
 import { RestartRequired } from '../app/pwa/restart-required'
 import { AppBar } from './app-bar'
 import { ActionDialog } from '../features/project-board/presentation/controls'
-import { resolveTheme, themeStorageKey } from './theme'
+import { themeStorageKey } from './theme'
 import { ThemeProvider } from './theme-provider'
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); delete document.documentElement.dataset.theme })
 
-describe('resolveTheme', () => {
-  it('uses Green unless the stored value is exactly ink', () => {
-    expect(resolveTheme({ getItem: () => null })).toBe('green')
-    expect(resolveTheme({ getItem: () => 'plum' })).toBe('green')
-    expect(resolveTheme({ getItem: () => 'Ink' })).toBe('green')
-    expect(resolveTheme({ getItem: () => 'ink' })).toBe('ink')
-    expect(resolveTheme({ getItem: () => { throw Error('blocked') } })).toBe('green')
-  })
-})
-
-it('keeps the storage key in index.html in step with the module', () => {
+describe('inline theme script in index.html', () => {
   const script = indexHtml.match(/<head>[\s\S]*?<script>([\s\S]*?)<\/script>[\s\S]*?<\/head>/)?.[1] ?? ''
-  expect(script).toContain(`"${themeStorageKey}"`)
-  expect(indexHtml.indexOf('<script>')).toBeLessThan(indexHtml.indexOf('<title>'))
+  const run = (storage: Pick<Storage, 'getItem'>) => { delete document.documentElement.dataset.theme; new Function('localStorage', script)(storage); return document.documentElement.dataset.theme }
+  it('runs before the stylesheet and reads the module storage key', () => {
+    expect(script).toContain(`"${themeStorageKey}"`)
+    expect(indexHtml.indexOf('<script>')).toBeLessThan(indexHtml.indexOf('<title>'))
+  })
+  it('sets the attribute only for the exact stored value ink', () => {
+    expect(run({ getItem: () => null })).toBeUndefined()
+    expect(run({ getItem: () => 'plum' })).toBeUndefined()
+    expect(run({ getItem: () => 'Ink' })).toBeUndefined()
+    expect(run({ getItem: () => { throw Error('blocked') } })).toBeUndefined()
+    expect(run({ getItem: key => key === themeStorageKey ? 'ink' : null })).toBe('ink')
+  })
 })
 
 function renderBar(locale = 'en') {
@@ -39,7 +39,7 @@ describe('theme selector', () => {
     const user = userEvent.setup()
     renderBar()
     await openSettings(user)
-    const select = await screen.findByRole('combobox', { name: 'Color theme' })
+    const select = await screen.findByRole('combobox', { name: 'Application color theme' })
     expect(select).toHaveValue('green')
     await user.selectOptions(select, 'ink')
     expect(document.documentElement.dataset.theme).toBe('ink')
@@ -53,39 +53,39 @@ describe('theme selector', () => {
     const user = userEvent.setup()
     renderBar()
     await openSettings(user)
-    expect(await screen.findByRole('combobox', { name: 'Color theme' })).toHaveValue('ink')
+    expect(await screen.findByRole('combobox', { name: 'Application color theme' })).toHaveValue('ink')
   })
   it('keeps the theme for the session and warns when the write fails', async () => {
     const user = userEvent.setup()
     renderBar('ru')
     await openSettings(user)
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw Error('blocked') })
-    await user.selectOptions(await screen.findByRole('combobox', { name: 'Цветовая тема' }), 'ink')
+    await user.selectOptions(await screen.findByRole('combobox', { name: 'Цветовая тема приложения' }), 'ink')
     expect(document.documentElement.dataset.theme).toBe('ink')
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить цветовую тему')
-    expect(screen.getByRole('combobox', { name: 'Цветовая тема' })).toHaveValue('ink')
+    expect(screen.getByRole('combobox', { name: 'Цветовая тема приложения' })).toHaveValue('ink')
   })
   it('follows the interface language', async () => {
     const user = userEvent.setup()
     renderBar('ru')
     await openSettings(user)
-    const select = await screen.findByRole('combobox', { name: 'Цветовая тема' })
+    const select = await screen.findByRole('combobox', { name: 'Цветовая тема приложения' })
     expect([...select.querySelectorAll('option')].map(option => option.textContent)).toEqual(['Зелёная', 'Чернильная'])
     await user.selectOptions(screen.getByRole('combobox', { name: 'Язык приложения' }), 'en')
-    const english = await screen.findByRole('combobox', { name: 'Color theme' })
+    const english = await screen.findByRole('combobox', { name: 'Application color theme' })
     expect([...english.querySelectorAll('option')].map(option => option.textContent)).toEqual(['Green', 'Ink'])
   })
   it('exists only while settings are open and no modal is shown, including service screens', async () => {
     const user = userEvent.setup()
     const view = renderBar()
-    expect(screen.queryByRole('combobox', { name: 'Color theme' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Application color theme' })).not.toBeInTheDocument()
     await openSettings(user)
-    expect(await screen.findByRole('combobox', { name: 'Color theme' })).toBeInTheDocument()
+    expect(await screen.findByRole('combobox', { name: 'Application color theme' })).toBeInTheDocument()
     view.rerender(<LocaleProvider><ThemeProvider><AppBar title="Catalogue" /><ActionDialog title="Dialog" onClose={() => {}}><button>Close</button></ActionDialog></ThemeProvider></LocaleProvider>)
-    expect(screen.queryByRole('combobox', { name: 'Color theme' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('combobox', { name: 'Application color theme' })).not.toBeInTheDocument()
     view.unmount()
     render(<LocaleProvider><ThemeProvider><RestartRequired onRestart={() => {}} /></ThemeProvider></LocaleProvider>)
     await openSettings(user)
-    expect(await screen.findByRole('combobox', { name: 'Color theme' })).toBeInTheDocument()
+    expect(await screen.findByRole('combobox', { name: 'Application color theme' })).toBeInTheDocument()
   })
 })

@@ -139,6 +139,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(page.getByRole('heading', {level: 1})).toHaveText(state === 'loading' ? (en ? 'Opening workspace…' : 'Открываем рабочее пространство…') : state === 'unavailable' ? (en ? 'Project board unavailable' : 'Рабочая доска недоступна') : (en ? 'Restart EasyTrack' : 'Нужно перезапустить EasyTrack'))
     await expect(page.getByRole('button', {name: /^(Создать проект|Create project|Добавить статус|Add status)$/})).toHaveCount(0)
     await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
+    await expect(page.getByRole('combobox')).toHaveCount(2)
     await expect(page.getByRole('combobox', {name: languageName})).toHaveValue(language)
     await expect(page.getByRole('button', {name: /^(Переименовать проект|Rename project|Удалить проект|Delete project)$/})).toHaveCount(0)
     expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)

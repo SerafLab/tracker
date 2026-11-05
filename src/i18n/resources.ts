@@ -73,7 +73,7 @@ export const ru = {
   "stay": "Остаться",
   "cardContentsLost": "Описание и все заметки этой карточки также будут удалены.",
 
-  "settings": "Настройки", "applicationLanguage": "Язык приложения", "colorTheme": "Цветовая тема", "themeGreen": "Зелёная", "themeInk": "Чернильная",
+  "settings": "Настройки", "applicationLanguage": "Язык приложения", "colorTheme": "Цветовая тема приложения", "themeGreen": "Зелёная", "themeInk": "Чернильная",
   "title": "Трекер личных проектов",
   "subtitle": "Держите важные дела в понятном порядке.",
   "firstProject": "Начните с первого проекта",
@@ -233,7 +233,7 @@ export const en: { [Key in keyof typeof ru]: string } = {
   "stay": "Stay",
   "cardContentsLost": "This card’s description and all notes will also be deleted.",
 
-  "settings": "Settings", "applicationLanguage": "Application language", "colorTheme": "Color theme", "themeGreen": "Green", "themeInk": "Ink",
+  "settings": "Settings", "applicationLanguage": "Application language", "colorTheme": "Application color theme", "themeGreen": "Green", "themeInk": "Ink",
   "title": "Personal project tracker",
   "subtitle": "Keep important tasks in clear order.",
   "firstProject": "Start with your first project",

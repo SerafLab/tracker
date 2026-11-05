@@ -22,11 +22,11 @@ function Harness({ ready = false }: { ready?: boolean }) {
 /** Opens the application-bar settings and activates the installation entry with the given label. */
 async function chooseEntry(user: UserEvent, name: string) {
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  await user.click(within(screen.getByRole('region', { name: 'Настройки' })).getByRole('button', { name }))
+  await user.click(within(await screen.findByRole('menu', { name: 'Настройки' })).getByRole('menuitem', { name }))
 }
 const entryLabel = async (user: UserEvent) => {
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  const label = within(screen.getByRole('region', { name: 'Настройки' })).getAllByRole('button')[0].textContent
+  const label = within(await screen.findByRole('menu', { name: 'Настройки' })).getAllByRole('menuitem')[0].textContent
   await user.keyboard('{Escape}')
   return label
 }

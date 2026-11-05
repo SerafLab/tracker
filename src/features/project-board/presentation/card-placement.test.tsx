@@ -56,7 +56,7 @@ it('preserves the confirmed board after refresh failure, blocks conflicting acti
   expect(screen.getByRole('button', { name: 'Добавить статус' })).toBeDisabled()
   expect(document.querySelector('.status-columns')).toHaveAttribute('inert')
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(screen.getByRole('button', { name: 'Удалить проект' })).toBeDisabled()
+  expect(screen.getByRole('menuitem', { name: 'Удалить проект' })).toBeDisabled()
   await user.keyboard('{Escape}')
   await user.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Обновить доску' }))
   await waitFor(() => expect(names()).toEqual(['Both', 'Middle', 'First', 'Last', 'None']))

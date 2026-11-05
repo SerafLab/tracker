@@ -1,10 +1,11 @@
 import { enterEdit, saveEdit } from './card-helpers'
 import { expect, test, type Page } from '@playwright/test'
+import { selectLanguage } from './language'
 
 async function seededBoard(page: Page, en = false) {
   await page.goto('/tracker/')
   await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
-  if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
+  if (en) { await selectLanguage(page, 'en') }
   await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
     await new Promise<void>((resolve, reject) => {
@@ -139,7 +140,7 @@ test('board actions preserve drafts and destructive actions ask the editor guard
   await expect(page.getByRole('textbox', { name: 'Описание карточки' })).toHaveValue('Retained while board changes')
   await expect(page.getByRole('link', { name: 'Card 0', exact: true })).toHaveCount(1)
   await page.getByRole('button', { name: 'Настройки', exact: true }).click()
-  await page.getByRole('button', { name: 'Удалить проект', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Удалить проект', exact: true }).click()
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Сохранить и выйти', exact: true }).click()
   const deletion = page.getByRole('dialog', { name: 'Удалить проект' })

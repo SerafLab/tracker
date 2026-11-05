@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { selectTheme } from './theme'
 
 test.use({ locale: 'en-US' })
 
@@ -24,24 +25,18 @@ async function createBoard(page: Page, name: string) {
   await expect(dialog).toBeHidden()
   await expect(page.locator('.work-card')).toBeVisible()
 }
-async function chooseTheme(page: Page, theme: 'Green' | 'Ink') {
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByRole('combobox', { name: 'Application color theme' }).selectOption(theme)
-}
-
 test('switching to Ink recolours the open board without reload and applies everywhere', async ({ page }) => {
   await page.goto('/tracker/')
   await createBoard(page, 'First')
   const url = page.url()
   expect(await accent(page)).toBe(green)
   const canvas = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
-  await chooseTheme(page, 'Ink')
+  await selectTheme(page, 'ink')
   await expect.poll(() => accent(page)).toBe(ink)
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'ink')
   expect(page.url()).toBe(url)
   await expect(page.locator('.work-card')).toBeVisible()
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(canvas)
-  await page.keyboard.press('Escape')
 
   await page.getByRole('button', { name: /All projects/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'First' })).toHaveCount(0)
@@ -56,7 +51,7 @@ test('switching to Ink recolours the open board without reload and applies every
   await expect(page.getByRole('heading', { level: 1, name: 'Second' })).toBeVisible()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'ink')
   await expect(page.getByRole('button', { name: 'Add status', exact: true })).toHaveCSS('background-color', ink)
-  await chooseTheme(page, 'Green')
+  await selectTheme(page, 'green')
   await expect(page.locator('html')).not.toHaveAttribute('data-theme')
   await expect(page.getByRole('button', { name: 'Add status', exact: true })).toHaveCSS('background-color', green)
 })
@@ -78,7 +73,9 @@ test('an unknown stored theme falls back to Green', async ({ page }) => {
   await page.goto('/tracker/')
   await expect(page.locator('html')).not.toHaveAttribute('data-theme')
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await expect(page.getByRole('combobox', { name: 'Application color theme' })).toHaveValue('green')
+  await expect(page.getByRole('group', { name: 'Application color theme' })).toHaveCount(1)
+  await expect(page.getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('menuitemradio', { name: 'Ink' })).toHaveAttribute('aria-checked', 'false')
 })
 
 const greenElements = (page: Page) => page.evaluate(() => {
@@ -138,4 +135,16 @@ test('Ink leaves no green on the board in hover, keyboard focus, selection, scro
   await expect(marker).toHaveCSS('background-color', 'rgb(226, 234, 244)')
   expect(await greenElements(page)).toEqual([])
   await page.mouse.up()
+})
+
+test('a theme choice that cannot be saved still applies and warns in the settings menu', async ({ page }) => {
+  await page.addInitScript(() => { Storage.prototype.setItem = () => { throw Error('blocked') } })
+  await page.goto('/tracker/')
+  await page.getByRole('button', { name: 'Settings', exact: true }).click()
+  await page.getByRole('menuitemradio', { name: 'Ink' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'ink')
+  await expect(page.getByRole('alert')).toContainText('Could not save your color theme')
+  await expect(page.getByRole('menuitemradio', { name: 'Ink' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('group', { name: 'Application color theme' })).toHaveCount(1)
+  await expect(page.getByRole('group', { name: 'Application language' })).toHaveCount(1)
 })

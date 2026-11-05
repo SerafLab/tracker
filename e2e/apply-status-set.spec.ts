@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { selectLanguage } from './language'
 
 for (const language of ['ru', 'en'] as const) for (const width of [320, 390, 1280, 1440]) {
   test(`applies a complete localized set to an existing empty project with retry in ${language} at ${width}px`, async ({ page, context }, testInfo) => {
@@ -60,9 +61,7 @@ test('uses the current language when an older empty project receives a set', asy
   await dialog.getByRole('textbox').fill('Создан по-русски')
   await dialog.getByRole('combobox').selectOption('empty')
   await dialog.getByRole('button', { name: 'Создать проект', exact: true }).click()
-  await page.getByRole('button', { name: 'Настройки', exact: true }).click()
-  await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en')
-  await page.keyboard.press('Escape')
+  await selectLanguage(page, 'en')
   const form = page.getByRole('form', { name: 'Apply status set' })
   await form.getByRole('combobox').selectOption('documents')
   await form.getByRole('button').click()

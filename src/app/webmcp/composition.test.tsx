@@ -82,7 +82,7 @@ it('native-contract fixture saves set names in the current UI language and order
   const ru = await call('create_project', { name: 'RU', statusSetId: 'development' }) as { data: { project: { id: string; statuses: { name: string }[] } } }
   expect(ru.data.project.statuses.map(status => status.name)).toEqual(['Запланировано', 'На паузе', 'В разработке', 'На проверке', 'Готово'])
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  await user.selectOptions(screen.getByRole('combobox', { name: 'Язык приложения' }), 'en')
+  await user.click(await screen.findByRole('menuitemradio', { name: 'English' }))
   const en = await call('create_project', { name: 'EN', statusSetId: 'job-search' }) as { data: { project: { id: string } } }
   expect(await names(en.data.project.id)).toEqual(['Interested', 'Applied', 'Interviews', 'Offer', 'Rejected'])
   expect(await names(ru.data.project.id)).toHaveLength(5)

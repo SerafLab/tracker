@@ -1,14 +1,34 @@
-import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from 'react'
+import { createContext, useContext, useId, useLayoutEffect, useState, type ReactNode } from 'react'
 import { I18nextProvider, useTranslation } from 'react-i18next'
 import { createLocaleInstance, localeStorageKey, type Locale } from './locale'
 
 const LocalePreferenceContext = createContext<{ select: (locale: Locale) => void; warning: boolean } | null>(null)
 
-export function LocaleSelector() {
+const languages: { locale: Locale; label: string }[] = [{ locale: 'ru', label: 'Русский' }, { locale: 'en', label: 'English' }]
+
+export function LanguageMenuGroup() {
   const { t, i18n } = useTranslation()
   const preference = useContext(LocalePreferenceContext)
+  const captionId = useId()
   if (!preference) return null
-  return <div className="locale-selector"><label className="locale-control"><span>{t('applicationLanguage')}</span><select className="select-input" value={i18n.resolvedLanguage} onChange={event => preference.select(event.target.value as Locale)}><option value="ru" lang="ru">RU</option><option value="en" lang="en">EN</option></select></label>{preference.warning ? <p role="alert">{t('preferenceWarning')}</p> : null}</div>
+  return <>
+    <div id={captionId} className="menu-caption">{t('applicationLanguage')}</div>
+    <div role="group" aria-labelledby={captionId} className="menu-group">
+      {languages.map(({ locale, label }) => {
+        const checked = i18n.resolvedLanguage === locale
+        return <button key={locale} type="button" role="menuitemradio" aria-checked={checked} lang={locale} className="menu-item menu-item-radio" onClick={() => preference.select(locale)}>
+          {label}
+          {checked ? <svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10" /></svg> : null}
+        </button>
+      })}
+    </div>
+  </>
+}
+
+export function LanguagePreferenceWarning() {
+  const { t } = useTranslation()
+  const preference = useContext(LocalePreferenceContext)
+  return preference?.warning ? <p role="alert" className="menu-warning">{t('preferenceWarning')}</p> : null
 }
 
 function LocaleShell({ children }: { children: ReactNode }) {

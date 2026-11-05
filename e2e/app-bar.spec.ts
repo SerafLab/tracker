@@ -1,12 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
+import { selectLanguage } from './language'
 
-const languageName = /^(Application language|Язык приложения)$/
 for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] as const) {
   test(`shares app bar controls in ${language} at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 740 })
     await page.goto('/tracker/')
     const en = language === 'en'
-    if (en) { await page.getByRole('button', {name: 'Настройки'}).click(); await page.getByRole('combobox', {name: languageName}).selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) { await selectLanguage(page, 'en') }
     const createName = en ? 'Create project' : 'Создать проект'
     const addName = en ? 'Add status' : 'Добавить статус'
     const create = page.getByRole('button', { name: createName, exact: true })
@@ -17,7 +17,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('textbox')).toBeFocused()
     await expect(dialog.getByRole('combobox', { name: en ? 'Status set' : 'Набор статусов' })).toHaveValue('simple')
-    await expect(page.getByRole('combobox', { name: en ? 'Application language' : 'Язык приложения' })).toHaveCount(0)
+    await expect(page.getByRole('group', { name: en ? 'Application language' : 'Язык приложения' })).toHaveCount(0)
     for (let count = 0; count < 7; count++) {
       await page.keyboard.press(count % 2 ? 'Shift+Tab' : 'Tab')
       expect(await dialog.evaluate(element => element.contains(document.activeElement))).toBe(true)
@@ -84,16 +84,16 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await gear.hover()
     expect(await gear.evaluate(element => getComputedStyle(element, '::after').visibility)).toBe('visible')
     await gear.click()
-    const settings = page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})
+    const settings = page.getByRole('menu', {name: en ? 'Settings' : 'Настройки'})
     await expect(settings).toBeVisible()
-    expect(await settings.evaluate(element => {const b = element.getBoundingClientRect(); return element.matches(':popover-open') && b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
+    expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return element.matches(':popover-open') && b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
     await page.screenshot({path: testInfo.outputPath(`settings-${language}-${width}.png`), fullPage: true})
-    await settings.getByRole('button', {name: en ? 'Rename project' : 'Переименовать проект'}).click()
+    await settings.getByRole('menuitem', {name: en ? 'Rename project' : 'Переименовать проект'}).click()
     await expect(page.locator('.settings-panel')).toHaveCount(0)
     await expect(dialog.getByRole('textbox')).toBeFocused()
     await page.keyboard.press('Escape'); await expect(gear).toBeFocused()
     await gear.click()
-    await settings.getByRole('button', {name: en ? 'Rename project' : 'Переименовать проект'}).click()
+    await settings.getByRole('menuitem', {name: en ? 'Rename project' : 'Переименовать проект'}).click()
     await dialog.getByRole('textbox').fill('Project')
     await dialog.getByRole('button', {name: en ? 'Save' : 'Сохранить', exact: true}).click()
     await expect(gear).toBeFocused()
@@ -139,14 +139,15 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await expect(page.getByRole('heading', {level: 1})).toHaveText(state === 'loading' ? (en ? 'Opening workspace…' : 'Открываем рабочее пространство…') : state === 'unavailable' ? (en ? 'Project board unavailable' : 'Рабочая доска недоступна') : (en ? 'Restart EasyTrack' : 'Нужно перезапустить EasyTrack'))
     await expect(page.getByRole('button', {name: /^(Создать проект|Create project|Добавить статус|Add status)$/})).toHaveCount(0)
     await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
-    await expect(page.getByRole('combobox')).toHaveCount(2)
-    await expect(page.getByRole('combobox', {name: languageName})).toHaveValue(language)
-    await expect(page.getByRole('button', {name: /^(Переименовать проект|Rename project|Удалить проект|Delete project)$/})).toHaveCount(0)
+    await expect(page.getByRole('group')).toHaveCount(2)
+    await expect(page.getByRole('group', {name: en ? 'Application color theme' : 'Цветовая тема приложения'})).toHaveCount(1)
+    await expect(page.getByRole('menuitemradio', {name: en ? 'English' : 'Русский'})).toHaveAttribute('aria-checked', 'true')
+    await expect(page.getByRole('menuitem', {name: /^(Переименовать проект|Rename project|Удалить проект|Delete project)$/})).toHaveCount(0)
     expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.screenshot({path: testInfo.outputPath(`${state}-${language}-${width}.png`), fullPage: true})
-    await page.getByRole('combobox', {name: languageName}).selectOption(en ? 'ru' : 'en')
-    await expect(page.getByRole('combobox', {name: languageName})).toHaveValue(en ? 'ru' : 'en')
+    await page.getByRole('menuitemradio', {name: en ? 'Русский' : 'English'}).click()
+    await expect(page.getByRole('menuitemradio', {name: en ? 'Русский' : 'English'})).toHaveAttribute('aria-checked', 'true')
     await expect(page.locator('.settings-panel')).toBeVisible()
     await expect.poll(() => page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
   })
@@ -158,9 +159,10 @@ test('repositions settings after language and preference warning resize', async 
   await page.addInitScript(() => { localStorage.setItem('easytrack.locale', 'en'); Storage.prototype.setItem = () => {throw Error('blocked')} })
   await page.goto('/tracker/')
   await page.getByRole('button', {name: 'Settings'}).click()
-  const select = page.getByRole('combobox', {name: languageName})
+  const select = page.getByRole('menuitemradio', {name: 'Русский'})
   await select.focus()
-  await select.selectOption('ru')
+  await page.keyboard.press('Enter')
+  await expect(select).toHaveAttribute('aria-checked', 'true')
   await expect(select).toBeFocused()
   await expect(page.getByRole('alert')).toContainText('Не удалось сохранить язык')
   await expect.poll(() => page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
@@ -183,7 +185,7 @@ for (const language of ['ru', 'en'] as const) test(`remeasures a renamed title a
   await page.setViewportSize({width: 1440, height: 740})
   await expect(heading).not.toHaveAttribute('tabindex')
   await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
-  await page.getByRole('button', {name: en ? 'Rename project' : 'Переименовать проект'}).click()
+  await page.getByRole('menuitem', {name: en ? 'Rename project' : 'Переименовать проект'}).click()
   const fullName = 'ДлинноеИмяБезПробелов'.repeat(200)
   await dialog.getByRole('textbox').fill(fullName)
   await dialog.getByRole('button', {name: en ? 'Save' : 'Сохранить', exact: true}).click()
@@ -208,7 +210,71 @@ for (const language of ['ru', 'en'] as const) test(`remeasures a renamed title a
   await page.keyboard.press('Tab')
   await expect(page.getByRole('button', {name: en ? 'Add status' : 'Добавить статус', exact: true})).toBeFocused()
   await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
-  await expect(page.getByRole('combobox', {name: en ? 'Application language' : 'Язык приложения'})).toBeVisible()
+  await expect(page.getByRole('group', {name: en ? 'Application language' : 'Язык приложения'})).toBeVisible()
+})
+
+for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) for (const screen of ['catalogue', 'board'] as const) {
+  test(`aligns settings menu labels to the start edge on the ${screen} in ${language} at ${width}px`, async ({page}, testInfo) => {
+    await page.setViewportSize({width, height: 740})
+    await page.addInitScript(language => localStorage.setItem('easytrack.locale', language), language)
+    await page.goto('/tracker/')
+    const en = language === 'en'
+    if (screen === 'board') {
+      await page.getByRole('button', {name: en ? 'Create project' : 'Создать проект', exact: true}).click()
+      const dialog = page.getByRole('dialog')
+      await dialog.getByRole('textbox').fill('Project')
+      await dialog.getByRole('combobox').selectOption('empty')
+      await dialog.getByRole('button', {name: en ? 'Create project' : 'Создать проект', exact: true}).click()
+      await expect(page.getByRole('heading', {level: 1})).toHaveText('Project')
+    }
+    await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
+    const menu = page.getByRole('menu', {name: en ? 'Settings' : 'Настройки'})
+    const caption = menu.getByText(en ? 'Application language' : 'Язык приложения', {exact: true})
+    await expect(caption).toBeVisible()
+    await expect(menu.getByRole('separator')).toHaveCount(2)
+    await expect(menu.getByRole('menuitem')).toHaveCount(screen === 'board' ? 3 : 1)
+    await expect(menu.getByRole('group')).toHaveCount(2)
+    await expect(menu.getByRole('group', {name: en ? 'Application language' : 'Язык приложения'})).toHaveCount(1)
+    await expect(menu.getByRole('group', {name: en ? 'Application color theme' : 'Цветовая тема приложения'})).toHaveCount(1)
+    await expect(menu.getByRole('group', {name: en ? 'Application language' : 'Язык приложения'}).getByRole('menuitemradio')).toHaveText(['Русский', 'English'])
+    await expect(menu.getByRole('group', {name: en ? 'Application color theme' : 'Цветовая тема приложения'}).getByRole('menuitemradio')).toHaveText(en ? ['Green', 'Ink'] : ['Зелёная', 'Чернильная'])
+    await expect(menu.getByRole('menuitem').first()).toBeFocused()
+    // Text starts at the item's inline start plus its padding; the caption shares that edge.
+    const starts = await menu.locator('.menu-item, .menu-caption').evaluateAll(elements => elements.map(element => Math.round(element.getBoundingClientRect().left + parseFloat(getComputedStyle(element).paddingLeft))))
+    expect(new Set(starts).size).toBe(1)
+    expect(await menu.locator('.menu-item').evaluateAll(elements => elements.every(element => getComputedStyle(element).textAlign === 'left' || getComputedStyle(element).textAlign === 'start'))).toBe(true)
+    expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.top >= 0 && b.bottom <= innerHeight})).toBe(true)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await menu.getByRole('menuitemradio').last().focus()
+    await expect(menu.getByRole('menuitemradio').last()).toBeFocused()
+    await page.screenshot({path: testInfo.outputPath(`settings-menu-${screen}-${language}-${width}.png`)})
+  })
+}
+
+test('shows the preference warning below the settings menu', async ({page}, testInfo) => {
+  await page.setViewportSize({width: 320, height: 740})
+  await page.addInitScript(() => { Storage.prototype.setItem = () => {throw Error('blocked')} })
+  await page.goto('/tracker/')
+  await page.getByRole('button', {name: 'Настройки'}).click()
+  await page.getByRole('menuitemradio', {name: 'English'}).click()
+  const alert = page.getByRole('alert')
+  await expect(alert).toContainText('Could not save your language')
+  await expect(page.getByRole('menu')).toBeVisible()
+  expect(await page.getByRole('menu').evaluate((menu, alert) => !menu.contains(alert) && !!(menu.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING), await alert.elementHandle())).toBe(true)
+  await page.screenshot({path: testInfo.outputPath('settings-menu-warning-320.png')})
+})
+
+test('shows the theme warning below the menu alongside the language warning', async ({page}) => {
+  await page.setViewportSize({width: 320, height: 740})
+  await page.addInitScript(() => { Storage.prototype.setItem = () => {throw Error('blocked')} })
+  await page.goto('/tracker/')
+  await page.getByRole('button', {name: 'Настройки'}).click()
+  await page.getByRole('menuitemradio', {name: 'Чернильная'}).click()
+  await page.getByRole('menuitemradio', {name: 'English'}).click()
+  await expect(page.getByRole('alert')).toHaveCount(2)
+  await expect(page.getByRole('alert').first()).toContainText('Could not save your language')
+  await expect(page.getByRole('alert').last()).toContainText('Could not save your color theme')
+  expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
 })
 
 async function seedCardPage(page: Page, en: boolean, project: string, status: string) {
@@ -234,7 +300,7 @@ for (const width of [320, 1280]) for (const en of [false, true]) {
   test(`Card page has a long project and status in ${en ? 'en' : 'ru'} at ${width}px`, async ({ page }) => {
     await page.setViewportSize({ width, height: 740 })
     await page.goto('/tracker/')
-    if (en) { await page.getByRole('button', { name: 'Настройки' }).click(); await page.getByRole('combobox', { name: languageName }).selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) await selectLanguage(page, 'en')
     await seedCardPage(page, en, 'Short', 'Todo')
     const bar = page.locator('.card-page .app-bar')
     await expect(bar.locator('h1')).toHaveCount(0)

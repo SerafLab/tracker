@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
+import { selectLanguage } from './language'
 
 for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] as const) {
   test(`calm board keeps four columns and reachable controls in ${language} at ${width}px`, async ({ page }, testInfo) => {
     const en = language === 'en'
     await page.setViewportSize({ width, height: width === 320 ? 568 : 900 })
     await page.goto('/tracker/')
-    if (en) { await page.getByRole('button', {name: 'Настройки'}).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) { await selectLanguage(page, 'en') }
     await expect(page.getByRole('heading', { name: en ? 'Start with your first project' : 'Начните с первого проекта' })).toBeVisible()
     await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await page.getByRole('dialog').getByRole('textbox').fill('Поиск квартиры')
@@ -99,9 +100,9 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     expect(Math.max(...geometry.listStarts) - Math.min(...geometry.listStarts)).toBeLessThan(1)
     for (const target of geometry.targets) { expect(target.width).toBeGreaterThanOrEqual(44); expect(target.height).toBeGreaterThanOrEqual(44) }
     await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
-    const locale = page.getByRole('combobox', { name: en ? 'Application language' : 'Язык приложения' })
+    const locale = page.getByRole('group', { name: en ? 'Application language' : 'Язык приложения' })
     await expect(locale).toHaveCount(1)
-    await expect(locale.locator('option')).toHaveText(['RU', 'EN'])
+    await expect(locale.getByRole('menuitemradio')).toHaveText(['Русский', 'English'])
     await page.keyboard.press('Escape')
     await expect(first.locator('.card-badge')).toHaveCount(4)
     await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur() })
@@ -159,16 +160,16 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     if (width === 320) {
       await page.evaluate(() => window.scrollTo(0, 0))
       await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
-      await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
+      await expect(page.getByRole('menu', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
       await page.locator('[data-board-scroller]').evaluate(element => { element.scrollTop = 250 })
       await expect.poll(() => page.locator('[data-board-scroller]').evaluate(element => element.scrollTop)).toBeGreaterThan(50)
-      const settingsAfterScroll = page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})
+      const settingsAfterScroll = page.getByRole('menu', {name: en ? 'Settings' : 'Настройки'})
       await expect(settingsAfterScroll).toBeVisible()
       expect(await settingsAfterScroll.evaluate(element => { const box = element.getBoundingClientRect(); return box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth })).toBe(true)
       await page.keyboard.press('Escape')
       // Nested board scrolling leaves the anchored bar settings available.
       await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
-      await expect(page.getByRole('region', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
+      await expect(page.getByRole('menu', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
       await page.keyboard.press('Escape')
     }
   })
@@ -218,7 +219,7 @@ for (const language of ['ru', 'en'] as const) {
     const en = language === 'en'
     await page.setViewportSize({ width: 390, height: 844 })
     await seedBoard(page, [{ name: 'Todo', cards: 14 }, { name: 'Done', cards: 14 }])
-    if (en) { await page.getByRole('button', { name: 'Настройки' }).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) { await selectLanguage(page, 'en') }
     const column = statusColumn(page, 'Todo')
     const header = column.locator('.add-card-header'), count = column.locator('.card-count [aria-hidden="true"]')
     for (const [key, action] of [['Enter', 'create'], ['Enter', 'cancel'], ['Space', 'escape']] as const) {
@@ -431,7 +432,7 @@ for (const width of [1280, 1440]) for (const language of ['ru', 'en'] as const) 
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/tracker/')
     await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
-    if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
+    if (en) { await selectLanguage(page, 'en') }
     await page.evaluate(async () => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
       await new Promise<void>((resolve, reject) => {

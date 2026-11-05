@@ -1,7 +1,8 @@
-import { useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useContext, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalOpen } from './modal-state'
 import { LocaleSelector } from '../i18n/provider'
+import { SettingsEntryContext } from './settings-entry'
 
 type BarAction = { disabled?: boolean; label: string; onSelect: () => void; triggerRef: RefObject<HTMLButtonElement | null> }
 
@@ -51,6 +52,7 @@ function PageTitle({ title }: { title: string }) {
 export function AppBar({ title, onReturn, creation, rename, deleteProject }: { title: string; onReturn?: () => void; creation?: BarAction; rename?: Omit<BarAction, 'label'>; deleteProject?: Omit<BarAction, 'label'> }) {
   const { t } = useTranslation()
   const modalOpen = useModalOpen()
+  const settingsEntry = useContext(SettingsEntryContext)
   const [open, setOpen] = useState(false)
   const localGear = useRef<HTMLButtonElement>(null)
   const gear = rename?.triggerRef ?? deleteProject?.triggerRef ?? localGear
@@ -113,6 +115,8 @@ export function AppBar({ title, onReturn, creation, rename, deleteProject }: { t
         {open && !modalOpen ? <div id={id} ref={panel} className="settings-panel" popover="auto" role="region" aria-label={t('settings')}>
           {rename ? <button disabled={rename.disabled} className="button button-quiet" onClick={() => { setOpen(false); rename.onSelect() }}>{t('renameProject')}</button> : null}
           {deleteProject ? <button disabled={deleteProject.disabled} className="button button-quiet" onClick={() => { setOpen(false); deleteProject.onSelect() }}>{t('deleteProject')}</button> : null}
+          {/* Focus the gear first so a dialog opened by the entry returns focus there. */}
+          {settingsEntry ? <button className="button button-quiet" onClick={() => { setOpen(false); gear.current?.focus(); settingsEntry.onSelect() }}>{settingsEntry.label}</button> : null}
           <LocaleSelector />
         </div> : null}
       </div>

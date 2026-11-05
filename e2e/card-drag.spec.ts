@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
+import { dismissedInstallInvitation } from './storage-state'
 
 async function setup(page: Page, en = false) {
   await page.addInitScript(() => {
@@ -164,7 +165,7 @@ test('uses library autoscroll to reach an offscreen empty column and a long boar
 })
 
 test('keeps native touch swipes before hold, then drags without opening on release', async ({ browser }) => {
-  const context = await browser.newContext({ viewport: { width: 390, height: 650 }, isMobile: true, hasTouch: true })
+  const context = await browser.newContext({ viewport: { width: 390, height: 650 }, isMobile: true, hasTouch: true, storageState: dismissedInstallInvitation })
   try {
     const page = await context.newPage(), cdp = await context.newCDPSession(page)
     await setup(page)

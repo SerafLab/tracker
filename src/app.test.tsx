@@ -270,6 +270,21 @@ describe('project board', () => {
     const repo = repository(); vi.spyOn(repo, 'createProject').mockRejectedValue(new Error('quota')); render(<App repository={repo} />); await fill(userEvent.setup(), 'Новый проект', 'Паспорт', 'Создать проект'); expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить изменения'); expect(screen.queryByRole('heading', { name: 'Паспорт' })).not.toBeInTheDocument()
   })
 
+  it('invites installation on the first ready workspace but not over unavailable storage', async () => {
+    localStorage.removeItem('easytrack.installInvitationDismissed')
+    const unavailable = { open: vi.fn().mockRejectedValue(new Error('blocked')) } as unknown as DexieProjectBoardRepository
+    render(<App repository={unavailable} />)
+    expect(await screen.findByRole('heading', { name: 'Рабочая доска недоступна' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    cleanup()
+    render(<App repository={repository()} />)
+    const invitation = await screen.findByRole('dialog', { name: 'EasyTrack можно установить' })
+    expect(invitation).toHaveTextContent('Проекты локальны')
+    await userEvent.setup().keyboard('{Escape}')
+    expect(screen.getByRole('button', { name: 'Создать проект' })).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('stops editing after this database connection becomes stale', async () => {
     const databaseName = `stale-app-${crypto.randomUUID()}`
     const reload = vi.fn()
@@ -280,7 +295,12 @@ describe('project board', () => {
     await newer.open()
     expect(await screen.findByRole('heading', { name: 'Нужно перезапустить EasyTrack' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Создать проект' })).not.toBeInTheDocument()
-    await userEvent.setup().click(screen.getByRole('button', { name: 'Перезапустить' }))
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Настройки' }))
+    await user.click(within(screen.getByRole('region', { name: 'Настройки' })).getByRole('button', { name: 'Как установить EasyTrack' }))
+    expect(screen.getByRole('dialog', { name: 'Установить EasyTrack' })).toBeInTheDocument()
+    await user.keyboard('{Escape}')
+    await user.click(screen.getByRole('button', { name: 'Перезапустить' }))
     expect(reload).toHaveBeenCalledOnce()
     newer.close()
     await newer.delete()

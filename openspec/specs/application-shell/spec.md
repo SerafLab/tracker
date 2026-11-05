@@ -30,15 +30,15 @@ The system SHALL show one application bar containing the EasyTrack brand, the cu
 - **THEN** общий AppBar сохраняет заголовок и действия доски, а панель имеет собственный доступный заголовок с сохранённым названием карточки
 
 ### Requirement: Contextual navigation and primary action
-The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The full card page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming or project-deletion actions. The card panel SHALL provide close and full-page actions while retaining board navigation. Leaving either card presentation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming and project-deletion actions.
+The application bar SHALL show an icon-only plus for project creation in the catalogue and status creation on a board. On a board, the EasyTrack brand SHALL return to the catalogue, replacing the separate catalogue-return control. The settings gear SHALL expose project renaming and project deletion on a board. The full card page SHALL provide an explicit return to its project board, brand navigation to the catalogue, and language settings, without creation, project-renaming or project-deletion actions. The card panel SHALL provide close and full-page actions while retaining board navigation. Leaving either card presentation SHALL respect unsaved-draft protection. Service states SHALL omit creation, project-renaming and project-deletion actions. On every screen the settings panel SHALL contain the installation entry.
 
 #### Scenario: User works in the catalogue
 - **WHEN** the catalogue is displayed, whether empty or populated
-- **THEN** its application bar offers one plus with the localized accessible name «Создать проект» and a settings gear containing only application-language settings
+- **THEN** its application bar offers one plus with the localized accessible name «Создать проект» and a settings gear containing only the installation entry and application-language settings
 
 #### Scenario: User works on a board
 - **WHEN** a project board is displayed, whether or not it has statuses
-- **THEN** its application bar identifies the project and provides a plus with the localized accessible name «Добавить статус» and a settings gear containing «Переименовать проект», «Удалить проект» and application-language settings, without a separate project-actions control
+- **THEN** its application bar identifies the project and provides a plus with the localized accessible name «Добавить статус» and a settings gear containing «Переименовать проект», «Удалить проект», the installation entry and application-language settings, without a separate project-actions control
 
 #### Scenario: User returns through the brand
 - **WHEN** the user activates the EasyTrack brand from a board using a pointer or keyboard
@@ -46,18 +46,18 @@ The application bar SHALL show an icon-only plus for project creation in the cat
 
 #### Scenario: User encounters a service state
 - **WHEN** the application is loading, its storage is unavailable, or a restart is required
-- **THEN** the application bar has no creation, project-renaming or project-deletion action, its settings panel provides language selection, and the state message retains its relevant guidance or recovery action
+- **THEN** the application bar has no creation, project-renaming or project-deletion action, its settings panel provides the installation entry and language selection, and the state message retains its relevant guidance or recovery action
 
 #### Scenario: User navigates from a card page
 - **WHEN** пользователь открывает страницу карточки
-- **THEN** доступен возврат к её доске, бренд ведёт в каталог через защиту черновиков, настройки содержат выбор языка, а создание статуса, переименование и удаление проекта отсутствуют
+- **THEN** доступен возврат к её доске, бренд ведёт в каталог через защиту черновиков, настройки содержат пункт установки и выбор языка, а создание статуса, переименование и удаление проекта отсутствуют
 
 #### Scenario: User navigates from a card panel
 - **WHEN** пользователь открывает панель карточки на доске
 - **THEN** доступны закрытие панели и «Открыть на всю страницу», а действия доски и бренд проходят через защиту черновиков при уходе с карточки
 
 ### Requirement: Responsive application bar presentation
-The application bar SHALL be a visually distinct, full-width light surface with a bottom boundary and content aligned with the main content width. In the catalogue, on the full card page and in service states it SHALL scroll with the document. On a project board, with or without an open card panel, the board workspace SHALL be bounded by the available viewport height below the application bar, using the dynamic viewport height on mobile browsers; the application bar SHALL remain at the top while the board content scrolls inside the workspace, and the page itself SHALL not scroll. On narrow screens the installation-guidance entry SHALL follow the board content inside the bounded workspace. At a 320 px viewport, the brand, heading, settings gear and creation plus when applicable SHALL remain visible and operable without horizontal page overflow or hiding the plus in a menu.
+The application bar SHALL be a visually distinct, full-width light surface with a bottom boundary and content aligned with the main content width. In the catalogue, on the full card page and in service states it SHALL scroll with the document. On a project board, with or without an open card panel, the board workspace SHALL be bounded by the available viewport height below the application bar, using the dynamic viewport height on mobile browsers; the application bar SHALL remain at the top while the board content scrolls inside the workspace, and the page itself SHALL not scroll. At a 320 px viewport, the brand, heading, settings gear and creation plus when applicable SHALL remain visible and operable without horizontal page overflow or hiding the plus in a menu.
 
 #### Scenario: User works on a narrow screen
 - **WHEN** the catalogue or board is viewed at a width of 320 or 390 px
@@ -94,13 +94,6 @@ The system SHALL retain a warm light application bar with a restrained green cre
 - **WHEN** a catalogue or service-state heading exceeds the available width
 - **THEN** that heading also occupies one line with an ellipsis and retains its complete semantic text
 
-### Requirement: Non-overlapping mobile installation guidance entry
-The system SHALL place the installation-guidance entry after the workspace content in normal document flow on narrow screens so it does not cover cards or their controls. The entry SHALL remain accessible with its existing installation behavior.
-
-#### Scenario: User reaches the end of a mobile board
-- **WHEN** a user scrolls a board at 320 or 390 px
-- **THEN** the installation-guidance entry can be reached after the board and does not overlay a card or its controls
-
 ### Requirement: Accessible compact application bar controls
 The system SHALL give the creation plus and settings gear localized accessible names and purpose tooltips available on hover and keyboard focus. The board's brand navigation SHALL retain EasyTrack in its accessible name and explain its catalogue destination. Interactive bar controls SHALL have targets of at least 44 by 44 CSS pixels and visible keyboard focus.
 
@@ -113,11 +106,15 @@ The system SHALL give the creation plus and settings gear localized accessible n
 - **THEN** its localized hint and accessible name explain «Создать проект»
 
 ### Requirement: Settings panel interaction
-The settings gear SHALL open and close one non-modal panel. The panel SHALL support keyboard access to its controls, close on Escape or outside interaction, and restore focus to the gear on Escape. Starting project renaming or deletion SHALL close the panel before opening its dialog. Cancelling either dialog SHALL return focus to the gear; successful renaming SHALL also return focus to the gear, while successful deletion SHALL follow project-deletion navigation and focus rules.
+The settings gear SHALL open and close one non-modal panel. The panel SHALL support keyboard access to its controls, close on Escape or outside interaction, and restore focus to the gear on Escape. Starting project renaming, project deletion or installation SHALL close the panel before opening its dialog or the browser installation prompt. Cancelling a renaming or deletion dialog and closing the installation dialog SHALL return focus to the gear; successful renaming SHALL also return focus to the gear, while successful deletion SHALL follow project-deletion navigation and focus rules.
 
 #### Scenario: User renames the current project
 - **WHEN** the user opens board settings and chooses «Переименовать проект»
 - **THEN** settings close, the existing rename dialog opens for the current project, and completing or cancelling it returns focus to the gear
+
+#### Scenario: User opens installation guidance from settings
+- **WHEN** the user opens settings and chooses «Как установить EasyTrack»
+- **THEN** settings close, the installation dialog opens, and closing it returns focus to the gear
 
 #### Scenario: User dismisses settings with the keyboard
 - **WHEN** the user presses Escape while focus is within the settings panel

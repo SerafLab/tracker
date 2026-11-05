@@ -15,8 +15,6 @@ type BoardProps = {
   onRequestDestructiveAction?: (action: () => void) => void
   /** The card shown beside the board; only deletions that remove it need the unsaved-draft guard. */
   openCard?: { id: Id; statusId: Id } | null
-  /** Receives the node where the narrow-screen install entry is placed after the board content. */
-  installSlot?: (node: HTMLElement | null) => void
   focusCreation: boolean
   onCreationFocused: () => void
   board: BoardView
@@ -41,7 +39,7 @@ type BoardProps = {
 
 const runImmediately = (action: () => void) => action()
 
-export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, openCard = null, installSlot, focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onApplyStatusSet, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
+export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, openCard = null, focusCreation, onCreationFocused, board, saveError, busy, placementPending, refreshFailed, onRetryRefresh, onReturn, onApplyStatusSet, onDeleteProject, onRenameProject, onCreateStatus, onRenameStatus, onMoveStatus, onCreateCard, onOpenCard, onMoveCard, onDeleteCard, onDeleteStatus }: BoardProps) {
   const { t } = useTranslation()
   const [moveDialogCardId, setMoveDialogCardId] = useState<Id | null>(null)
   const root = useRef<HTMLElement>(null)
@@ -151,7 +149,6 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
       {deleting ? <DeleteDialog kind={deleting.kind} name={deleting.name} blocked={deleting.kind === 'status' && !!board.statuses.find(status => status.id === deleting.id)?.cards.length} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}
       {creatingStatus ? <NameDialog returnFocus={addStatusTrigger} title={t('newStatus')} label={t('statusName')} button={t('createStatus')} onSubmit={onCreateStatus} onClose={() => setCreatingStatus(false)} /> : null}
       {renamingProject ? <NameDialog returnFocus={projectMenu} title={t('renameProject')} label={t('newName')} button={t('save')} initialName={board.name} onSubmit={onRenameProject} onClose={() => setRenamingProject(false)} /> : null}
-      {installSlot ? <div ref={installSlot} /> : null}
     </main>
   </>
 }

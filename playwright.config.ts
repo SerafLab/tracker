@@ -1,16 +1,19 @@
 import { defineConfig } from '@playwright/test'
+import { dismissedInstallInvitation, e2eBaseURL } from './e2e/storage-state'
 
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
   use: {
-    baseURL: `http://127.0.0.1:${process.env.E2E_PORT ?? '4173'}/tracker/`,
+    baseURL: e2eBaseURL,
     browserName: 'chromium',
     locale: 'ru-RU',
+    // Invitation tests opt out with an empty storage state.
+    storageState: dismissedInstallInvitation,
   },
   webServer: {
     command: 'node e2e/server.mjs',
-    url: `http://127.0.0.1:${process.env.E2E_PORT ?? '4173'}/tracker/`,
+    url: e2eBaseURL,
     reuseExistingServer: !process.env.CI,
   },
 })

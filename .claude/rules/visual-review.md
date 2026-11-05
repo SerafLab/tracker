@@ -1,0 +1,1 @@
+../../docs/agents/rules/visual-review.md

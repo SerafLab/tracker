@@ -12,7 +12,7 @@ const valid = (): BackupData => ({
     { id: 'c1', statusId: 's0', name: 'Важная', description: 'Текст', position: 1, important: true, urgent: false },
     { id: 'c2', statusId: 's0', name: 'Обычная', description: '', position: 2, important: false, urgent: false },
   ],
-  notes: [{ id: 'n', cardId: 'c0', text: 'Позвонить', createdAt: '2026-11-02T10:00:00Z', updatedAt: '2026-11-03T10:00:00+03:00' }],
+  notes: [{ id: 'n', cardId: 'c0', text: 'Позвонить', createdAt: '2026-11-02T10:00:00.000Z', updatedAt: '2026-11-03T10:00:00.000Z' }],
 })
 
 describe('checkBackupIntegrity', () => {
@@ -40,9 +40,12 @@ describe('checkBackupIntegrity', () => {
     ['empty card name', data => { data.cards[0].name = ' \n' }],
     ['empty note text', data => { data.notes[0].text = ' ' }],
     ['invalid project date', data => { data.projects[0].createdAt = 'yesterday' }],
-    ['impossible date', data => { data.projects[0].createdAt = '2026-13-45T10:00:00Z' }],
-    ['nonexistent calendar date', data => { data.projects[0].createdAt = '2026-02-30T10:00:00Z' }],
-    ['hour 24', data => { data.projects[0].createdAt = '2026-02-28T24:00:00Z' }],
+    ['impossible date', data => { data.projects[0].createdAt = '2026-13-45T10:00:00.000Z' }],
+    ['nonexistent calendar date', data => { data.projects[0].createdAt = '2026-02-30T10:00:00.000Z' }],
+    ['hour 24', data => { data.projects[0].createdAt = '2026-02-28T24:00:00.000Z' }],
+    ['time zone offset', data => { data.notes[0].createdAt = '2026-06-30T23:30:00.000+03:00' }],
+    ['missing milliseconds', data => { data.notes[0].createdAt = '2026-11-02T10:00:00Z' }],
+    ['lowercase separators', data => { data.projects[0].createdAt = '2026-11-01t10:00:00.000z' }],
     ['invalid note createdAt', data => { data.notes[0].createdAt = '2026-11-02' }],
     ['invalid note updatedAt', data => { data.notes[0].updatedAt = 'later' }],
   ]

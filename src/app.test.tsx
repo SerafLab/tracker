@@ -324,7 +324,7 @@ it('retains the header creation draft on validation and storage errors and retri
   expect(column.querySelectorAll('.work-card')).toHaveLength(0)
   await user.click(within(dialog).getByRole('button', { name: 'Создать карточку' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  expect(trigger).toHaveFocus()
+  await waitFor(() => expect(trigger).toHaveFocus())
   expect(column.querySelector('.card-name')).toHaveTextContent('Draft')
   expect(column.querySelectorAll('.card-badge')).toHaveLength(2)
 })

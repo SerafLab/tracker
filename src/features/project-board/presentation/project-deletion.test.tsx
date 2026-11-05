@@ -38,7 +38,7 @@ async function openCatalogueDeletion(user: ReturnType<typeof userEvent.setup>, i
 async function openBoardDeletion(user: ReturnType<typeof userEvent.setup>) {
   const trigger = screen.getByRole('button', { name: 'Настройки' })
   await user.click(trigger)
-  await user.click(screen.getByRole('button', { name: 'Удалить проект' }))
+  await user.click(screen.getByRole('menuitem', { name: 'Удалить проект' }))
   expect(document.querySelector('.settings-panel')).not.toBeInTheDocument()
   return { trigger, dialog: screen.getByRole('dialog', { name: 'Удалить проект' }) }
 }
@@ -60,7 +60,7 @@ it('reads catalogue summary without opening or remembering the project, and canc
   expect(trigger).toHaveFocus()
   expect(await repo.projects()).toHaveLength(3)
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(screen.queryByRole('button', { name: 'Удалить проект' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Удалить проект' })).not.toBeInTheDocument()
 })
 
 it('prevents deletion until its summary loads and permits retrying a failed summary', async () => {
@@ -181,7 +181,7 @@ it('does not expose project deletion in card-page language settings', async () =
   await screen.findByRole('button', { name: 'Редактировать основное' })
   await user.click(screen.getByRole('button', { name: 'Открыть на всю страницу' }))
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(screen.getByRole('combobox', { name: 'Язык приложения' })).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: 'Удалить проект' })).not.toBeInTheDocument()
+  expect(await screen.findByRole('group', { name: 'Язык приложения' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Удалить проект' })).not.toBeInTheDocument()
   expect((await repo.cardDetails('p', 'c-p'))?.notes).toHaveLength(1)
 })

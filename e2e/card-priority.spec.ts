@@ -1,11 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { leaveCard } from './card-helpers'
+import { selectLanguage } from './language'
 
 for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
   test(`persists card groups, stable order and keyboard focus in ${language} at ${width}px`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width, height: 844 })
     await page.goto('/tracker/')
-    if (language === 'en') { await page.getByRole('button', {name: 'Настройки'}).click(); await page.getByRole('combobox', { name: 'Язык приложения' }).selectOption('en'); await page.keyboard.press('Escape') }
+    if (language === 'en') { await selectLanguage(page, 'en') }
     const en = language === 'en'
     const label = { project: en ? 'Project name' : 'Название проекта', createProject: en ? 'Create project' : 'Создать проект', addStatus: en ? 'Add status' : 'Добавить статус', status: en ? 'Status name' : 'Название статуса', createStatus: en ? 'Create status' : 'Создать статус', addCard: en ? 'Add card' : 'Добавить карточку', name: en ? 'Card name' : 'Название карточки', create: en ? 'Create card' : 'Создать карточку', important: en ? 'Important' : 'Важная', urgent: en ? 'Urgent' : 'Срочная', edit: en ? 'Edit' : 'Редактировать', save: en ? 'Save' : 'Сохранить' }
     await page.getByRole('button', { name: label.createProject, exact: true }).click()

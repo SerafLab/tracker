@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enterEdit, leaveCard, saveEdit, summaryOf } from './card-helpers'
+import { selectLanguage } from './language'
 import { dismissedInstallInvitation } from './storage-state'
 
 async function setup(page: Page, en = false) {
@@ -12,7 +13,7 @@ async function setup(page: Page, en = false) {
     }
   })
   await page.goto('/tracker/')
-  if (en) { await page.getByRole('button', { name: 'Настройки', exact: true }).click(); await page.getByRole('combobox').selectOption('en'); await page.keyboard.press('Escape') }
+  if (en) { await selectLanguage(page, 'en') }
   await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox').fill('Drag project')
   await page.getByRole('dialog').getByRole('combobox').selectOption('empty')

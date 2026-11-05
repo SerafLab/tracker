@@ -1,4 +1,5 @@
 import { registerModal } from '../../../ui/modal-state'
+import { focusFirstMenuItem, moveMenuFocus } from '../../../ui/menu-focus'
 import { useTranslation } from 'react-i18next'
 import { useEffect, useLayoutEffect, useEffectEvent, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 
@@ -38,18 +39,13 @@ export function ActionMenu({ label, actions, triggerRef, disabled = false }: { d
   }, [open, button])
   useEffect(() => {
     if (!open) return
-    menu.current?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus({ preventScroll: true })
+    focusFirstMenuItem(menu.current)
     const closeOnOutsideInteraction = (event: Event) => {
       if (event.target instanceof Node && !button.current?.contains(event.target) && !menu.current?.contains(event.target)) setOpen(false)
     }
     const closeOnKeyboard = (event: KeyboardEvent) => {
       if (event.key === 'Escape') { event.preventDefault(); setOpen(false); button.current?.focus() }
-      if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-        event.preventDefault()
-        const items = Array.from(menu.current?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [])
-        const index = items.indexOf(document.activeElement as HTMLButtonElement)
-        items[(index + (event.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length]?.focus()
-      }
+      if (moveMenuFocus(menu.current, event.key)) event.preventDefault()
     }
     const closeOnViewportChange = (event: Event) => {
       if (!(event.target instanceof Node) || !menu.current?.contains(event.target)) setOpen(false)

@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createRef } from 'react'
@@ -18,7 +18,7 @@ it.each(['ru', 'en'])('offers contextual icon controls and keyboard settings in 
   const back = vi.fn(), create = vi.fn(), rename = vi.fn()
   render(<LocaleProvider><AppBar title="Проект" onReturn={back} creation={{label: en ? 'Add status' : 'Добавить статус', onSelect: create, triggerRef: createRef()}} rename={{onSelect: rename, triggerRef: createRef()}} /></LocaleProvider>)
   const gear = screen.getByRole('button', { name: en ? 'Settings' : 'Настройки' })
-  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   expect(screen.getAllByRole('heading', {level: 1})).toHaveLength(1)
   const brand = screen.getByRole('button', { name: /EasyTrack/ })
   await user.tab(); expect(brand).toHaveFocus()
@@ -29,39 +29,83 @@ it.each(['ru', 'en'])('offers contextual icon controls and keyboard settings in 
   await user.tab(); expect(gear).toHaveFocus()
   expect(gear).toHaveTextContent('')
   expect(gear).toHaveAttribute('data-hint', en ? 'Settings' : 'Настройки')
+  expect(gear).toHaveAttribute('aria-haspopup', 'menu')
   await user.keyboard('{Enter}'); expect(gear).toHaveAttribute('aria-expanded', 'true')
-  await user.tab(); expect(screen.getByRole('button', {name: en ? 'Rename project' : 'Переименовать проект'})).toHaveFocus()
-  await user.tab(); expect(screen.getByRole('combobox')).toHaveFocus()
-  await user.keyboard('{Escape}'); expect(gear).toHaveFocus()
-  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  expect(await screen.findByRole('menuitem', {name: en ? 'Rename project' : 'Переименовать проект'})).toHaveFocus()
+  await user.keyboard('{Escape}'); await waitFor(() => expect(gear).toHaveFocus())
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   await user.click(gear)
   await user.click(brand)
-  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   await user.click(gear)
-  await user.click(screen.getByRole('button', {name: en ? 'Rename project' : 'Переименовать проект'}))
+  await user.click(await screen.findByRole('menuitem', {name: en ? 'Rename project' : 'Переименовать проект'}))
   expect(rename).toHaveBeenCalledOnce()
-  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
 })
 
-it('renders a supplied application settings entry before the language selector and closes settings when it is chosen', async () => {
+it('lists actions, a separator and the language group in order with a wrapping arrow-key cycle', async () => {
+  const user = userEvent.setup()
+  render(<LocaleProvider><SettingsEntryContext value={{ label: 'Как установить EasyTrack', onSelect: () => {} }}><AppBar title="Проект" rename={{onSelect: () => {}, triggerRef: createRef()}} deleteProject={{onSelect: () => {}, triggerRef: createRef()}} /></SettingsEntryContext></LocaleProvider>)
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  const menu = await screen.findByRole('menu', { name: 'Настройки' })
+  const items = [...within(menu).getAllByRole('menuitem'), ...within(menu).getAllByRole('menuitemradio')]
+  expect(items.map(item => item.textContent)).toEqual(['Переименовать проект', 'Удалить проект', 'Как установить EasyTrack', 'Русский', 'English'])
+  expect(within(menu).getAllByRole('separator')).toHaveLength(1)
+  const group = within(menu).getByRole('group', { name: 'Язык приложения' })
+  expect(within(group).getAllByRole('menuitemradio')).toHaveLength(2)
+  expect(items[0]).toHaveFocus()
+  for (const item of [...items.slice(1), items[0]]) { await user.keyboard('{ArrowDown}'); expect(item).toHaveFocus() }
+  await user.keyboard('{ArrowUp}'); expect(items[4]).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Настройки' })).toHaveAttribute('aria-controls', menu.id)
+  await user.click(within(menu).getByText('Язык приложения'))
+  await user.keyboard('{ArrowUp}'); expect(items[4]).toHaveFocus()
+})
+
+it('omits the separator when no action precedes the language group', async () => {
+  const user = userEvent.setup()
+  render(<LocaleProvider><AppBar title="Каталог" /></LocaleProvider>)
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  const menu = await screen.findByRole('menu', { name: 'Настройки' })
+  expect(within(menu).queryByRole('separator')).not.toBeInTheDocument()
+  expect(within(menu).getByRole('group', { name: 'Язык приложения' })).toBeInTheDocument()
+  expect(within(menu).getByRole('menuitemradio', { name: 'Русский' })).toHaveFocus()
+})
+
+it('keeps the menu open and focus on the chosen language item', async () => {
+  const user = userEvent.setup()
+  render(<LocaleProvider><AppBar title="Каталог" /></LocaleProvider>)
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  const english = await screen.findByRole('menuitemradio', { name: 'English' })
+  expect(english).toHaveAttribute('lang', 'en')
+  await user.click(english)
+  expect(await screen.findByRole('group', { name: 'Application language' })).toBeInTheDocument()
+  expect(screen.getByRole('menu', { name: 'Settings' })).toBeInTheDocument()
+  expect(english).toHaveAttribute('aria-checked', 'true')
+  expect(screen.getByRole('menuitemradio', { name: 'Русский' })).toHaveAttribute('aria-checked', 'false')
+  expect(english).toHaveFocus()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Settings' })).toHaveFocus())
+})
+
+it('renders a supplied application settings entry before the language group and closes settings when it is chosen', async () => {
   const user = userEvent.setup()
   const select = vi.fn(() => expect(gear).toHaveFocus())
   render(<LocaleProvider><SettingsEntryContext value={{ label: 'Как установить EasyTrack', onSelect: select }}><AppBar title="Каталог" /></SettingsEntryContext></LocaleProvider>)
   const gear = screen.getByRole('button', { name: 'Настройки' })
   await user.click(gear)
-  const panel = screen.getByRole('region', { name: 'Настройки' })
-  const entry = within(panel).getByRole('button', { name: 'Как установить EasyTrack' })
-  expect(entry.compareDocumentPosition(within(panel).getByRole('combobox')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  const menu = await screen.findByRole('menu', { name: 'Настройки' })
+  const entry = within(menu).getByRole('menuitem', { name: 'Как установить EasyTrack' })
+  expect(entry.compareDocumentPosition(within(menu).getByRole('menuitemradio', { name: 'Русский' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   await user.click(entry)
   expect(select).toHaveBeenCalledOnce()
-  expect(screen.queryByRole('region', { name: 'Настройки' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
 })
 
 it('omits the application settings entry without a provider', async () => {
   const user = userEvent.setup()
   render(<LocaleProvider><AppBar title="Каталог" /></LocaleProvider>)
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(within(screen.getByRole('region', { name: 'Настройки' })).queryAllByRole('button')).toHaveLength(0)
+  expect(within(await screen.findByRole('menu', { name: 'Настройки' })).queryAllByRole('menuitem')).toHaveLength(0)
 })
 
 it('keeps settings and recovery on the restart screen without project actions', async () => {
@@ -69,27 +113,27 @@ it('keeps settings and recovery on the restart screen without project actions', 
   render(<LocaleProvider><RestartRequired onRestart={restart} /></LocaleProvider>)
   expect(screen.getAllByRole('heading', {level: 1})).toHaveLength(1)
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(screen.getAllByRole('combobox')).toHaveLength(1)
+  expect(await screen.findAllByRole('group', { name: 'Язык приложения' })).toHaveLength(1)
   expect(screen.queryByRole('button', { name: /Создать|Добавить|Переименовать|Удалить/ })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Перезапустить' }))
   expect(restart).toHaveBeenCalledOnce()
-  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('group', { name: 'Язык приложения' })).not.toBeInTheDocument()
 })
 
 it('closes the top-layer settings when a modal opens and keeps replacement bars isolated', async () => {
   const user = userEvent.setup()
   const view = render(<LocaleProvider><AppBar title="Loading" /></LocaleProvider>)
   await user.click(screen.getByRole('button', {name: 'Настройки'}))
-  expect(screen.getByRole('combobox')).toBeInTheDocument()
+  expect(await screen.findByRole('group', { name: 'Язык приложения' })).toBeInTheDocument()
   view.rerender(<LocaleProvider><AppBar title="Loading" /><ActionDialog title="Install" onClose={() => {}}><button>Close</button></ActionDialog></LocaleProvider>)
   expect(document.querySelector('.settings-panel')).not.toBeInTheDocument()
   view.rerender(<LocaleProvider><AppBar key="catalogue" title="Catalogue" /><ActionDialog title="Install" onClose={() => {}}><button>Close</button></ActionDialog></LocaleProvider>)
   expect(document.querySelector('.app-bar')).toHaveAttribute('inert')
-  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
-  expect(within(screen.getByRole('dialog')).queryByRole('combobox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('group', { name: /Язык приложения|Application language/ })).not.toBeInTheDocument()
+  expect(within(screen.getByRole('dialog')).queryByRole('menuitemradio')).not.toBeInTheDocument()
   view.rerender(<LocaleProvider><AppBar title="Catalogue" /></LocaleProvider>)
   expect(screen.getByRole('banner')).not.toHaveAttribute('inert')
-  expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+  expect(screen.queryByRole('group', { name: /Язык приложения|Application language/ })).not.toBeInTheDocument()
 })
 
 
@@ -109,11 +153,11 @@ it('only dismisses offscreen settings on document scrolling, not resizing or nes
   vi.stubGlobal('innerHeight', 1)
   try {
     act(() => resize())
-    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
     fireEvent.scroll(screen.getByTestId('board-scroller'))
-    expect(screen.getByRole('combobox')).toBeInTheDocument()
+    expect(screen.getByRole('menu')).toBeInTheDocument()
     fireEvent.scroll(document)
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: /Язык приложения|Application language/ })).not.toBeInTheDocument()
   } finally { vi.unstubAllGlobals() }
 })
 

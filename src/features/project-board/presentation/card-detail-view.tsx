@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import Linkify from 'linkify-react'
 import type { CardDetails, CardInput, Id, Note, RegisterDraftGuard } from '../domain/model'
 import { AppBar } from '../../../ui/app-bar'
+import { orderNotes, useNoteOrder } from './note-order'
 import { BoardIcon } from './board-icon'
 import { CardFlagBadges, CardFlagLabel } from './card-flag-badges'
 import { ActionDialog } from './controls'
@@ -62,6 +63,8 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   const fieldErrorId = useId(), noteErrorId = useId(), noteInputId = useId(), descriptionId = useId()
   const fieldsDirty = !sameFields(fields, confirmed)
   const noteDirty = !!editor && editor.text !== editor.initial
+  const { order, toggle: toggleOrder } = useNoteOrder()
+  const shownNotes = orderNotes(details.notes, order)
   const savedFields = fieldsOf(details)
   // Only synchronize a newly confirmed external snapshot when there are no local edits.
   useEffect(() => {
@@ -163,8 +166,8 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   const closeDeletion = useCallback(() => { if (!pending.current) setDeleting(null) }, [])
   const deleteNote = async () => {
     if (!deleting || pending.current) return
-    const index = details.notes.findIndex(note => note.id === deleting.id)
-    const nextId = details.notes[index + 1]?.id ?? details.notes[index - 1]?.id
+    const index = shownNotes.findIndex(note => note.id === deleting.id)
+    const nextId = shownNotes[index + 1]?.id ?? shownNotes[index - 1]?.id
     await run(async () => {
       if (!await onDeleteNote(deleting.id)) { setDeleteError(true); return }
       if (editor?.id === deleting.id) setEditor(null)
@@ -178,6 +181,14 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
     {noteError ? <p id={noteErrorId} role="alert" className="field-error">{t(noteError)}</p> : null}
     <div className="form-actions"><button type="button" className="button button-secondary" disabled={saving || busy} onClick={closeEditor}>{t('cancel')}</button><button className="button button-primary" disabled={saving || busy}>{t(editor.id ? 'saveNote' : 'addNote')}</button></div>
   </form> : null
+  const notesBlock = details.notes.length === 0 ? <p key="notes" className="muted-copy">{t('noNotes')}</p> : <ol key="notes" className="note-list">{shownNotes.map(note => <li className="note surface-card" key={note.id} data-note-id={note.id}>
+          <div className="note-header"><p className="note-date"><time dateTime={note.createdAt}>{date(note.createdAt)}</time>{note.updatedAt ? <> · {t('noteEdited')} <time dateTime={note.updatedAt}>{date(note.updatedAt)}</time></> : null}</p>
+            <div className="note-actions"><button className="button button-quiet button-icon" aria-label={t('editNote')} disabled={saving || busy} onClick={() => openEditor(note)}><BoardIcon name="edit" /></button><button className="button button-quiet button-icon" aria-label={t('deleteNote')} disabled={saving || busy} onClick={event => { deletionFocus.current = null; deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}><BoardIcon name="delete" /></button></div>
+          </div>
+          {editor?.id === note.id ? noteEditor : <PlainText text={note.text} />}
+        </li>)}</ol>
+  // New notes are added on the newest side of the history.
+  const addBlock = <div key="add" className="note-add">{editor && editor.id === null ? noteEditor : <button ref={addTrigger} className="button button-secondary" disabled={saving || busy} onClick={() => openEditor()}>{t('addNote')}</button>}</div>
   const panel = presentation === 'panel'
   const Heading = panel ? 'h2' : 'h1'
   return <div className={panel ? 'card-detail-container card-panel' : 'card-detail-container card-page'}>
@@ -211,14 +222,10 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
             {confirmed.description ? <PlainText text={confirmed.description} /> : <p className="muted-copy">{t('noDescription')}</p>}
           </>}
       </section>
-      <section ref={history} className="note-history" aria-label={t('noteHistory')}><h2>{t('noteHistory')}</h2>
-        {details.notes.length === 0 ? <p className="muted-copy">{t('noNotes')}</p> : <ol className="note-list">{details.notes.map(note => <li className="note surface-card" key={note.id} data-note-id={note.id}>
-          <div className="note-header"><p className="note-date"><time dateTime={note.createdAt}>{date(note.createdAt)}</time>{note.updatedAt ? <> · {t('noteEdited')} <time dateTime={note.updatedAt}>{date(note.updatedAt)}</time></> : null}</p>
-            <div className="note-actions"><button className="button button-quiet button-icon" aria-label={t('editNote')} disabled={saving || busy} onClick={() => openEditor(note)}><BoardIcon name="edit" /></button><button className="button button-quiet button-icon" aria-label={t('deleteNote')} disabled={saving || busy} onClick={event => { deletionFocus.current = null; deleteTrigger.current = event.currentTarget; setDeleteError(false); setDeleting(note) }}><BoardIcon name="delete" /></button></div>
-          </div>
-          {editor?.id === note.id ? noteEditor : <PlainText text={note.text} />}
-        </li>)}</ol>}
-        {editor && editor.id === null ? noteEditor : <button ref={addTrigger} className="button button-secondary" disabled={saving || busy} onClick={() => openEditor()}>{t('addNote')}</button>}
+      <section ref={history} className="note-history" aria-label={t('noteHistory')}>
+        <div className="note-history-header"><h2>{t('noteHistory')}</h2><button type="button" className="button button-quiet button-icon" aria-label={t(order === 'newest' ? 'noteOrderNewest' : 'noteOrderOldest')} title={t(order === 'newest' ? 'noteOrderNewest' : 'noteOrderOldest')} onClick={toggleOrder}><BoardIcon name={order === 'newest' ? 'sortNewest' : 'sortOldest'} /></button></div>
+        {/* Keyed so a new-note editor moves with its block instead of remounting when the order changes. */}
+        {order === 'newest' && shownNotes.length ? [addBlock, notesBlock] : [notesBlock, addBlock]}
       </section>
       {deleting ? <ActionDialog title={t('deleteNote')} returnFocus={deleteTrigger} onClose={closeDeletion}><p>{t('deleteNoteConfirmation')}</p><blockquote className="detail-text">{deleting.text}</blockquote><p>{t('deletionIrreversible')}</p>{deleteError ? <p className="save-error" role="alert">{t('saveError')}</p> : null}<div className="form-actions"><button ref={cancelDelete} type="button" className="button button-secondary" disabled={saving || busy} onClick={closeDeletion}>{t('cancel')}</button><button type="button" className="button button-primary" disabled={saving || busy} onClick={() => void deleteNote()}>{t('delete')}</button></div></ActionDialog> : null}
     </section>

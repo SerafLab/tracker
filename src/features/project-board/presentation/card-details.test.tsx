@@ -7,12 +7,13 @@ import { DexieProjectBoardRepository } from '../infrastructure/indexeddb/dexie-p
 import { CardDetailView, PlainText } from './card-detail-view'
 import { LocaleProvider } from '../../../i18n/provider'
 import type { CardDetails } from '../domain/model'
+import { NoteOrderProvider, noteOrderStorageKey } from './note-order'
 
 const pwa = vi.hoisted(() => ({ ready: false, update: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('virtual:pwa-register/react', () => ({ useRegisterSW: () => ({ needRefresh: [pwa.ready, vi.fn()], offlineReady: [false, vi.fn()], updateServiceWorker: pwa.update }) }))
 
 const databases: ProjectBoardDatabase[] = []
-afterEach(async () => { vi.useRealTimers(); pwa.ready = false; pwa.update.mockClear(); cleanup(); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(db => db.delete())) })
+afterEach(async () => { vi.useRealTimers(); localStorage.removeItem(noteOrderStorageKey); pwa.ready = false; pwa.update.mockClear(); cleanup(); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(db => db.delete())) })
 async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectBoardRepository) => void | Promise<void> = () => {}) {
   const db = new ProjectBoardDatabase(`details-${crypto.randomUUID()}`); databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
@@ -34,7 +35,9 @@ async function fields(user: ReturnType<typeof userEvent.setup>) {
 }
 
 for (const [ids, deletedId, nextId, mode] of [
-  [['a', 'b', 'c'], 'b', 'c', 'ready'],
+  // Notes are stored oldest first and shown newest first by default.
+  [['a', 'b', 'c'], 'b', 'a', 'ready'],
+  [['a', 'b', 'c'], 'b', 'c', 'oldest'],
   [['a', 'b'], 'b', 'a', 'ready'],
   [['a'], 'a', null, 'ready'],
   [['a'], 'a', null, 'draft'],
@@ -49,7 +52,8 @@ for (const [ids, deletedId, nextId, mode] of [
   }
   let finish!: (saved: boolean) => void
   const props = { details, busy: false, onReturn: vi.fn(), onCatalogue: vi.fn(), onSave: vi.fn(), onCreateNote: vi.fn(), onUpdateNote: vi.fn(), onDeleteNote: vi.fn(() => new Promise<boolean>(resolve => { finish = resolve })), registerDraftGuard: vi.fn(), requestLeave: vi.fn() }
-  const { rerender, container } = render(<LocaleProvider><CardDetailView {...props} /></LocaleProvider>)
+  if (mode === 'oldest') localStorage.setItem(noteOrderStorageKey, 'oldest')
+  const { rerender, container } = render(<LocaleProvider><NoteOrderProvider><CardDetailView {...props} /></NoteOrderProvider></LocaleProvider>)
   if (mode === 'draft') {
     fireEvent.click(screen.getByRole('button', { name: 'Добавить заметку' }))
     fireEvent.change(screen.getByLabelText('Новая заметка'), { target: { value: 'Retained draft' } })
@@ -61,7 +65,7 @@ for (const [ids, deletedId, nextId, mode] of [
   const savedDetails = { ...details, notes: details.notes.filter(note => note.id !== deletedId) }
   const delayed = mode === 'busy' || mode === 'new-focus'
   await act(async () => {
-    rerender(<LocaleProvider><CardDetailView {...props} details={savedDetails} busy={delayed} /></LocaleProvider>)
+    rerender(<LocaleProvider><NoteOrderProvider><CardDetailView {...props} details={savedDetails} busy={delayed} /></NoteOrderProvider></LocaleProvider>)
     finish(true)
     // A timer may run before React commits the dialog removal and enabled controls.
     await vi.runAllTimersAsync()
@@ -71,7 +75,7 @@ for (const [ids, deletedId, nextId, mode] of [
     expect(screen.getByRole('button', { name: 'Добавить заметку' })).toBeDisabled()
     expect(document.body).toHaveFocus()
     if (mode === 'new-focus') screen.getByRole('button', { name: 'Назад к доске' }).focus()
-    rerender(<LocaleProvider><CardDetailView {...props} details={savedDetails} /></LocaleProvider>)
+    rerender(<LocaleProvider><NoteOrderProvider><CardDetailView {...props} details={savedDetails} /></NoteOrderProvider></LocaleProvider>)
   }
   let target: HTMLElement
   if (mode === 'draft') target = screen.getByLabelText('Новая заметка')
@@ -508,4 +512,44 @@ it('keeps editing mode and entered values when the panel opens as a full page', 
   expect(screen.getByRole('form', { name: 'Редактировать основное' })).toBeInTheDocument()
   expect(screen.getByLabelText('Описание карточки')).toHaveValue('Typed in panel')
   expect(screen.getByRole('heading', { level: 1, name: 'Card' })).toBeInTheDocument()
+})
+
+const addNotes = async (repo: DexieProjectBoardRepository) => { await Promise.all(['one', 'two', 'three'].map((text, index) => repo.createNote({ id: text, cardId: 'c', text, createdAt: `2026-11-01T00:00:0${index}Z` }))) }
+const shownNoteIds = () => Array.from(document.querySelectorAll<HTMLElement>('.note-list [data-note-id]')).map(note => note.dataset.noteId)
+const isBefore = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+
+it('shows notes newest first and switches the order without touching drafts or focus', async () => {
+  const { user } = await setup('#project/p/card/c', addNotes)
+  const form = await fields(user)
+  expect(shownNoteIds()).toEqual(['three', 'two', 'one'])
+  await user.type(form.getByLabelText('Описание карточки'), 'Pending fields')
+  const draft = await editor(user); await user.type(draft, 'Pending note')
+  expect(isBefore(draft, document.querySelector('.note-list')!)).toBe(true)
+  const order = screen.getByRole('button', { name: 'Порядок заметок: сначала новые' })
+  await user.click(order)
+  await waitFor(() => expect(shownNoteIds()).toEqual(['one', 'two', 'three']))
+  expect(order).toHaveAccessibleName('Порядок заметок: сначала старые')
+  expect(order).toHaveFocus()
+  expect(draft).toBeInTheDocument()
+  expect(draft).toHaveValue('Pending note')
+  expect(isBefore(document.querySelector('.note-list')!, draft)).toBe(true)
+  expect(form.getByLabelText('Описание карточки')).toHaveValue('Pending fields')
+  await user.keyboard('{Enter}')
+  await waitFor(() => expect(shownNoteIds()).toEqual(['three', 'two', 'one']))
+  expect(order).toHaveAccessibleName('Порядок заметок: сначала новые')
+})
+
+it('adds notes on the newest side of the history in both orders', async () => {
+  const { user } = await setup('#project/p/card/c', addNotes); await pencil()
+  await user.type(await editor(user), 'four')
+  await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  await waitFor(() => expect(document.querySelector('.note-list [data-note-id]')).toHaveTextContent('four'))
+  expect(isBefore(screen.getByRole('button', { name: 'Добавить заметку' }), document.querySelector('.note-list')!)).toBe(true)
+  await user.click(screen.getByRole('button', { name: 'Порядок заметок: сначала новые' }))
+  await screen.findByRole('button', { name: 'Порядок заметок: сначала старые' })
+  await user.type(await editor(user), 'five')
+  expect(isBefore(document.querySelector('.note-list')!, screen.getByLabelText('Новая заметка'))).toBe(true)
+  await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  await waitFor(() => expect(Array.from(document.querySelectorAll('.note-list [data-note-id]')).at(-1)).toHaveTextContent('five'))
+  expect(Array.from(document.querySelectorAll('.note-list [data-note-id]'), note => note.querySelector('.detail-text')?.textContent)).toEqual(['one', 'two', 'three', 'four', 'five'])
 })

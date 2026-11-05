@@ -6,6 +6,7 @@ import type { MoveCardStateResult } from '../state/project-board-store'
 import { ActionDialog, ActionMenu } from './controls'
 import { CardFlagBadges } from './card-flag-badges'
 import { useCardDrag } from './board-drag'
+import { orderNotes, useNoteOrder } from './note-order'
 
 export const CardView = memo(function CardView({ card, notes, peers, statuses, disabled, saveError, onMoveDialogChange, projectId, onOpen, onMove, onDelete }: {
   card: Card
@@ -33,7 +34,9 @@ export const CardView = memo(function CardView({ card, notes, peers, statuses, d
   const [notesOpen, setNotesOpen] = useState(false)
   const noteCount = notes?.length ?? 0
   useEffect(() => { if (noteCount < 2) setNotesOpen(false) }, [noteCount])
-  const shownNotes = notes?.length ? (notesOpen && notes.length > 1 ? notes : notes.slice(-1)) : []
+  const { order } = useNoteOrder()
+  // Collapsed cards always show the newest note; expanded ones follow the chosen order.
+  const shownNotes = notes?.length ? (notesOpen && notes.length > 1 ? orderNotes(notes, order) : notes.slice(-1)) : []
   const closeMoving = useCallback(() => { if (!pending.current) setMoving(false) }, [])
   const above = peerPlacement(peers, card, -1), below = peerPlacement(peers, card, 1)
   useEffect(() => {

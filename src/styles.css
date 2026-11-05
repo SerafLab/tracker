@@ -21,8 +21,41 @@
   --radius-control: .4375rem;
   --radius-card: .75rem;
   --radius-dialog: 1rem;
+  --border-strong: #a5b3a7;
+  --field-border: #aeb9af;
+  --selection-bg: #cbe2d1;
+  --selection-text: #193126;
+  --tap-highlight: #91b8a533;
+  --marker-bg: #e3ece4;
+  --skeleton: #e3e7de;
+  --scrollbar: #9aaa9c;
+  --text-disabled: #838b81;
+  --backdrop: rgb(28 48 43 / 33%);
   --shadow-raised: 0 8px 28px rgb(18 39 30 / 14%);
+  --shadow-dialog: 0 18px 70px rgb(18 39 30 / 21%);
   --workspace-width: 90rem;
+}
+:root[data-theme="ink"] {
+  --surface-subtle: #e4ebf4;
+  --text: #283342;
+  --text-secondary: #525d6c;
+  --text-muted: #676f79;
+  --border: #d5dce5;
+  --accent: #2d496d;
+  --accent-hover: #1f3858;
+  --focus: #275793;
+  --border-strong: #a4b0bf;
+  --field-border: #adb6c3;
+  --selection-bg: #cbddf4;
+  --selection-text: #1d2c3f;
+  --tap-highlight: #97b0d133;
+  --marker-bg: #e2eaf4;
+  --skeleton: #dfe6ef;
+  --scrollbar: #99a6b8;
+  --text-disabled: #818994;
+  --backdrop: rgb(33 44 58 / 33%);
+  --shadow-raised: 0 8px 28px rgb(22 35 51 / 14%);
+  --shadow-dialog: 0 18px 70px rgb(22 35 51 / 21%);
 }
 
 * { box-sizing: border-box; }
@@ -30,12 +63,12 @@ body { margin: 0; background: var(--canvas); }
 button, input, select { color: inherit; font: inherit; touch-action: manipulation; }
 button, select { cursor: pointer; }
 button:disabled { cursor: not-allowed; }
-button, a, input, select { -webkit-tap-highlight-color: #91b8a533; }
+button, a, input, select { -webkit-tap-highlight-color: var(--tap-highlight); }
 button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible, .page-title:focus-visible, .app-bar-context-text:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
 }
-::selection { color: #193126; background: #cbe2d1; }
+::selection { color: var(--selection-text); background: var(--selection-bg); }
 input { caret-color: var(--accent); }
 a { text-underline-offset: .2em; }
 .sr-only {
@@ -138,11 +171,11 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .button-primary { background: var(--accent); color: #fff; padding-inline: 1rem; }
 .button-primary:hover:not(:disabled) { background: var(--accent-hover); }
 .button-secondary { background: var(--surface); border-color: var(--border); color: var(--text); }
-.button-secondary:hover:not(:disabled) { background: var(--surface-subtle); border-color: #a5b3a7; }
+.button-secondary:hover:not(:disabled) { background: var(--surface-subtle); border-color: var(--border-strong); }
 .button-quiet { background: transparent; color: var(--text-muted); }
 .button-quiet:hover:not(:disabled) { background: var(--surface-subtle); color: var(--text); }
 .button-icon { min-width: 2.75rem; width: 2.75rem; padding: .5rem; flex-shrink: 0; }
-.button:disabled { background: var(--canvas); color: #838b81; border-color: transparent; }
+.button:disabled { background: var(--canvas); color: var(--text-disabled); border-color: transparent; }
 .button-quiet:disabled { background: transparent; opacity: .45; }
 .field { display: grid; gap: .5rem; min-width: 0; }
 .field-label { color: var(--text-secondary); font-size: .8125rem; font-weight: 550; overflow-wrap: anywhere; }
@@ -150,7 +183,7 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
   width: 100%;
   min-height: 2.875rem;
   padding: .75rem;
-  border: 1px solid #aeb9af;
+  border: 1px solid var(--field-border);
   border-radius: var(--radius-control);
   color: var(--text);
   background: var(--field);
@@ -172,7 +205,7 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .project-card .project-open::after { content: ""; position: absolute; inset: 0; border-radius: var(--radius-card); }
 .project-card .menu { grid-column: 2; grid-row: 1; z-index: 1; }
 .project-card-count { grid-column: 1 / -1; grid-row: 2; color: var(--text-secondary); font-size: .875rem; }
-.project-card:hover, .project-card:focus-within, .work-card:hover, .work-card:focus-within { border-color: #a5b3a7; }
+.project-card:hover, .project-card:focus-within, .work-card:hover, .work-card:focus-within { border-color: var(--border-strong); }
 .project-open { min-width: 0; flex: 1; min-height: 2.75rem; padding: 0; border: 0; color: var(--text); background: transparent; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
 
 /* Subgrid shares the tallest header track across every status; the board workspace scrolls the whole grid. */
@@ -233,14 +266,14 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .menu-item { min-height: 2.75rem; padding: .6875rem .75rem; border: 0; border-radius: .25rem; color: var(--text); background: transparent; font-size: .8125rem; text-align: left; }
 .menu-item:hover:not(:disabled), .menu-item:focus-visible { background: var(--surface-subtle); }
 .menu-item:disabled { opacity: .45; }
-.dialog-backdrop { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgb(28 48 43 / 33%); }
-.action-dialog { width: 100%; max-width: 28.75rem; max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; padding: 1.625rem; border: 0; border-radius: var(--radius-dialog); background: var(--surface); box-shadow: 0 18px 70px rgb(18 39 30 / 21%); }
+.dialog-backdrop { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; padding: 1rem; background: var(--backdrop); }
+.action-dialog { width: 100%; max-width: 28.75rem; max-height: calc(100dvh - 2rem); overflow-y: auto; overscroll-behavior: contain; padding: 1.625rem; border: 0; border-radius: var(--radius-dialog); background: var(--surface); box-shadow: var(--shadow-dialog); }
 .dialog-header { justify-content: space-between; gap: .9375rem; margin-bottom: 1.5rem; }
 .dialog-title { min-width: 0; margin: 0; font-size: 1.25rem; font-weight: 600; letter-spacing: -.02em; line-height: 1.35; overflow-wrap: anywhere; text-wrap: pretty; }
 .action-dialog p { line-height: 1.6; overflow-wrap: anywhere; }
 
 .loading-shell { display: grid; gap: 1rem; }
-.skeleton { animation: pulse 1.4s ease-in-out infinite; background: #e3e7de; border-radius: .375rem; }
+.skeleton { animation: pulse 1.4s ease-in-out infinite; background: var(--skeleton); border-radius: .375rem; }
 .skeleton-title { height: 2rem; max-width: 16rem; }
 .skeleton-columns { display: flex; gap: 1.375rem; overflow: hidden; }
 .skeleton-column { flex: 1 0 16.25rem; height: 16rem; }
@@ -343,7 +376,7 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .work-card { touch-action: auto; }
 .work-card[data-dragging] a { -webkit-touch-callout: none; }
 .board-drag-surface { min-width: 0; }
-.card-placement-marker { list-style: none; min-height: 1.5rem; border: 2px dashed var(--accent); border-radius: var(--radius-control); color: var(--accent); font-size: .75rem; padding: .125rem .5rem; background: #e3ece4; }
+.card-placement-marker { list-style: none; min-height: 1.5rem; border: 2px dashed var(--accent); border-radius: var(--radius-control); color: var(--accent); font-size: .75rem; padding: .125rem .5rem; background: var(--marker-bg); }
 .drag-card-preview { width: 16rem; padding: 1rem; display: grid; gap: .5rem; box-shadow: 0 4px 24px #0003; pointer-events: none; overflow-wrap: anywhere; }
 
 /* Scroll snapping would undo the library’s small autoscroll increments. */
@@ -357,7 +390,7 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .card-description-preview { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; margin-top: .75rem; color: var(--text-secondary); font-size: .875rem; font-weight: 400; line-height: 1.5; }
 .card-notes { display: grid; gap: .5rem; min-width: 0; }
 .card-note-list { display: grid; gap: .5rem; margin: 0; padding: 0; list-style: none; min-width: 0; }
-.card-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: .625rem; border-left: 2px solid var(--border, #cfd8d0); color: var(--text-secondary); font-size: .875rem; line-height: 1.5; }
+.card-note { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; white-space: pre-wrap; overflow-wrap: anywhere; padding-left: .625rem; border-left: 2px solid var(--border); color: var(--text-secondary); font-size: .875rem; line-height: 1.5; }
 .card-notes-toggle { position: relative; z-index: 1; justify-self: start; display: inline-flex; align-items: center; gap: .375rem; min-height: 2.25rem; padding: 0 .5rem; margin-left: -.5rem; border: 0; border-radius: var(--radius-control); background: transparent; color: var(--accent); font: inherit; font-size: .8125rem; cursor: pointer; }
 .card-notes-toggle::after { content: ''; width: .4rem; height: .4rem; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg) translateY(-2px); transition: transform .16s ease; }
 .card-notes-toggle[aria-expanded="true"]::after { transform: rotate(225deg); }
@@ -374,7 +407,7 @@ textarea:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .board-alerts { flex: none; width: 100%; max-width: var(--workspace-width); margin: 0 auto; padding: 1rem 2rem .75rem; }
 .board-alerts > .save-error:last-child { margin-bottom: 0; }
 /* The workspace is the board's single scroller on both axes; status headers stick to its top edge. */
-.board-workspace > main { flex: 1; min-height: 0; overflow: auto; width: 100%; display: flex; flex-direction: column; scroll-snap-type: x proximity; scrollbar-color: #9aaa9c var(--canvas); }
+.board-workspace > main { flex: 1; min-height: 0; overflow: auto; width: 100%; display: flex; flex-direction: column; scroll-snap-type: x proximity; scrollbar-color: var(--scrollbar) var(--canvas); }
 .board-workspace > main > * { flex: none; }
 /* Short boards still stretch their statuses to the workspace bottom; longer ones grow and scroll. */
 .board-workspace > main > .board-drag-surface { flex: 1 0 auto; display: flex; flex-direction: column; }

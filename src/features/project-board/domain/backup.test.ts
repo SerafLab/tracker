@@ -41,6 +41,8 @@ describe('checkBackupIntegrity', () => {
     ['empty note text', data => { data.notes[0].text = ' ' }],
     ['invalid project date', data => { data.projects[0].createdAt = 'yesterday' }],
     ['impossible date', data => { data.projects[0].createdAt = '2026-13-45T10:00:00Z' }],
+    ['nonexistent calendar date', data => { data.projects[0].createdAt = '2026-02-30T10:00:00Z' }],
+    ['hour 24', data => { data.projects[0].createdAt = '2026-02-28T24:00:00Z' }],
     ['invalid note createdAt', data => { data.notes[0].createdAt = '2026-11-02' }],
     ['invalid note updatedAt', data => { data.notes[0].updatedAt = 'later' }],
   ]

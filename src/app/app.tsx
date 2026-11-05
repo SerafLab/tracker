@@ -220,6 +220,6 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   </>
   const actions = { exportBackup: runtime.useCases.exportBackup, summary: runtime.useCases.summary, parseBackup: runtime.useCases.parseBackup, restore: (backup: Backup) => runtime.store.getState().restoreBackup(backup) }
   const backupEnabled = workspaceReady && !restartRequired
-  return <NotificationProvider isolated={panelIsolated}><BackupProvider enabled={backupEnabled} actions={actions} requestLeave={requestLeave} showCatalogue={() => navigate.current('')}><InstallProvider ready={backupEnabled}>{content}</InstallProvider></BackupProvider></NotificationProvider>
+  return <NotificationProvider isolated={panelIsolated}><BackupProvider enabled={backupEnabled} actions={actions} requestLeave={requestLeave} showCatalogue={() => navigate.current('', false)}><InstallProvider ready={backupEnabled}>{content}</InstallProvider></BackupProvider></NotificationProvider>
 }
 export function App(props: Parameters<typeof WorkspaceApp>[0]) { return <LocaleProvider><ThemeProvider><WorkspaceApp {...props} /></ThemeProvider></LocaleProvider> }

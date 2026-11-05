@@ -116,6 +116,33 @@ test.describe('backup', () => {
     await expect(page.locator('.note-list time')).toHaveCount(3)
   })
 
+  test('restoring on an open board shows the restored catalogue, also after a reload', async ({ page }, info) => {
+    await start(page, original)
+    const path = info.outputPath('open-board.json')
+    const exporting = page.waitForEvent('download')
+    await chooseEntry(page, 'Выгрузить резервную копию')
+    await (await exporting).saveAs(path)
+    await writeData(page, replacement)
+    await page.getByRole('button', { name: 'Gamma', exact: true }).click()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Gamma')
+    await restoreFile(page, false, path)
+    await page.getByRole('dialog').getByRole('button', { name: 'Заменить' }).click()
+    await expect(page.locator('.project-card')).toHaveCount(2)
+    await page.reload()
+    await expect(page.locator('.project-card')).toHaveCount(2)
+    expect(new URL(page.url()).hash).toBe('')
+    expect(await readData(page)).toEqual(original)
+  })
+
+  test('the full card page offers both backup entries', async ({ page }) => {
+    await start(page, original)
+    await page.goto('/tracker/#project/pa/card/c1')
+    await page.reload()
+    await expect(page.getByRole('button', { name: 'Назад к доске' })).toBeVisible()
+    await page.getByRole('button', { name: 'Настройки' }).click()
+    await expect(page.getByRole('menuitem').filter({ hasText: /резервн/ })).toHaveText(['Выгрузить резервную копию', 'Восстановить из резервной копии'])
+  })
+
   test('rejects damaged and unrelated files without changing data', async ({ page }, info) => {
     await start(page, original)
     const before = await readData(page)

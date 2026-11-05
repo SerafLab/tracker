@@ -4,7 +4,16 @@ import { cardPriority } from './order'
 export type BackupData = { projects: Project[]; statuses: Status[]; cards: Card[]; notes: Note[] }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/
-export const isIsoDate = (value: string) => ISO_DATE.test(value) && !Number.isNaN(Date.parse(value))
+const DATE_PARTS = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:Z|[+-](\d{2}):(\d{2}))$/
+
+/** A strict ISO 8601 timestamp whose calendar date and time exist (no 02-30, no hour 24). */
+export function isIsoDate(value: string) {
+  if (!ISO_DATE.test(value) || Number.isNaN(Date.parse(value))) return false
+  const [year, month, day, hour, minute, second, offsetHour = 0, offsetMinute = 0] = DATE_PARTS.exec(value)!.slice(1).map(part => Number(part ?? 0))
+  const date = new Date(Date.UTC(year, month - 1, day))
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+    && hour < 24 && minute < 60 && second < 60 && offsetHour < 24 && offsetMinute < 60
+}
 
 const unique = (ids: string[]) => new Set(ids).size === ids.length
 

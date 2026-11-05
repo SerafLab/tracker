@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { ActionDialog, type Backup, type BackupSummary, type ParseBackupResult } from '../../features/project-board'
 import { SettingsEntries } from '../../ui/settings-entry'
@@ -54,7 +55,9 @@ export function BackupProvider({ enabled, actions, requestLeave, showCatalogue, 
     catch { setDialog({ kind: 'error', message: 'backupRestoreFailed' }) }
   }
   const replace = (backup: Backup) => {
-    setDialog(null)
+    // Unmount the comparison and put focus on the gear first, so a draft question returns focus there.
+    flushSync(() => setDialog(null))
+    opener.current?.focus()
     requestLeave(async () => {
       let restored = false
       try { restored = await actions.restore(backup) } catch { /* Reported below. */ }

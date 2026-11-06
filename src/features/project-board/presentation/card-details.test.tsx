@@ -27,7 +27,12 @@ async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectB
   const user = userEvent.setup()
   return { repo, db, user }
 }
-async function editor(user: ReturnType<typeof userEvent.setup>) { await user.click(screen.getByRole('button', { name: 'Добавить заметку' })); return screen.getByLabelText('Новая заметка') }
+// The add trigger stays disabled until the previous save settles; a click before that is ignored.
+async function editor(user: ReturnType<typeof userEvent.setup>) {
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Добавить заметку' })).toBeEnabled())
+  await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  return screen.findByLabelText('Новая заметка')
+}
 const pencil = () => screen.findByRole('button', { name: 'Редактировать основное' })
 async function fields(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await pencil())

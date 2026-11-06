@@ -184,13 +184,9 @@ test('keeps native touch swipes before hold, then drags without opening on relea
     await setup(page)
     await card(page, 'A2').scrollIntoViewIfNeeded()
     const initial = await writes(page), boardUrl = page.url()
-    const swipe = async (x: number, y: number, dx: number, dy: number) => {
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
-      for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * step / 6, y: y + dy * step / 6 }] })
-      const scrolled = page.evaluate(() => new Promise<void>(resolve => document.addEventListener('scrollend', () => resolve(), { once: true, capture: true })))
-      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
-      await scrolled
-    }
+    // The browser paces the whole swipe, so its first move cannot lag behind the 250 ms hold the way
+    // separately sent touch events do on a loaded machine. The call resolves after the touch ends, without a fling.
+    const swipe = (x: number, y: number, dx: number, dy: number) => cdp.send('Input.synthesizeScrollGesture', { x, y, xDistance: dx, yDistance: dy, gestureSourceType: 'touch', speed: 1200 })
     let bounds = await card(page, 'A2').boundingBox()
     await swipe(300, bounds!.y + 25, -210, 0)
     const list = page.locator('[data-board-scroller]')
@@ -205,7 +201,6 @@ test('keeps native touch swipes before hold, then drags without opening on relea
     await list.evaluate(node => { node.scrollTop = 0 }); await card(page, 'A2').scrollIntoViewIfNeeded()
     bounds = await card(page, 'A2').boundingBox()
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: bounds!.x + 30, y: bounds!.y + 25 }] })
-    await page.waitForTimeout(300)
     await expect(card(page, 'A2')).toHaveAttribute('data-dragging', 'true')
     await expect(page.locator('.drag-card-preview')).toBeVisible()
     const target = await card(page, 'A1').boundingBox()
@@ -216,7 +211,6 @@ test('keeps native touch swipes before hold, then drags without opening on relea
     await expect(page).toHaveURL(boardUrl); await expect(page.locator('.card-detail')).toBeHidden()
     const committed = await writes(page), current = await card(page, 'A2').boundingBox()
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: current!.x + 30, y: current!.y + 25 }] })
-    await page.waitForTimeout(300)
     await expect(card(page, 'A2')).toHaveAttribute('data-dragging', 'true')
     await cdp.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] })
     await expect(page.locator('.card-placement-marker')).toHaveCount(0)

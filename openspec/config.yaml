@@ -1,24 +1,5 @@
 schema: spec-driven
 
-context: |
-  Explore workflow for this project:
-  - On entering openspec-explore, before the first discovery question, read and
-    apply grill-with-docs and both skills it composes: grilling and domain-modeling.
-    Resolve their SKILL.md files from the installed skills; if no Skill tool is
-    available, read the files directly. If a required skill is unavailable,
-    report it and stop the interview rather than silently substituting a workflow.
-  - Announce all three loaded skills before the first question round.
-  - Use grilling's numbered question rounds with a recommendation for each
-    question. Ask all currently unblocked decisions together, then wait for the
-    user's answers before asking dependent questions. This project explicitly
-    requests rounds instead of explore's default one-question-at-a-time format.
-  - Use domain-modeling to check terminology and identify glossary or ADR updates.
-    Keep proposed updates in the conversation until the user authorizes writing
-    those files; skill loading does not authorize implementation or file changes.
-  - Before suggesting a transition to proposal, summarize confirmed decisions and
-    unresolved questions, and obtain the user's confirmation of shared understanding.
-    Respect an explicit request to pause or end exploration.
-
 # Project context (optional)
 # Add only constraints that should guide OpenSpec artifacts and workflows.
 # Include constraints an agent cannot infer by reading the code.

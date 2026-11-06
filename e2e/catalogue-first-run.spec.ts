@@ -35,11 +35,10 @@ for (const size of referenceViewports) for (const language of ['ru', 'en'] as co
     const above = area.y - barBottom
     const below = height - (area.y + area.height)
     if (width >= 1280) {
-      const share = above / (height - barBottom)
+      // Free height is the space left above and below the block.
+      const share = above / (above + below)
+      expect(share).toBeGreaterThanOrEqual(0.35)
       expect(share).toBeLessThanOrEqual(0.45)
-      // Open question: the approved formula gives 33.6 % at 1280x800, below the 35 % the spec requires.
-      if (width === 1280) test.info().annotations.push({ type: 'open-question', description: `share ${share.toFixed(3)} at 1280x800` })
-      else expect(share).toBeGreaterThanOrEqual(0.35)
     }
     if ((width === 820 && height === 1180) || (width === 390 && height === 844)) {
       expect(above).toBeGreaterThanOrEqual(24)

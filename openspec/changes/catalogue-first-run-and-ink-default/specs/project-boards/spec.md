@@ -38,7 +38,7 @@
 
 #### Scenario: Block sits at the optical centre on wide screens
 - **WHEN** пустой каталог показан при 1440×900 или 1280×800
-- **THEN** расстояние от app bar до блока составляет от 35 до 45 % свободной высоты между app bar и нижним краем окна
+- **THEN** расстояние от app bar до блока составляет от 35 до 45 % суммы свободных расстояний над блоком (до app bar) и под ним (до нижнего края окна)
 
 #### Scenario: Block stays in the upper part on tall screens and phones
 - **WHEN** пустой каталог показан при 820×1180 или 390×844

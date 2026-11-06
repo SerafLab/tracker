@@ -2,22 +2,22 @@
 
 ## 1. Тема Ink по умолчанию
 
-- [ ] 1.1 В `src/styles.css` перенести значения Ink в `:root`, а прежний блок `:root[data-theme="ink"]` заменить на `:root[data-theme="green"]` со значениями Green. Общие токены (фон, поверхности, поле, ошибки) остаются только в `:root`. Проверка: `node --test scripts/theme-contrast.check.mjs` после задачи 1.3.
-- [ ] 1.2 Переключить механизм темы:
+- [x] 1.1 В `src/styles.css` перенести значения Ink в `:root`, а прежний блок `:root[data-theme="ink"]` заменить на `:root[data-theme="green"]` со значениями Green. Общие токены (фон, поверхности, поле, ошибки) остаются только в `:root`. Проверка: `node --test scripts/theme-contrast.check.mjs` после задачи 1.3.
+- [x] 1.2 Переключить механизм темы:
   - inline-скрипт в `index.html` ставит `data-theme="green"` только при точном значении `green`;
   - `applyTheme` в `src/ui/theme.ts` ставит атрибут для Green и снимает его для Ink;
   - `ThemeProvider` по умолчанию возвращает Ink.
 
   Обновить `src/ui/theme.test.tsx`: отсутствующее, неизвестное, `Green` в другом регистре и недоступное хранилище дают Ink без атрибута; `green` даёт атрибут; выбор сохраняется. Проверка: `npx vitest --run --repeats=10 src/ui/theme.test.tsx`.
-- [ ] 1.3 Обновить `scripts/theme-contrast.check.mjs`: Ink читается из `:root`, Green — как `:root` с переопределением; проверка «переопределяются только токены темы» применяется к блоку Green; список зелёных литералов ищется в блоке Green. Проверка: `node --test scripts/theme-contrast.check.mjs`.
-- [ ] 1.4 В `public/manifest.ru.webmanifest` и `public/manifest.en.webmanifest` указать `theme_color` `#2d496d`. Проверка: поиск `0F766E` находит только `public/icons/easytrack-icon.svg` и архив OpenSpec.
-- [ ] 1.5 Обновить `e2e/color-theme.spec.ts`:
+- [x] 1.3 Обновить `scripts/theme-contrast.check.mjs`: Ink читается из `:root`, Green — как `:root` с переопределением; проверка «переопределяются только токены темы» применяется к блоку Green; список зелёных литералов ищется в блоке Green. Проверка: `node --test scripts/theme-contrast.check.mjs`.
+- [x] 1.4 В `public/manifest.ru.webmanifest` и `public/manifest.en.webmanifest` указать `theme_color` `#2d496d`. Проверка: поиск `0F766E` находит только `public/icons/easytrack-icon.svg` и архив OpenSpec.
+- [x] 1.5 Обновить `e2e/color-theme.spec.ts`:
   - первый запуск и нераспознанное значение дают Ink, в меню отмечена «Чернильная»;
   - сохранённое `green` применяется до первой отрисовки;
   - переключение в обе стороны работает.
 
   Проверить все e2e, которые предполагают Green по умолчанию. Проверка: `npx playwright test e2e/color-theme.spec.ts e2e/app-bar.spec.ts --repeat-each=5` с уникальным `E2E_PORT`.
-- [ ] 1.6 В `DESIGN.md`, раздел «Поверхности и цвет»:
+- [x] 1.6 В `DESIGN.md`, раздел «Поверхности и цвет»:
   - «Чернильная» — тема по умолчанию;
   - `:root` содержит Ink, `data-theme="green"` переопределяет;
   - манифест использует акцент Ink.

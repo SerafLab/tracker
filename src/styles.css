@@ -6,44 +6,21 @@
   background: var(--canvas);
   --canvas: #f5f4f0;
   --surface: #fffefa;
-  --surface-subtle: #e7ece3;
+  --surface-subtle: #e4ebf4;
   --field: #fff;
-  --text: #26372e;
-  --text-secondary: #516157;
-  --text-muted: #67716a;
-  --border: #d9ddd4;
+  --text: #283342;
+  --text-secondary: #525d6c;
+  --text-muted: #676f79;
+  --border: #d5dce5;
   --column-surface: rgb(255 255 255 / 22%);
-  --accent: #315f48;
-  --accent-hover: #244d38;
-  --focus: #22744c;
+  --accent: #2d496d;
+  --accent-hover: #1f3858;
+  --focus: #275793;
   --danger: #ad3026;
   --danger-bg: #fbece7;
   --radius-control: .4375rem;
   --radius-card: .75rem;
   --radius-dialog: 1rem;
-  --border-strong: #a5b3a7;
-  --field-border: #aeb9af;
-  --selection-bg: #cbe2d1;
-  --selection-text: #193126;
-  --tap-highlight: #91b8a533;
-  --marker-bg: #e3ece4;
-  --skeleton: #e3e7de;
-  --scrollbar: #9aaa9c;
-  --text-disabled: #838b81;
-  --backdrop: rgb(28 48 43 / 33%);
-  --shadow-raised: 0 8px 28px rgb(18 39 30 / 14%);
-  --shadow-dialog: 0 18px 70px rgb(18 39 30 / 21%);
-  --workspace-width: 90rem;
-}
-:root[data-theme="ink"] {
-  --surface-subtle: #e4ebf4;
-  --text: #283342;
-  --text-secondary: #525d6c;
-  --text-muted: #676f79;
-  --border: #d5dce5;
-  --accent: #2d496d;
-  --accent-hover: #1f3858;
-  --focus: #275793;
   --border-strong: #a4b0bf;
   --field-border: #adb6c3;
   --selection-bg: #cbddf4;
@@ -56,6 +33,29 @@
   --backdrop: rgb(33 44 58 / 33%);
   --shadow-raised: 0 8px 28px rgb(22 35 51 / 14%);
   --shadow-dialog: 0 18px 70px rgb(22 35 51 / 21%);
+  --workspace-width: 90rem;
+}
+:root[data-theme="green"] {
+  --surface-subtle: #e7ece3;
+  --text: #26372e;
+  --text-secondary: #516157;
+  --text-muted: #67716a;
+  --border: #d9ddd4;
+  --accent: #315f48;
+  --accent-hover: #244d38;
+  --focus: #22744c;
+  --border-strong: #a5b3a7;
+  --field-border: #aeb9af;
+  --selection-bg: #cbe2d1;
+  --selection-text: #193126;
+  --tap-highlight: #91b8a533;
+  --marker-bg: #e3ece4;
+  --skeleton: #e3e7de;
+  --scrollbar: #9aaa9c;
+  --text-disabled: #838b81;
+  --backdrop: rgb(28 48 43 / 33%);
+  --shadow-raised: 0 8px 28px rgb(18 39 30 / 14%);
+  --shadow-dialog: 0 18px 70px rgb(18 39 30 / 21%);
 }
 
 * { box-sizing: border-box; }

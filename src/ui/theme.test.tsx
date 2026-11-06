@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import indexHtml from '../../index.html?raw'
@@ -19,12 +19,13 @@ describe('inline theme script in index.html', () => {
     expect(script).toContain(`"${themeStorageKey}"`)
     expect(indexHtml.indexOf('<script>')).toBeLessThan(indexHtml.indexOf('<title>'))
   })
-  it('sets the attribute only for the exact stored value ink', () => {
+  it('sets the attribute only for the exact stored value green', () => {
     expect(run({ getItem: () => null })).toBeUndefined()
     expect(run({ getItem: () => 'plum' })).toBeUndefined()
-    expect(run({ getItem: () => 'Ink' })).toBeUndefined()
+    expect(run({ getItem: () => 'Green' })).toBeUndefined()
+    expect(run({ getItem: () => 'ink' })).toBeUndefined()
     expect(run({ getItem: () => { throw Error('blocked') } })).toBeUndefined()
-    expect(run({ getItem: key => key === themeStorageKey ? 'ink' : null })).toBe('ink')
+    expect(run({ getItem: key => key === themeStorageKey ? 'green' : null })).toBe('green')
   })
 })
 
@@ -37,37 +38,37 @@ const openSettings = (user: ReturnType<typeof userEvent.setup>) => user.click(sc
 const themeGroup = (name: string | RegExp = /^(Application color theme|Цветовая тема приложения)$/) => screen.findByRole('group', { name })
 
 describe('theme menu group', () => {
-  it('applies and stores the choice, removing the attribute for Green', async () => {
+  it('applies and stores the choice, removing the attribute for Ink', async () => {
     const user = userEvent.setup()
     renderBar()
     await openSettings(user)
     const group = await themeGroup()
-    expect(within(group).getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'true')
-    await user.click(within(group).getByRole('menuitemradio', { name: 'Ink' }))
-    expect(document.documentElement.dataset.theme).toBe('ink')
-    expect(localStorage.getItem(themeStorageKey)).toBe('ink')
     expect(within(group).getByRole('menuitemradio', { name: 'Ink' })).toHaveAttribute('aria-checked', 'true')
-    expect(within(group).getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'false')
     await user.click(within(group).getByRole('menuitemradio', { name: 'Green' }))
-    expect(document.documentElement).not.toHaveAttribute('data-theme')
+    await waitFor(() => expect(document.documentElement.dataset.theme).toBe('green'))
     expect(localStorage.getItem(themeStorageKey)).toBe('green')
+    expect(within(group).getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(group).getByRole('menuitemradio', { name: 'Ink' })).toHaveAttribute('aria-checked', 'false')
+    await user.click(within(group).getByRole('menuitemradio', { name: 'Ink' }))
+    await waitFor(() => expect(document.documentElement).not.toHaveAttribute('data-theme'))
+    expect(localStorage.getItem(themeStorageKey)).toBe('ink')
   })
   it('starts from the attribute set before first paint', async () => {
-    document.documentElement.dataset.theme = 'ink'
+    document.documentElement.dataset.theme = 'green'
     const user = userEvent.setup()
     renderBar()
     await openSettings(user)
-    expect(within(await themeGroup()).getByRole('menuitemradio', { name: 'Ink' })).toHaveAttribute('aria-checked', 'true')
+    expect(within(await themeGroup()).getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'true')
   })
   it('keeps the theme for the session and warns when the write fails', async () => {
     const user = userEvent.setup()
     renderBar('ru')
     await openSettings(user)
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw Error('blocked') })
-    await user.click(within(await themeGroup('Цветовая тема приложения')).getByRole('menuitemradio', { name: 'Чернильная' }))
-    expect(document.documentElement.dataset.theme).toBe('ink')
+    await user.click(within(await themeGroup('Цветовая тема приложения')).getByRole('menuitemradio', { name: 'Зелёная' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось сохранить цветовую тему')
-    expect(screen.getByRole('menuitemradio', { name: 'Чернильная' })).toHaveAttribute('aria-checked', 'true')
+    expect(document.documentElement.dataset.theme).toBe('green')
+    expect(screen.getByRole('menuitemradio', { name: 'Зелёная' })).toHaveAttribute('aria-checked', 'true')
   })
   it('follows the interface language', async () => {
     const user = userEvent.setup()

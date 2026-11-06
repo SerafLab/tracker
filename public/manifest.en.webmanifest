@@ -7,7 +7,7 @@
   "start_url": "/tracker/",
   "scope": "/tracker/",
   "display": "standalone",
-  "theme_color": "#0F766E",
+  "theme_color": "#2d496d",
   "background_color": "#F7F8F7",
   "icons": [
     {

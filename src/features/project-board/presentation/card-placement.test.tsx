@@ -60,10 +60,11 @@ it('preserves the confirmed board after refresh failure, blocks conflicting acti
   await user.keyboard('{Escape}')
   await user.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Обновить доску' }))
   await waitFor(() => expect(names()).toEqual(['Both', 'Middle', 'First', 'Last', 'None']))
-  expect(committed).toHaveBeenCalledOnce()
+  // The toast and the restored focus follow the refreshed board, so wait for each of them.
+  await waitFor(() => expect(toast()).toHaveTextContent('Расположение карточки сохранено.'))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Действия карточки First' })).toHaveFocus())
   expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-  expect(toast()).toHaveTextContent('Расположение карточки сохранено.')
-  expect(screen.getByRole('button', { name: 'Действия карточки First' })).toHaveFocus()
+  expect(committed).toHaveBeenCalledOnce()
 })
 
 it('keeps catalogue navigation after reload while a placement commit is pending', async () => {

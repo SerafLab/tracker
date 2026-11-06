@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { App } from '../../../app/app'
 import { ProjectBoardDatabase } from '../infrastructure/indexeddb/database'
 import { DexieProjectBoardRepository } from '../infrastructure/indexeddb/dexie-project-board-repository'
+import { findHeaderCreate } from '../../../test/queries'
 
 const databases: ProjectBoardDatabase[] = []
 afterEach(async () => {
@@ -102,7 +103,7 @@ it('deletes a selected ID with an identical name and focuses the next, previous 
     await within(dialog).findByText('Статусов: 1. Карточек: 1.')
     await user.click(within(dialog).getByRole('button', { name: 'Удалить проект' }))
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-    const target = next ? document.querySelector(`[data-project-id="${next}"] .project-open`) : screen.getByRole('button', { name: 'Создать проект' })
+    const target = next ? document.querySelector(`[data-project-id="${next}"] .project-open`) : within(screen.getByRole('main')).getByRole('button', { name: 'Создать проект' })
     await waitFor(() => expect(target).toHaveFocus())
     expect(await repo.board(id)).toBeUndefined()
     expect(await db.notes.get(`n-${id}`)).toBeUndefined()
@@ -122,7 +123,7 @@ it('deletes from board settings and changes only the route after the atomic pref
   await openBoardDeletion(user)
   await user.click(screen.getByRole('button', { name: 'Удалить проект' }))
   expect(await screen.findByRole('heading', { name: 'Начните с первого проекта' })).toBeInTheDocument()
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Создать проект' })).toHaveFocus())
+  await waitFor(() => expect(within(screen.getByRole('main')).getByRole('button', { name: 'Создать проект' })).toHaveFocus())
   expect(location.hash).toBe('')
   expect(await db.notes.count()).toBe(0)
   expect((await repo.preference())?.lastProjectId).toBeUndefined()

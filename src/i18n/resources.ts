@@ -77,9 +77,8 @@ export const ru = {
 
   "settings": "Настройки", "applicationLanguage": "Язык приложения", "colorTheme": "Цветовая тема приложения", "themeGreen": "Зелёная", "themeInk": "Чернильная",
   "title": "Трекер личных проектов",
-  "subtitle": "Держите важные дела в понятном порядке.",
   "firstProject": "Начните с первого проекта",
-  "firstProjectHelp": "Создайте доску для дела, к которому хотите легко возвращаться.",
+  "firstProjectName": "Первый проект",
   "createProject": "Создать проект",
   "newProject": "Новый проект",
   "projectName": "Название проекта",
@@ -258,9 +257,8 @@ export const en: { [Key in keyof typeof ru]: string } = {
 
   "settings": "Settings", "applicationLanguage": "Application language", "colorTheme": "Application color theme", "themeGreen": "Green", "themeInk": "Ink",
   "title": "Personal project tracker",
-  "subtitle": "Keep important tasks in clear order.",
   "firstProject": "Start with your first project",
-  "firstProjectHelp": "Create a board for something you want to return to easily.",
+  "firstProjectName": "First project",
   "createProject": "Create project",
   "newProject": "New project",
   "projectName": "Project name",

@@ -6,10 +6,10 @@ for (const width of [320, 1280]) {
     await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     const projectName = page.getByRole('textbox', { name: /^(Новый проект|Название проекта)$/ })
-    if (await projectName.count() === 0) await page.getByRole('button', { name: 'Создать проект' }).click()
+    if (await projectName.count() === 0) await page.getByRole('banner').getByRole('button', { name: 'Создать проект' }).click()
     await projectName.fill('Удаление')
     await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
-    await page.getByRole('button', { name: 'Создать проект' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Создать проект' }).click()
     for (const name of ['Первый', 'Второй']) {
       await page.getByRole('button', { name: 'Добавить статус' }).first().click()
       await page.getByLabel('Название статуса').fill(name)

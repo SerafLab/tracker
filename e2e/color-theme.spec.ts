@@ -154,7 +154,7 @@ test('a theme choice that cannot be saved still applies and warns in the setting
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByRole('menuitemradio', { name: 'Green' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'green')
-  await expect(page.getByRole('alert')).toContainText('Could not save your color theme')
+  await expect(page.locator('.settings-panel').getByRole('alert')).toContainText('Could not save your color theme')
   await expect(page.getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('group', { name: 'Application color theme' })).toHaveCount(1)
   await expect(page.getByRole('group', { name: 'Application language' })).toHaveCount(1)

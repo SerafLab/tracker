@@ -9,7 +9,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await page.goto('/tracker/')
     if (en) { await selectLanguage(page, 'en') }
     await expect(page.getByRole('heading', { name: en ? 'Start with your first project' : 'Начните с первого проекта' })).toBeVisible()
-    await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
+    await page.getByRole('banner').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     await page.getByRole('dialog').getByRole('textbox').fill('Поиск квартиры')
     await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
     await page.getByRole('dialog').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
@@ -180,7 +180,7 @@ type SeedStatus = { name: string; cards: number }
 /** Writes a project straight into IndexedDB; the lists are long enough to scroll without driving the form for each card. */
 async function seedBoard(page: Page, statuses: SeedStatus[], project = 'long') {
   await page.goto('/tracker/')
-  await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
   await page.evaluate(async ({ statuses, project }) => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
     await new Promise<void>((resolve, reject) => {
@@ -432,7 +432,7 @@ for (const width of [1280, 1440]) for (const language of ['ru', 'en'] as const) 
     const en = language === 'en'
     await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
-    await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
+    await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
     if (en) { await selectLanguage(page, 'en') }
     await page.evaluate(async () => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
@@ -494,7 +494,7 @@ for (const width of [1280, 1440]) for (const language of ['ru', 'en'] as const) 
 for (const count of [2, 3]) test(`${count} statuses sit together at the left with the design gap at 1440px`, async ({ page }) => {
   await page.setViewportSize(viewportFor(1440))
   await page.goto('/tracker/')
-  await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
   await page.evaluate(async count => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })
     await new Promise<void>((resolve, reject) => {

@@ -8,7 +8,7 @@ for (const language of ['ru', 'en'] as const) for (const width of [390, 1280]) {
     await page.addInitScript(locale => localStorage.setItem('easytrack.locale', locale), language)
     await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
-    await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
+    await page.getByRole('banner').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
     const creation = page.getByRole('dialog')
     await expect(creation.getByRole('combobox', { name: en ? 'Status set' : 'Набор статусов' })).toHaveValue('simple')
     await creation.getByRole('textbox').fill('Integrated project')

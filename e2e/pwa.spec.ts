@@ -5,7 +5,7 @@ const app = '/tracker/'
 
 async function openAndControl(page: import('@playwright/test').Page) {
   await page.goto(app)
-  await expect(page.getByRole('button', { name: 'Создать проект' })).toBeVisible()
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект' })).toBeVisible()
   await page.evaluate(() => navigator.serviceWorker.ready)
   await page.reload()
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null)
@@ -30,10 +30,10 @@ test('delivers the manifest and keeps local projects usable offline', async ({ p
   expect(metadata.iconStatuses).toEqual([200, 200])
   expect(metadata.registration).toBe(true)
 
-  await page.getByRole('button', { name: 'Создать проект' }).click()
+  await page.getByRole('banner').getByRole('button', { name: 'Создать проект' }).click()
   await page.getByLabel('Название проекта').fill('Поиск квартиры')
   await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
-  await page.getByRole('button', { name: 'Создать проект' }).click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Создать проект' }).click()
   await expect(page.getByRole('heading', { name: 'Поиск квартиры' })).toBeVisible()
   await context.setOffline(true)
   await page.goto(app)
@@ -99,7 +99,7 @@ for (const locale of ['ru', 'en'] as const) {
     await expect(page.getByRole('group', { name: /^(Application language|Язык приложения)$/ })).toHaveCount(1)
     await expect(page.getByRole('group', { name: /^(Application color theme|Цветовая тема приложения)$/ })).toHaveCount(1)
     await expect(page.getByRole('menuitemradio', { name: locale === 'en' ? 'English' : 'Русский' })).toHaveAttribute('aria-checked', 'true')
-    await expect(page.getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' })).toBeVisible()
+    await expect(page.getByRole('banner').getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' })).toBeVisible()
     expect(await page.evaluate(async () => {
       const active = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')!
       return (await fetch(active.href).then(response => response.json())).lang
@@ -112,10 +112,10 @@ for (const width of [1280, 320]) {
   test(`switches language after closing an unfinished dialog at ${width}px`, async ({ page }) => {
     await page.setViewportSize(viewportFor(width))
     await page.goto(app)
-    await page.getByRole('button', { name: 'Создать проект' }).click()
+    await page.getByRole('banner').getByRole('button', { name: 'Создать проект' }).click()
     await page.getByLabel('Название проекта').fill('Мой проект')
     await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
-    await page.getByRole('button', { name: 'Создать проект' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Создать проект' }).click()
     await expect(page.getByRole('heading', { name: 'Мой проект' })).toBeVisible()
     await page.getByRole('button', { name: 'Добавить статус' }).first().click()
     await page.getByLabel('Название статуса').fill('Незавершённый черновик')
@@ -160,7 +160,7 @@ test.describe('first-visit installation invitation', () => {
     await page.keyboard.press('Escape')
     await expect(invitation).toBeHidden()
     await page.reload()
-    await expect(page.getByRole('button', { name: en ? 'Create project' : 'Создать проект' })).toBeVisible()
+    await expect(page.getByRole('banner').getByRole('button', { name: en ? 'Create project' : 'Создать проект' })).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     // The settings entry stays available after dismissal.
     await page.getByRole('button', { name: en ? 'Settings' : 'Настройки' }).click()
@@ -176,7 +176,7 @@ test.describe('first-visit installation invitation', () => {
       window.matchMedia = query => query === '(display-mode: standalone)' ? { ...original(query), matches: true, media: query } as MediaQueryList : original(query)
     })
     await page.goto(app)
-    await expect(page.getByRole('button', { name: 'Создать проект' })).toBeVisible()
+    await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект' })).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('button', { name: 'Настройки' }).click()
     await page.getByRole('menuitem', { name: 'Где хранятся проекты' }).click()

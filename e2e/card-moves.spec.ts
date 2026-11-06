@@ -5,10 +5,10 @@ for (const width of [320, 1280]) {
   test(`keeps card move controls readable and keyboard focus on the card at ${width}px`, async ({ page }) => {
     await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
-    await page.getByRole('button', { name: 'Создать проект' }).click()
+    await page.getByRole('banner').getByRole('button', { name: 'Создать проект' }).click()
     await page.getByLabel('Название проекта').fill('Доска')
     await page.getByRole('dialog').getByRole('combobox').selectOption('empty')
-    await page.getByRole('button', { name: 'Создать проект' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Создать проект' }).click()
     for (const name of ['Первый', 'Средний', 'Последний']) {
       await page.getByRole('button', { name: 'Добавить статус' }).first().click()
       await page.getByLabel('Название статуса').fill(name)

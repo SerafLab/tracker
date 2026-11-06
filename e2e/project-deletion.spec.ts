@@ -4,7 +4,7 @@ import { viewportFor } from './viewports'
 
 async function createProject(page: Page, name: string, en: boolean, empty = false) {
   const create = en ? 'Create project' : 'Создать проект'
-  await page.getByRole('button', { name: create, exact: true }).click()
+  await page.getByRole('banner').getByRole('button', { name: create, exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox').fill(name)
   if (empty) await dialog.getByRole('combobox').selectOption('empty')
@@ -101,7 +101,7 @@ for (const width of [320, 390, 1280]) for (const en of [false, true]) {
     await expect(dialog.getByRole('button', { name: en ? 'Cancel' : 'Отмена', exact: true })).toBeFocused()
     await page.keyboard.press('Tab'); await page.keyboard.press('Space')
     await expect(page.getByRole('heading', { name: en ? 'Start with your first project' : 'Начните с первого проекта', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true })).toBeFocused()
+    await expect(page.getByRole('main').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true })).toBeFocused()
     await expect(page).toHaveURL(/\/tracker\/$/)
     await page.goBack()
     await expect(page.getByRole('heading', { name: en ? 'Start with your first project' : 'Начните с первого проекта', exact: true })).toBeVisible()

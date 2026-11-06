@@ -144,8 +144,7 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .settings-panel { width: max-content; }
 .menu-warning { max-width: 15rem; margin: .25rem .75rem .5rem; color: var(--danger); font-size: .75rem; line-height: 1.5; overflow-wrap: anywhere; }
 .app-shell { --shell-top: 1.875rem; max-width: var(--workspace-width); min-width: 0; margin: 0 auto; padding: var(--shell-top) 2rem 4rem; }
-.page-subtitle, .muted-copy { color: var(--text-secondary); margin: .5rem 0 0; }
-.catalogue-subtitle { margin: 0 0 1.5rem; }
+.muted-copy { color: var(--text-secondary); margin: .5rem 0 0; }
 .button-row, .dialog-header, .form-actions { display: flex; align-items: center; gap: .5rem; }
 
 /* Shared controls stay familiar; color gives the primary action its weight. */
@@ -190,6 +189,14 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
 .form-actions { justify-content: flex-end; margin-top: 1.25rem; }
 .surface-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); }
 .save-error { background: var(--danger-bg); border: 1px solid #e7b8aa; border-radius: var(--radius-control); color: #7a271a; margin: 0 0 1rem; padding: .75rem 1rem; line-height: 1.5; overflow-wrap: anywhere; }
+/* First run is top-anchored: the alert below the button never moves the block. */
+.app-shell.catalogue-first-run { --shell-top: clamp(1.5rem, 48svh - 8.75rem, 20rem); }
+.catalogue-first-run-block { max-width: 26rem; margin-inline: auto; text-align: center; }
+.catalogue-first-run-block h2 { margin: 0; font-size: 1.5rem; line-height: 2rem; font-weight: 600; letter-spacing: -.02em; text-wrap: balance; }
+.catalogue-first-run-block .button { margin-top: 1.5rem; min-height: 3rem; padding-inline: 1.5rem; font-size: .9375rem; }
+.catalogue-first-run-block .button[aria-disabled="true"] { background: var(--canvas); color: var(--text-disabled); border-color: var(--border-strong); cursor: default; }
+.catalogue-first-run-alert { margin-top: .75rem; text-align: start; }
+.catalogue-first-run-alert .save-error { margin: 0; }
 .empty-state, .unavailable-state { max-width: 36rem; padding: 2rem; }
 .empty-state h2, .unavailable-state h1 { font-size: 1.25rem; line-height: 1.75rem; margin: 0; }
 .empty-state p, .unavailable-state p { color: var(--text-secondary); line-height: 1.6; }
@@ -325,6 +332,9 @@ button.app-brand { border: 0; padding: 0; background: transparent; color: inheri
   .dialog-title { font-size: 1.1875rem; }
   .empty-state, .unavailable-state { padding: 1.5rem; }
   .project-card { padding: 1.25rem; }
+  .app-shell.catalogue-first-run { --shell-top: clamp(1.5rem, 30svh - 3rem, 10rem); }
+  .catalogue-first-run-block h2 { font-size: 1.125rem; line-height: 1.625rem; }
+  .catalogue-first-run-block .button { width: 100%; }
 }
 @media (max-width: 22.5rem) {
   .page-title { font-size: 1.0625rem; }

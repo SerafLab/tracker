@@ -10,6 +10,7 @@ import { createProjectBoardStore } from '../state/project-board-store'
 import { createProjectBoardUseCases } from '../application/use-cases'
 import { DexieProjectBoardRepository } from '../infrastructure/indexeddb/dexie-project-board-repository'
 import { ProjectBoardDatabase } from '../infrastructure/indexeddb/database'
+import { findHeaderCreate } from '../../../test/queries'
 
 const sets = {
   ru: [
@@ -76,7 +77,7 @@ it('preserves a failed draft, blocks duplicate dispatch and succeeds on retry', 
 it('resets to Simple after cancellation and restores focus to the catalogue plus', async () => {
   const user = userEvent.setup()
   render(<LocaleProvider><ProjectCatalogueView onReadSummary={vi.fn()} onDelete={vi.fn()} projects={[]} saveError={false} onCreate={vi.fn()} onOpen={vi.fn()} onRename={vi.fn()} /></LocaleProvider>)
-  const create = screen.getByRole('button', { name: 'Создать проект' })
+  const create = within(screen.getByRole('banner')).getByRole('button', { name: 'Создать проект' })
   await user.click(create)
   await user.type(screen.getByRole('textbox'), 'Draft')
   await user.selectOptions(screen.getByRole('combobox'), 'job-search')
@@ -98,7 +99,7 @@ it('closes a committed creation after navigation fails without offering another 
     const saved = vi.fn(), navigate = vi.fn().mockRejectedValue(Error('navigation failed'))
     render(<LocaleProvider><ProjectBoardApp onProjectDeleted={async () => {}} navigateToCard={async () => {}} registerDraftGuard={() => {}} requestLeave={action => void action()} store={store} navigateToProject={navigate} navigateToCatalogue={vi.fn()} onMutationSaved={saved} /></LocaleProvider>)
     const user = userEvent.setup()
-    await user.click(screen.getByRole('button', { name: 'Создать проект' }))
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Создать проект' }))
     await user.type(screen.getByRole('textbox'), 'Saved project')
     await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Создать проект' }))
     expect(await screen.findByRole('button', { name: 'Saved project' })).toBeInTheDocument()

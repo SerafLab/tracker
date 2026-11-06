@@ -6,7 +6,7 @@ import { viewportFor } from './viewports'
 async function createBoard(page: Page, en = false) {
   await page.goto('/tracker/')
   if (en) { await selectLanguage(page, 'en') }
-  await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
+  await page.getByRole('banner').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox').fill('Detail project')
   await page.getByRole('dialog').getByRole('combobox', { name: en ? 'Status set' : 'Набор статусов' }).selectOption('empty')
   await page.getByRole('dialog').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()

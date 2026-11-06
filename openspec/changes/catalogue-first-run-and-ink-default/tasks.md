@@ -26,16 +26,16 @@
 
 ## 2. Пустой каталог и быстрое создание
 
-- [ ] 2.1 В `src/i18n/resources.ts`: добавить `firstProjectName` («Первый проект» / «First project»), удалить `firstProjectHelp` и `subtitle` в RU и EN. Проверка: `npx tsc -b` проходит, поиск удалённых ключей ничего не находит.
-- [ ] 2.2 В `project-catalogue-view.tsx`:
+- [x] 2.1 В `src/i18n/resources.ts`: добавить `firstProjectName` («Первый проект» / «First project»), удалить `firstProjectHelp` и `subtitle` в RU и EN. Проверка: `npx tsc -b` проходит, поиск удалённых ключей ничего не находит.
+- [x] 2.2 В `project-catalogue-view.tsx`:
   - удалить подзаголовок;
   - для пустого каталога вывести блок из design.md (решение 4): заголовок, кнопка `createProject` с `aria-disabled` во время сохранения и защитой `pending` ref, постоянный слот `role="alert"` с `saveError`, когда диалог создания закрыт;
   - общий `save-error` над содержимым показывать только при наличии проектов.
 
   Кнопка вызывает `onCreate` с `firstProjectName` и `presetStatusNames('simple', t)`. Проверка: unit-тест в задаче 2.5.
-- [ ] 2.3 Перенаправить фокус: цель `'create'` и `focusCreation` при пустом каталоге ведут на кнопку блока, иначе — на «+» в app bar (design.md, решение 6). Обновить `src/features/project-board/presentation/project-deletion.test.tsx` и `e2e/project-deletion.spec.ts`, ограничив поиск кнопки областью `main` или `banner`. Проверка: эти файлы проходят с `--repeats=10` и `--repeat-each=5`.
-- [ ] 2.4 В `src/styles.css` добавить стили блока из design.md (решение 4) и удалить `.page-subtitle` и `.catalogue-subtitle`, оставив `.muted-copy`. Проверка: поиск `page-subtitle` и `catalogue-subtitle` в `src` ничего не находит.
-- [ ] 2.5 Unit-тесты быстрого создания по сценариям «Quick first-project creation in an empty catalogue»:
+- [x] 2.3 Перенаправить фокус: цель `'create'` и `focusCreation` при пустом каталоге ведут на кнопку блока, иначе — на «+» в app bar (design.md, решение 6). Обновить `src/features/project-board/presentation/project-deletion.test.tsx` и `e2e/project-deletion.spec.ts`, ограничив поиск кнопки областью `main` или `banner`. Проверка: эти файлы проходят с `--repeats=10` и `--repeat-each=5`.
+- [x] 2.4 В `src/styles.css` добавить стили блока из design.md (решение 4) и удалить `.page-subtitle` и `.catalogue-subtitle`, оставив `.muted-copy`. Проверка: поиск `page-subtitle` и `catalogue-subtitle` в `src` ничего не находит.
+- [x] 2.5 Unit-тесты быстрого создания по сценариям «Quick first-project creation in an empty catalogue»:
   - RU и EN название и статусы;
   - одно создание при двойном нажатии;
   - при ошибке проекта нет, сообщение в слоте, фокус на кнопке и она снова активна;
@@ -43,7 +43,7 @@
   - фразы нет.
 
   Проверка: `npx vitest --run --repeats=10 <новый файл>`.
-- [ ] 2.6 E2E `e2e/catalogue-first-run.spec.ts`. На каждом эталонном размере из `e2e/viewports.ts` в RU и EN проверить сценарии «Empty catalogue presentation»:
+- [x] 2.6 E2E `e2e/catalogue-first-run.spec.ts`. На каждом эталонном размере из `e2e/viewports.ts` в RU и EN проверить сценарии «Empty catalogue presentation»:
   - горизонтальный центр блока;
   - доля отступа 35–45 % при 1440×900 и 1280×800;
   - отступ сверху меньше нижнего и не меньше 24 px при 820×1180 и 390×844;
@@ -51,7 +51,7 @@
   - при ошибке позиция кнопки не меняется.
 
   Отдельно: нажатие создаёт «Первый проект» с тремя статусами и открывает доску, после перезагрузки она остаётся. Обновить существующие e2e, которые ищут «Создать проект» или фразу без области (`e2e/calm-board.spec.ts`, хелперы создания проекта). Проверка: `npx playwright test e2e/catalogue-first-run.spec.ts <изменённые файлы> --repeat-each=5` с уникальным `E2E_PORT`.
-- [ ] 2.7 Документация:
+- [x] 2.7 Документация:
   - `DESIGN.md`: раздел «Каталог» (блок первого запуска, ширина, ритм 24/12, отступы в `svh`, привязка к верху, рамка неактивной кнопки только в блоке, сетка сразу под app bar без подзаголовка); исправить размер h1 на телефоне на 20 px (17 px до 22.5rem);
   - `PRODUCT.md`, «Current Capabilities»: быстрое создание первого проекта и тема Ink по умолчанию; в «Brand Commitments» оставить историческую запись.
 

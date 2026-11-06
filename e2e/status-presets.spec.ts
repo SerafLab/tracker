@@ -26,7 +26,7 @@ for (const language of ['ru', 'en'] as const) for (const [id, names] of sets[lan
     await page.addInitScript(language => localStorage.setItem('easytrack.locale', language), language)
     await page.goto('/tracker/')
     const createName = language === 'en' ? 'Create project' : 'Создать проект'
-    await page.getByRole('button', { name: createName, exact: true }).click()
+    await page.getByRole('banner').getByRole('button', { name: createName, exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByRole('combobox')).toHaveValue('simple')
     await dialog.getByRole('textbox').fill(`Project ${id}`)
@@ -41,7 +41,7 @@ for (const language of ['ru', 'en'] as const) for (const [id, names] of sets[lan
     await page.reload()
     await expect(page.locator('.column-title')).toHaveText([...names])
     await page.getByRole('button', { name: /^EasyTrack —/ }).click()
-    await page.getByRole('button', { name: createName, exact: true }).click()
+    await page.getByRole('banner').getByRole('button', { name: createName, exact: true }).click()
     await dialog.getByRole('textbox').fill('Independent')
     await dialog.getByRole('combobox').selectOption('empty')
     await dialog.getByRole('button', { name: createName, exact: true }).click()
@@ -54,7 +54,7 @@ for (const language of ['ru', 'en'] as const) for (const [id, names] of sets[lan
 
 test('preserves customized Russian names after switching language and creates new English names', async ({ page }) => {
   await page.goto('/tracker/')
-  await page.getByRole('button', { name: 'Создать проект', exact: true }).click()
+  await page.getByRole('banner').getByRole('button', { name: 'Создать проект', exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox').fill('Русский проект')
   await page.getByRole('dialog').getByRole('button', { name: 'Создать проект', exact: true }).click()
   await page.locator('.status-column').first().getByRole('button', { name: /^Действия статуса/ }).click()
@@ -67,7 +67,7 @@ test('preserves customized Russian names after switching language and creates ne
   await page.reload()
   await expect(page.locator('.column-title')).toHaveText(['Мой первый статус', 'В процессе', 'Готово'])
   await page.getByRole('button', { name: /^EasyTrack —/ }).click()
-  await page.getByRole('button', { name: 'Create project', exact: true }).click()
+  await page.getByRole('banner').getByRole('button', { name: 'Create project', exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox').fill('English project')
   await page.getByRole('dialog').getByRole('button', { name: 'Create project', exact: true }).click()
   await expect(page.locator('.column-title')).toHaveText(['To do', 'In progress', 'Done'])
@@ -89,7 +89,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     }, language)
     await page.goto('/tracker/')
     const en = language === 'en', createName = en ? 'Create project' : 'Создать проект'
-    const create = page.getByRole('button', { name: createName, exact: true })
+    const create = page.getByRole('banner').getByRole('button', { name: createName, exact: true })
     await create.focus(); await page.keyboard.press('Enter')
     const dialog = page.getByRole('dialog'), input = dialog.getByRole('textbox')
     await expect(input).toBeFocused()

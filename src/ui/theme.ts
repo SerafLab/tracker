@@ -1,6 +1,6 @@
 export type ColorTheme = 'green' | 'ink'
 export const themeStorageKey = 'easytrack.theme'
 export function applyTheme(theme: ColorTheme) {
-  if (theme === 'ink') document.documentElement.dataset.theme = 'ink'
+  if (theme === 'green') document.documentElement.dataset.theme = 'green'
   else delete document.documentElement.dataset.theme
 }

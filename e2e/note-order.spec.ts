@@ -7,7 +7,7 @@ const t = (en: boolean, ru: string, enText: string) => en ? enText : ru
 async function createBoard(page: Page, en: boolean, cards: string[]) {
   await page.goto('/tracker/')
   if (en) await selectLanguage(page, 'en')
-  await page.getByRole('button', { name: t(en, 'Создать проект', 'Create project'), exact: true }).click()
+  await page.getByRole('banner').getByRole('button', { name: t(en, 'Создать проект', 'Create project'), exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox').fill('Order project')
   await page.getByRole('dialog').getByRole('combobox', { name: t(en, 'Набор статусов', 'Status set') }).selectOption('empty')
   await page.getByRole('dialog').getByRole('button', { name: t(en, 'Создать проект', 'Create project'), exact: true }).click()

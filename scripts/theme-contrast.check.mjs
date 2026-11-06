@@ -10,10 +10,10 @@ const luminance = short => {
   return .2126 * r + .7152 * g + .0722 * b
 }
 const contrast = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + .05) / (lo + .05) }
-const green = block(':root')
-const ink = block(':root[data-theme="ink"]')
+const ink = block(':root')
+const greenOverrides = block(':root[data-theme="green"]')
 
-for (const [name, tokens] of [['green', green], ['ink', { ...green, ...ink }]]) {
+for (const [name, tokens] of [['ink', ink], ['green', { ...ink, ...greenOverrides }]]) {
   test(`${name} theme meets the legibility thresholds`, () => {
     for (const background of [tokens.canvas, tokens.surface, tokens.field]) {
       for (const text of ['text', 'text-secondary', 'text-muted']) assert.ok(contrast(tokens[text], background) >= 4.5, `${text} on ${background}`)
@@ -24,9 +24,9 @@ for (const [name, tokens] of [['green', green], ['ink', { ...green, ...ink }]]) 
   })
 }
 
-test('ink overrides only theme tokens and leaves shared semantic colours alone', () => {
-  for (const shared of ['canvas', 'surface', 'field', 'danger', 'danger-bg']) assert.ok(!(shared in ink), shared)
-  assert.ok(Object.keys(ink).every(name => name in green))
+test('green overrides only theme tokens and leaves shared semantic colours alone', () => {
+  for (const shared of ['canvas', 'surface', 'field', 'danger', 'danger-bg']) assert.ok(!(shared in greenOverrides), shared)
+  assert.ok(Object.keys(greenOverrides).every(name => name in ink))
 })
 
 const srgb = c => { c /= 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4 }
@@ -60,14 +60,14 @@ test('no green literal colours remain outside the theme token blocks', () => {
   const dir = new URL('../src/dev/', import.meta.url)
   const files = [['src/styles.css', styles], ...readdirSync(dir).filter(name => name.endsWith('.css')).map(name => [`src/dev/${name}`, readFileSync(new URL(name, dir), 'utf8')])]
   for (const [name, css] of files) {
-    const rules = css.replace(/:root(\[data-theme="ink"\])? \{[^}]*\}/g, '')
+    const rules = css.replace(/:root(\[data-theme="green"\])? \{[^}]*\}/g, '')
     const offenders = literals(rules).filter(([, rgb]) => isGreen(rgb)).map(([text]) => text)
     assert.deepEqual(offenders, [], `${name} has green literals outside theme tokens`)
   }
 })
 
 test('the green detector flags theme greens but not shared neutral or warm colours', () => {
-  for (const token of Object.values(green)) if (token.startsWith('#') && token.length > 4) assert.ok(literals(token).every(([, rgb]) => rgb.every(Number.isFinite)))
+  for (const token of Object.values(greenOverrides)) if (token.startsWith('#') && token.length > 4) assert.ok(literals(token).every(([, rgb]) => rgb.every(Number.isFinite)))
   for (const hex of ['#a5b3a7', '#cbe2d1', '#315f48', '#e3ece4']) assert.ok(isGreen(literals(hex)[0][1]), hex)
   for (const hex of ['#fff', '#f1ebd8', '#f9e8e0', '#ad3026', '#7a271a', '#e7b8aa', '#f5f4f0']) assert.ok(!isGreen(literals(hex)[0][1]), hex)
   assert.ok(literals('0 4px 24px #0003')[0] && !isGreen(literals('#0003')[0][1]))

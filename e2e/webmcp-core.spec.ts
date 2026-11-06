@@ -180,7 +180,7 @@ test('native-contract fixture revokes old handles and blocks both tool and UI wr
   expect(await page.evaluate(input => (window as any).oldFixtureCall(input), { sessionId: oldSession, requestId: 2, name: 'Blocked old handle', statusSetId: 'none' })).toMatchObject({ error: { code: 'disconnected' } })
   await host.rebind()
   expect(await host.call('create_project', { name: 'Blocked fresh handle', statusSetId: 'none' })).toMatchObject({ error: { code: 'restart_required' } })
-  await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект', exact: true })).toHaveCount(0)
 })
 
 test('native-contract fixture: delete_card on the open panel card closes the panel to the board, and is refused with a dirty draft', async ({ page }) => {

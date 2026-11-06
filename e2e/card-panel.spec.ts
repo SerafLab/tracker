@@ -5,7 +5,7 @@ import { viewportFor } from './viewports'
 
 async function seededBoard(page: Page, en = false) {
   await page.goto('/tracker/')
-  await expect(page.getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект', exact: true })).toBeVisible()
   if (en) { await selectLanguage(page, 'en') }
   await page.evaluate(async () => {
     const db = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open('personal-project-tracker'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error) })

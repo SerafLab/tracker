@@ -16,7 +16,7 @@ for (const language of ['ru', 'en'] as const) for (const width of [320, 390, 128
     }, language)
     const en = language === 'en', createName = en ? 'Create project' : 'Создать проект'
     await page.goto('/tracker/')
-    await page.getByRole('button', { name: createName, exact: true }).click()
+    await page.getByRole('banner').getByRole('button', { name: createName, exact: true }).click()
     const dialog = page.getByRole('dialog')
     await dialog.getByRole('textbox').fill('Existing empty project')
     await dialog.getByRole('combobox').selectOption('empty')
@@ -57,7 +57,7 @@ for (const language of ['ru', 'en'] as const) for (const width of [320, 390, 128
 
 test('uses the current language when an older empty project receives a set', async ({ page }) => {
   await page.goto('/tracker/')
-  await page.getByRole('button', { name: 'Создать проект', exact: true }).click()
+  await page.getByRole('banner').getByRole('button', { name: 'Создать проект', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox').fill('Создан по-русски')
   await dialog.getByRole('combobox').selectOption('empty')
@@ -73,7 +73,7 @@ test('uses the current language when an older empty project receives a set', asy
 
 test('refreshes a conflicting manual status without adding any part of the set', async ({ page }) => {
   await page.goto('/tracker/')
-  await page.getByRole('button', { name: 'Создать проект', exact: true }).click()
+  await page.getByRole('banner').getByRole('button', { name: 'Создать проект', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox').fill('Conflict')
   await dialog.getByRole('combobox').selectOption('empty')

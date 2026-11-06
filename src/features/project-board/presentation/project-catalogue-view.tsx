@@ -1,11 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { AppBar } from '../../../ui/app-bar'
-import { useEffect, useRef, useState, type RefObject } from 'react'
+import { useEffect, useId, useRef, useState, type RefObject } from 'react'
 import { useModalOpen } from '../../../ui/modal-state'
 import type { CreateProjectInput, Id, Project, ProjectSummary } from '../domain/model'
 import type { ProjectDeletionSummary } from '../state/project-board-store'
 import { ActionMenu, NameDialog } from './controls'
 import { ProjectCreateDialog } from './project-create-dialog'
+import { presetStatusNames } from './status-presets'
 import { DeleteDialog, type ProjectSummaryState } from './delete-dialog'
 
 type ProjectTrigger = RefObject<HTMLButtonElement | null>
@@ -27,10 +28,21 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
   const [summary, setSummary] = useState<ProjectSummaryState>({ kind: 'loading' })
   const [summaryAttempt, setSummaryAttempt] = useState(0)
   const [focusTarget, setFocusTarget] = useState<Id | 'create' | null>(null)
+  const [quickSaving, setQuickSaving] = useState(false)
   const createTrigger = useRef<HTMLButtonElement>(null)
+  const quickCreate = useRef<HTMLButtonElement>(null)
+  const quickPending = useRef(false)
+  const headingId = useId()
   const root = useRef<HTMLElement>(null)
   const modalOpen = useModalOpen()
   const deletingId = deleting?.project.id
+  const empty = projects.length === 0
+  // The lock lives as long as the block: a created project hides it, and an emptied catalogue shows it unlocked.
+  useEffect(() => {
+    if (empty) return
+    quickPending.current = false
+    setQuickSaving(false)
+  }, [empty])
   useEffect(() => {
     if (!deletingId) return
     let active = true
@@ -41,11 +53,20 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
   useEffect(() => {
     if (modalOpen || (!focusCreation && !focusTarget)) return
     const project = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-project-id]') ?? []).find(item => item.dataset.projectId === focusTarget)
-    const target = focusCreation || focusTarget === 'create' ? createTrigger.current : project?.querySelector<HTMLButtonElement>('.project-open') ?? createTrigger.current
+    const creationTarget = empty ? quickCreate.current : createTrigger.current
+    const target = focusCreation || focusTarget === 'create' ? creationTarget : project?.querySelector<HTMLButtonElement>('.project-open') ?? creationTarget
     target?.focus({ preventScroll: true })
     setFocusTarget(null)
     if (focusCreation) onCreationFocused?.()
-  }, [focusCreation, focusTarget, projects, modalOpen, onCreationFocused])
+  }, [focusCreation, focusTarget, projects, empty, modalOpen, onCreationFocused])
+  const createFirstProject = async () => {
+    if (quickPending.current) return
+    quickPending.current = true
+    setQuickSaving(true)
+    // A saved project hides the block, so only a failure unlocks the button here.
+    const saved = await onCreate({ name: t('firstProjectName'), initialStatusNames: presetStatusNames('simple', t) }).catch(() => false)
+    if (!saved) { quickPending.current = false; setQuickSaving(false) }
+  }
   const requestDeletion = (project: Project, returnFocus: ProjectTrigger) => { setSummary({ kind: 'loading' }); setDeleting({ project, returnFocus }) }
   const confirmDeletion = async () => {
     if (!deleting || summary.kind !== 'ready') return 'failed' as const
@@ -55,10 +76,17 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
     setDeleting(null); setFocusTarget(next)
     return 'deleted' as const
   }
-  return <><AppBar title={t('title')} creation={{ label: t('createProject'), triggerRef: createTrigger, onSelect: () => setCreating(true) }} /><main ref={root} className="app-shell">
-    <p className="page-subtitle catalogue-subtitle">{t('subtitle')}</p>
-    {saveError && !creating && !deleting ? <p className="save-error" role="alert">{t('saveError')}</p> : null}
-    {projects.length === 0 ? <section className="empty-state surface-card"><h2>{t('firstProject')}</h2><p>{t('firstProjectHelp')}</p></section> : <ul className="project-list">{projects.map(project => <CatalogueProject key={project.id} project={project} onOpen={onOpen} onRename={setRenaming} onDelete={requestDeletion} />)}</ul>}
+  return <><AppBar title={t('title')} creation={{ label: t('createProject'), triggerRef: createTrigger, onSelect: () => setCreating(true) }} /><main ref={root} className={empty ? 'app-shell catalogue-first-run' : 'app-shell'}>
+    {empty
+      ? <section className="catalogue-first-run-block" aria-labelledby={headingId} aria-busy={quickSaving}>
+        <h2 id={headingId}>{t('firstProject')}</h2>
+        <button ref={quickCreate} type="button" className="button button-primary" aria-disabled={quickSaving || undefined} onClick={() => void createFirstProject()}>{t('createProject')}</button>
+        <div className="catalogue-first-run-alert" role="alert">{saveError && !creating ? <p className="save-error">{t('saveError')}</p> : null}</div>
+      </section>
+      : <>
+        {saveError && !creating && !deleting ? <p className="save-error" role="alert">{t('saveError')}</p> : null}
+        <ul className="project-list">{projects.map(project => <CatalogueProject key={project.id} project={project} onOpen={onOpen} onRename={setRenaming} onDelete={requestDeletion} />)}</ul>
+      </>}
     {creating ? <ProjectCreateDialog returnFocus={createTrigger} onSubmit={onCreate} onClose={() => setCreating(false)} /> : null}
     {renaming ? <NameDialog title={t('renameProject')} label={t('newName')} button={t('save')} initialName={renaming.name} onSubmit={name => onRename(renaming.id, name)} onClose={() => setRenaming(null)} /> : null}
     {deleting ? <DeleteDialog kind="project" name={deleting.project.name} blocked={false} summary={summary} onRetrySummary={() => setSummaryAttempt(value => value + 1)} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}

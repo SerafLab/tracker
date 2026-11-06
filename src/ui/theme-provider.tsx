@@ -34,7 +34,7 @@ export function ThemePreferenceWarning() {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   // The inline script in index.html has already set the attribute before the first frame.
-  const [theme, setTheme] = useState<ColorTheme>(() => document.documentElement.dataset.theme === 'ink' ? 'ink' : 'green')
+  const [theme, setTheme] = useState<ColorTheme>(() => document.documentElement.dataset.theme === 'green' ? 'green' : 'ink')
   const [warning, setWarning] = useState(false)
   const select = (next: ColorTheme) => {
     applyTheme(next); setTheme(next)

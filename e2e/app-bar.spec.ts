@@ -10,7 +10,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     if (en) { await selectLanguage(page, 'en') }
     const createName = en ? 'Create project' : 'Создать проект'
     const addName = en ? 'Add status' : 'Добавить статус'
-    const create = page.getByRole('button', { name: createName, exact: true })
+    const create = page.getByRole('banner').getByRole('button', { name: createName, exact: true })
     await expect(create).toHaveCount(1)
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
     await page.screenshot({path: testInfo.outputPath(`catalogue-${language}-${width}.png`), fullPage: true})
@@ -130,7 +130,7 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await page.goto('/tracker/')
     const en = language === 'en'
     if (state === 'restart') {
-      await expect(page.getByRole('button', {name: en ? 'Create project' : 'Создать проект'})).toBeVisible()
+      await expect(page.getByRole('banner').getByRole('button', {name: en ? 'Create project' : 'Создать проект'})).toBeVisible()
       await page.evaluate(() => new Promise<void>((resolve, reject) => {
         const request = indexedDB.open('personal-project-tracker', 40)
         request.onsuccess = () => { request.result.close(); resolve() }
@@ -166,7 +166,7 @@ test('repositions settings after language and preference warning resize', async 
   await page.keyboard.press('Enter')
   await expect(select).toHaveAttribute('aria-checked', 'true')
   await expect(select).toBeFocused()
-  await expect(page.getByRole('alert')).toContainText('Не удалось сохранить язык')
+  await expect(page.locator('.settings-panel').getByRole('alert')).toContainText('Не удалось сохранить язык')
   await expect.poll(() => page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.top >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
 })
 
@@ -175,7 +175,7 @@ for (const language of ['ru', 'en'] as const) test(`remeasures a renamed title a
   await page.addInitScript(language => localStorage.setItem('easytrack.locale', language), language)
   await page.goto('/tracker/')
   const en = language === 'en'
-  await page.getByRole('button', {name: en ? 'Create project' : 'Создать проект', exact: true}).click()
+  await page.getByRole('banner').getByRole('button', {name: en ? 'Create project' : 'Создать проект', exact: true}).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox').fill('Medium project title changes across viewport')
   await dialog.getByRole('combobox').selectOption('empty')
@@ -222,7 +222,7 @@ for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) f
     await page.goto('/tracker/')
     const en = language === 'en'
     if (screen === 'board') {
-      await page.getByRole('button', {name: en ? 'Create project' : 'Создать проект', exact: true}).click()
+      await page.getByRole('banner').getByRole('button', {name: en ? 'Create project' : 'Создать проект', exact: true}).click()
       const dialog = page.getByRole('dialog')
       await dialog.getByRole('textbox').fill('Project')
       await dialog.getByRole('combobox').selectOption('empty')
@@ -259,7 +259,7 @@ test('shows the preference warning below the settings menu', async ({page}, test
   await page.goto('/tracker/')
   await page.getByRole('button', {name: 'Настройки'}).click()
   await page.getByRole('menuitemradio', {name: 'English'}).click()
-  const alert = page.getByRole('alert')
+  const alert = page.locator('.settings-panel').getByRole('alert')
   await expect(alert).toContainText('Could not save your language')
   await expect(page.getByRole('menu')).toBeVisible()
   expect(await page.getByRole('menu').evaluate((menu, alert) => !menu.contains(alert) && !!(menu.compareDocumentPosition(alert) & Node.DOCUMENT_POSITION_FOLLOWING), await alert.elementHandle())).toBe(true)
@@ -271,16 +271,16 @@ test('shows the theme warning below the menu alongside the language warning', as
   await page.addInitScript(() => { Storage.prototype.setItem = () => {throw Error('blocked')} })
   await page.goto('/tracker/')
   await page.getByRole('button', {name: 'Настройки'}).click()
-  await page.getByRole('menuitemradio', {name: 'Чернильная'}).click()
+  await page.getByRole('menuitemradio', {name: 'Зелёная'}).click()
   await page.getByRole('menuitemradio', {name: 'English'}).click()
-  await expect(page.getByRole('alert')).toHaveCount(2)
-  await expect(page.getByRole('alert').first()).toContainText('Could not save your language')
-  await expect(page.getByRole('alert').last()).toContainText('Could not save your color theme')
+  await expect(page.locator('.settings-panel').getByRole('alert')).toHaveCount(2)
+  await expect(page.locator('.settings-panel').getByRole('alert').first()).toContainText('Could not save your language')
+  await expect(page.locator('.settings-panel').getByRole('alert').last()).toContainText('Could not save your color theme')
   expect(await page.locator('.settings-panel').evaluate(element => {const b = element.getBoundingClientRect(); return b.left >= 0 && b.right <= innerWidth && b.bottom <= innerHeight})).toBe(true)
 })
 
 async function seedCardPage(page: Page, en: boolean, project: string, status: string) {
-  await page.getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
+  await page.getByRole('banner').getByRole('button', { name: en ? 'Create project' : 'Создать проект', exact: true }).click()
   const dialog = page.getByRole('dialog')
   await dialog.getByRole('textbox').fill(project)
   await dialog.getByRole('combobox', { name: en ? 'Status set' : 'Набор статусов' }).selectOption('empty')

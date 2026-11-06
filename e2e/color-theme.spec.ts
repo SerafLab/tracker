@@ -8,7 +8,7 @@ const green = 'rgb(49, 95, 72)'
 const ink = 'rgb(45, 73, 109)'
 
 async function createBoard(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Create project', exact: true }).click()
+  await page.getByRole('banner').getByRole('button', { name: 'Create project', exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox').fill(name)
   await page.getByRole('dialog').getByRole('combobox', { name: 'Status set' }).selectOption('empty')
   await page.getByRole('dialog').getByRole('button', { name: 'Create project', exact: true }).click()
@@ -25,57 +25,68 @@ async function createBoard(page: Page, name: string) {
   await expect(dialog).toBeHidden()
   await expect(page.locator('.work-card')).toBeVisible()
 }
-test('switching to Ink recolours the open board without reload and applies everywhere', async ({ page }) => {
+test('switching to Green recolours the open board without reload and applies everywhere', async ({ page }) => {
   await page.goto('/tracker/')
   await createBoard(page, 'First')
   const url = page.url()
-  expect(await accent(page)).toBe(green)
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme')
+  expect(await accent(page)).toBe(ink)
   const canvas = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
-  await selectTheme(page, 'ink')
-  await expect.poll(() => accent(page)).toBe(ink)
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'ink')
+  await selectTheme(page, 'green')
+  await expect.poll(() => accent(page)).toBe(green)
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'green')
   expect(page.url()).toBe(url)
   await expect(page.locator('.work-card')).toBeVisible()
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(canvas)
 
   await page.getByRole('button', { name: /All projects/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'First' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Create project', exact: true })).toHaveCSS('background-color', ink)
+  await expect(page.getByRole('button', { name: 'Create project', exact: true })).toHaveCSS('background-color', green)
   await page.getByRole('button', { name: 'Create project', exact: true }).click()
   await page.getByRole('dialog').getByRole('textbox').fill('Second')
   await page.getByRole('dialog').getByRole('button', { name: 'Create project', exact: true }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Second' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Add status', exact: true })).toHaveCSS('background-color', ink)
+  await expect(page.getByRole('button', { name: 'Add status', exact: true })).toHaveCSS('background-color', green)
 
   await page.reload()
   await expect(page.getByRole('heading', { level: 1, name: 'Second' })).toBeVisible()
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'ink')
-  await expect(page.getByRole('button', { name: 'Add status', exact: true })).toHaveCSS('background-color', ink)
-  await selectTheme(page, 'green')
-  await expect(page.locator('html')).not.toHaveAttribute('data-theme')
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'green')
   await expect(page.getByRole('button', { name: 'Add status', exact: true })).toHaveCSS('background-color', green)
+  await selectTheme(page, 'ink')
+  await expect(page.locator('html')).not.toHaveAttribute('data-theme')
+  await expect(page.getByRole('button', { name: 'Add status', exact: true })).toHaveCSS('background-color', ink)
 })
 
-test('a saved Ink theme is applied before the application renders', async ({ page }) => {
+test('a saved Green theme is applied before the application renders', async ({ page }) => {
   await page.addInitScript(() => {
-    localStorage.setItem('easytrack.theme', 'ink')
+    localStorage.setItem('easytrack.theme', 'green')
     new MutationObserver(() => {
       if (document.getElementById('root') && !(window as unknown as Record<string, unknown>).themeAtRoot) (window as unknown as Record<string, unknown>).themeAtRoot = document.documentElement.dataset.theme
     }).observe(document, { childList: true, subtree: true })
   })
   await page.goto('/tracker/')
-  await expect(page.getByRole('button', { name: 'Create project', exact: true })).toHaveCSS('background-color', ink)
-  expect(await page.evaluate(() => (window as unknown as Record<string, unknown>).themeAtRoot)).toBe('ink')
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Create project', exact: true })).toHaveCSS('background-color', green)
+  expect(await page.evaluate(() => (window as unknown as Record<string, unknown>).themeAtRoot)).toBe('green')
 })
 
-test('an unknown stored theme falls back to Green', async ({ page }) => {
-  await page.addInitScript(() => localStorage.setItem('easytrack.theme', 'plum'))
-  await page.goto('/tracker/')
+async function expectInkSelected(page: Page) {
   await expect(page.locator('html')).not.toHaveAttribute('data-theme')
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await expect(page.getByRole('group', { name: 'Application color theme' })).toHaveCount(1)
-  await expect(page.getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByRole('menuitemradio', { name: 'Ink' })).toHaveAttribute('aria-checked', 'false')
+  await expect(page.getByRole('menuitemradio', { name: 'Ink' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'false')
+}
+
+test('a first launch uses Ink', async ({ page }) => {
+  await page.goto('/tracker/')
+  await expect(page.getByRole('banner').getByRole('button', { name: 'Create project', exact: true })).toHaveCSS('background-color', ink)
+  await expectInkSelected(page)
+})
+
+test('an unknown stored theme falls back to Ink', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('easytrack.theme', 'plum'))
+  await page.goto('/tracker/')
+  await expectInkSelected(page)
 })
 
 const greenElements = (page: Page) => page.evaluate(() => {
@@ -141,10 +152,10 @@ test('a theme choice that cannot be saved still applies and warns in the setting
   await page.addInitScript(() => { Storage.prototype.setItem = () => { throw Error('blocked') } })
   await page.goto('/tracker/')
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByRole('menuitemradio', { name: 'Ink' }).click()
-  await expect(page.locator('html')).toHaveAttribute('data-theme', 'ink')
-  await expect(page.getByRole('alert')).toContainText('Could not save your color theme')
-  await expect(page.getByRole('menuitemradio', { name: 'Ink' })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('menuitemradio', { name: 'Green' }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'green')
+  await expect(page.locator('.settings-panel').getByRole('alert')).toContainText('Could not save your color theme')
+  await expect(page.getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'true')
   await expect(page.getByRole('group', { name: 'Application color theme' })).toHaveCount(1)
   await expect(page.getByRole('group', { name: 'Application language' })).toHaveCount(1)
 })

@@ -12,6 +12,7 @@ import { AppBar } from '../ui/app-bar'
 import { ActionDialog } from '../features/project-board/presentation/controls'
 import { LocaleProvider } from './provider'
 import { localeStorageKey, resolveLocale } from './locale'
+import { findHeaderCreate } from '../test/queries'
 
 const databases: ProjectBoardDatabase[] = []
 function repository() { const db = new ProjectBoardDatabase(`locale-${crypto.randomUUID()}`); databases.push(db); return new DexieProjectBoardRepository(db) }
@@ -90,9 +91,9 @@ it.each(['loading', 'unavailable'] as const)('keeps keyboard language switching 
 it('isolates a dialog and restores the sole language selector after closing', async () => {
   const user = userEvent.setup()
   render(<App repository={repository()} />)
-  await user.click(await screen.findByRole('button', { name: 'Создать проект' }))
+  await user.click(await findHeaderCreate('Создать проект'))
   await user.type(screen.getByLabelText('Название проекта'), 'Мой проект')
-  await user.click(screen.getByRole('button', { name: 'Создать проект' }))
+  await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Создать проект' }))
   await screen.findByRole('heading', { name: 'Мой проект' })
   const trigger = screen.getByRole('button', { name: 'Добавить статус' })
   await user.click(trigger)
@@ -135,10 +136,10 @@ it.each(['en', 'ru'] as const)('translates validation and save errors in %s', as
   vi.spyOn(repo, 'createProject').mockRejectedValue(Error('quota'))
   const user = userEvent.setup()
   render(<App repository={repo} />)
-  const create = await screen.findByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' })
+  const create = await findHeaderCreate(locale === 'en' ? 'Create project' : 'Создать проект')
   await user.click(create)
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' }))
-  expect(screen.getByRole('alert')).toHaveTextContent(locale === 'en' ? 'Name is required' : 'Название обязательно')
+  expect(within(screen.getByRole('dialog')).getByRole('alert')).toHaveTextContent(locale === 'en' ? 'Name is required' : 'Название обязательно')
   await user.type(screen.getByRole('textbox'), 'Название')
   await user.click(within(screen.getByRole('dialog')).getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' }))
   expect(await screen.findByText(locale === 'en' ? /Could not save changes/ : /Не удалось сохранить изменения/)).toBeInTheDocument()

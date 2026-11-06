@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { leaveCard } from './card-helpers'
 import { selectLanguage } from './language'
+import { viewportFor } from './viewports'
 
 for (const width of [320, 1280]) for (const language of ['ru', 'en'] as const) {
   test(`persists card groups, stable order and keyboard focus in ${language} at ${width}px`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: 844 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     if (language === 'en') { await selectLanguage(page, 'en') }
     const en = language === 'en'

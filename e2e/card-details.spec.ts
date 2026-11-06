@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enterEdit, leaveCard, saveEdit, summaryOf } from './card-helpers'
 import { selectLanguage } from './language'
+import { viewportFor } from './viewports'
 
 async function createBoard(page: Page, en = false) {
   await page.goto('/tracker/')
@@ -25,7 +26,7 @@ async function createBoard(page: Page, en = false) {
 
 for (const width of [320, 390, 1280]) for (const en of [false, true]) {
   test(`card descriptions, note history and offline detail route ${en ? 'en' : 'ru'} ${width}px`, async ({ page, context }, info) => {
-    await page.setViewportSize({ width, height: 900 }); await createBoard(page, en)
+    await page.setViewportSize(viewportFor(width)); await createBoard(page, en)
     const card = page.locator('.work-card')
     await card.getByRole('button', { name: en ? 'Card actions for Detail card' : 'Действия карточки Detail card', exact: true }).click()
     await expect(page.locator('.card-detail')).toBeHidden()

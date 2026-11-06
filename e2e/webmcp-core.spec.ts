@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { enterEdit, saveEdit } from './card-helpers'
 import { dismissedInstallInvitation } from './storage-state'
+import { viewportFor } from './viewports'
 
 // A deterministic host contract fixture, NOT proof of native WebMCP availability.
 async function fixture(page: Page) {
@@ -183,7 +184,7 @@ test('native-contract fixture revokes old handles and blocks both tool and UI wr
 })
 
 test('native-contract fixture: delete_card on the open panel card closes the panel to the board, and is refused with a dirty draft', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.setViewportSize(viewportFor(1280))
   const host = await fixture(page)
   const projectId = (await host.call('create_project', { name: 'Project', statusSetId: 'none' })).data.project.id
   const statusId = (await host.call('create_status', { projectId, name: 'Status' })).data.status.id

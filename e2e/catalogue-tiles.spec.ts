@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { viewportFor } from './viewports'
 
 for (const language of ['ru', 'en']) for (const width of [320, 390, 1280, 1440]) {
   test(`catalogue tiles show totals and adapt in ${language} at ${width}px`, async ({ page }, testInfo) => {
-    await page.setViewportSize({ width, height: 900 })
+    await page.setViewportSize(viewportFor(width))
     await page.goto('/tracker/')
     await expect(page.locator('.app-bar')).toBeVisible()
     await page.evaluate(async locale => {
@@ -36,6 +37,7 @@ for (const language of ['ru', 'en']) for (const width of [320, 390, 1280, 1440])
     else expect(positions[1].y).toBe(positions[0].y)
     await page.screenshot({ path: testInfo.outputPath(`catalogue-${language}-${width}.png`), fullPage: true })
     // The count is part of the tile's open surface; the menu remains independent.
+    await page.locator('.project-card').nth(2).locator('.project-card-count').scrollIntoViewIfNeeded()
     const count = await page.locator('.project-card').nth(2).locator('.project-card-count').boundingBox()
     expect(count).not.toBeNull()
     await page.mouse.click(count!.x + count!.width / 2, count!.y + count!.height / 2)

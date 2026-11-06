@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { enterEdit, leaveCard, saveEdit, summaryOf } from './card-helpers'
 import { selectLanguage } from './language'
 import { dismissedInstallInvitation } from './storage-state'
+import { viewportFor } from './viewports'
 
 async function setup(page: Page, en = false) {
   await page.addInitScript(() => {
@@ -110,7 +111,7 @@ for (const en of [false, true]) test(`projects exact legal gaps, cancels safely,
 
 for (const width of [320, 390, 1280, 1440]) for (const en of [false, true]) {
   test(`top card menus and drag remain usable in ${en ? 'en' : 'ru'} at ${width}px`, async ({ page }, info) => {
-    await page.setViewportSize({ width, height: 900 }); await setup(page, en)
+    await page.setViewportSize(viewportFor(width)); await setup(page, en)
     await column(page, 'A').locator('.add-card-header').click()
     const longName = 'ДлинноеНазваниеКарточкиБезПробелов'.repeat(4)
     await page.getByRole('dialog').getByRole('textbox').fill(longName)
@@ -124,6 +125,7 @@ for (const width of [320, 390, 1280, 1440]) for (const en of [false, true]) {
     expect(layout).toEqual({ separate: true, target: { width: 44, height: 44 }, fits: true, pageFits: true })
     await expect(card(page, longName).locator('.card-controls, .card-move-arrows')).toHaveCount(0)
     const columnsTop = () => page.locator('.status-columns').evaluate(element => element.getBoundingClientRect().top)
+    await card(page, 'A1').scrollIntoViewIfNeeded()
     const topBefore = await columnsTop()
     await card(page, 'A1').getByRole('button').click()
     await expect(page.getByRole('menuitem', { name: en ? 'Move up' : 'Поднять выше', exact: true })).toHaveCount(0)
@@ -224,7 +226,7 @@ test('keeps native touch swipes before hold, then drags without opening on relea
 })
 
 for (const en of [false, true]) test(`recovers a committed placement through reading only in ${en ? 'en' : 'ru'}`, async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 }); await setup(page, en)
+  await page.setViewportSize(viewportFor(1280)); await setup(page, en)
   const before = await writes(page)
   await page.evaluate(() => {
     const get = IDBObjectStore.prototype.get
@@ -249,7 +251,7 @@ for (const en of [false, true]) test(`recovers a committed placement through rea
 })
 
 test('cancels a gesture when a confirmed board refresh replaces its starting snapshot', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 }); await setup(page)
+  await page.setViewportSize(viewportFor(1280)); await setup(page)
   await start(page, card(page, 'A1')); await hover(page, card(page, 'B1'))
   const before = await writes(page)
   // Another confirmed mutation refreshes the board while the pointer is still down.

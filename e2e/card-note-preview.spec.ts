@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { leaveCard } from './card-helpers'
 import { selectLanguage } from './language'
+import { viewportFor } from './viewports'
 
 async function createBoard(page: Page, en = false, statuses = ['Todo', 'Done']) {
   await page.goto('/tracker/')
@@ -39,7 +40,7 @@ async function seed(page: Page, count: number, description = '') {
 }
 
 for (const width of [320, 390, 1280, 1440]) test(`board preview of five long notes stays contained and operable at ${width}px`, async ({ page }, info) => {
-  await page.setViewportSize({ width, height: 900 })
+  await page.setViewportSize(viewportFor(width))
   await createBoard(page, false, ['Todo', 'Doing', 'Review', 'Done'])
   await seed(page, 6, 'Длинное описание '.repeat(30))
   const card = page.locator('.work-card')
@@ -85,6 +86,7 @@ for (const width of [320, 390, 1280, 1440]) test(`board preview of five long not
   await page.keyboard.press('Space'); await expect(toggle).toHaveAttribute('aria-expanded', 'true')
   expect(new URL(page.url()).hash).toBe(hash)
   await expect(page.getByRole('menu')).toHaveCount(0)
+  await card.locator('.card-note').last().scrollIntoViewIfNeeded()
   const lastNote = (await card.locator('.card-note').last().boundingBox())!
   await page.mouse.click(lastNote.x + 20, lastNote.y + 8)
   await expect(page.locator('.card-detail')).toBeVisible()
@@ -92,7 +94,7 @@ for (const width of [320, 390, 1280, 1440]) test(`board preview of five long not
 })
 
 test('card remains draggable by its note text and the expand button does not start a drag', async ({ page }) => {
-  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.setViewportSize(viewportFor(1280))
   await createBoard(page, false, ['Todo', 'Done'])
   await seed(page, 3)
   const card = page.locator('.work-card')
@@ -109,7 +111,7 @@ test('card remains draggable by its note text and the expand button does not sta
 })
 
 for (const en of [false, true]) test(`note add, edit and delete are reflected on the board and offline (${en ? 'en' : 'ru'})`, async ({ page, context }) => {
-  await page.setViewportSize({ width: 390, height: 900 })
+  await page.setViewportSize(viewportFor(390))
   await createBoard(page, en)
   const t = (ru: string, enText: string) => en ? enText : ru
   const card = page.locator('.work-card')

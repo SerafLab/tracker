@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { App } from '../../../app/app'
 import { localeStorageKey } from '../../../i18n/locale'
+import { LocaleProvider } from '../../../i18n/provider'
+import type { ProjectSummary } from '../domain/model'
+import { ProjectCatalogueView } from './project-catalogue-view'
 import { ProjectBoardDatabase } from '../infrastructure/indexeddb/database'
 import { DexieProjectBoardRepository } from '../infrastructure/indexeddb/dexie-project-board-repository'
 
@@ -87,10 +90,30 @@ describe('quick first-project creation', () => {
     const button = await quickButton('ru')
     await user.click(button)
     await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'))
+    expect(button.closest('section')).toHaveAttribute('aria-busy', 'true')
     expect(button).not.toBeDisabled()
     expect(button).toHaveFocus()
     release()
     await screen.findByRole('heading', { level: 1, name: 'Первый проект' })
+  })
+
+  it('unlocks the button when the catalogue becomes empty again after a successful creation', async () => {
+    setup()
+    const user = userEvent.setup()
+    const created: ProjectSummary = { id: 'p', name: 'Первый проект', createdAt: '1', cardCount: 0 }
+    const props = { saveError: false, onCreate: vi.fn(async () => true), onOpen: vi.fn(async () => {}), onRename: vi.fn(async () => {}), onReadSummary: vi.fn(async () => ({ statusCount: 0, cardCount: 0 })), onDelete: vi.fn(async () => true) }
+    const view = (projects: ProjectSummary[]) => <LocaleProvider><ProjectCatalogueView projects={projects} {...props} /></LocaleProvider>
+    const { rerender } = render(view([]))
+    await user.click(await quickButton('ru'))
+    await waitFor(() => expect(props.onCreate).toHaveBeenCalledTimes(1))
+    // Navigation to the board failed, so the catalogue stays mounted with the new project, which is then deleted.
+    rerender(view([created]))
+    rerender(view([]))
+    const button = await quickButton('ru')
+    await waitFor(() => expect(button).not.toHaveAttribute('aria-disabled'))
+    expect(button.closest('section')).toHaveAttribute('aria-busy', 'false')
+    await user.click(button)
+    await waitFor(() => expect(props.onCreate).toHaveBeenCalledTimes(2))
   })
 })
 

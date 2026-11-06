@@ -10,7 +10,6 @@ import { createProjectBoardStore } from '../state/project-board-store'
 import { createProjectBoardUseCases } from '../application/use-cases'
 import { DexieProjectBoardRepository } from '../infrastructure/indexeddb/dexie-project-board-repository'
 import { ProjectBoardDatabase } from '../infrastructure/indexeddb/database'
-import { findHeaderCreate } from '../../../test/queries'
 
 const sets = {
   ru: [

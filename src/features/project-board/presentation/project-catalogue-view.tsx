@@ -36,6 +36,13 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
   const root = useRef<HTMLElement>(null)
   const modalOpen = useModalOpen()
   const deletingId = deleting?.project.id
+  const empty = projects.length === 0
+  // The lock lives as long as the block: a created project hides it, and an emptied catalogue shows it unlocked.
+  useEffect(() => {
+    if (empty) return
+    quickPending.current = false
+    setQuickSaving(false)
+  }, [empty])
   useEffect(() => {
     if (!deletingId) return
     let active = true
@@ -46,17 +53,17 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
   useEffect(() => {
     if (modalOpen || (!focusCreation && !focusTarget)) return
     const project = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-project-id]') ?? []).find(item => item.dataset.projectId === focusTarget)
-    const creationTarget = projects.length === 0 ? quickCreate.current : createTrigger.current
+    const creationTarget = empty ? quickCreate.current : createTrigger.current
     const target = focusCreation || focusTarget === 'create' ? creationTarget : project?.querySelector<HTMLButtonElement>('.project-open') ?? creationTarget
     target?.focus({ preventScroll: true })
     setFocusTarget(null)
     if (focusCreation) onCreationFocused?.()
-  }, [focusCreation, focusTarget, projects, modalOpen, onCreationFocused])
+  }, [focusCreation, focusTarget, projects, empty, modalOpen, onCreationFocused])
   const createFirstProject = async () => {
     if (quickPending.current) return
     quickPending.current = true
     setQuickSaving(true)
-    // A saved project replaces this block, so the button stays locked until then; only a failure unlocks it.
+    // A saved project hides the block, so only a failure unlocks the button here.
     const saved = await onCreate({ name: t('firstProjectName'), initialStatusNames: presetStatusNames('simple', t) }).catch(() => false)
     if (!saved) { quickPending.current = false; setQuickSaving(false) }
   }
@@ -69,7 +76,6 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
     setDeleting(null); setFocusTarget(next)
     return 'deleted' as const
   }
-  const empty = projects.length === 0
   return <><AppBar title={t('title')} creation={{ label: t('createProject'), triggerRef: createTrigger, onSelect: () => setCreating(true) }} /><main ref={root} className={empty ? 'app-shell catalogue-first-run' : 'app-shell'}>
     {empty
       ? <section className="catalogue-first-run-block" aria-labelledby={headingId} aria-busy={quickSaving}>

@@ -4,7 +4,6 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { App } from '../../../app/app'
 import { ProjectBoardDatabase } from '../infrastructure/indexeddb/database'
 import { DexieProjectBoardRepository } from '../infrastructure/indexeddb/dexie-project-board-repository'
-import { findHeaderCreate } from '../../../test/queries'
 
 const databases: ProjectBoardDatabase[] = []
 afterEach(async () => {

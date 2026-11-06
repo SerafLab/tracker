@@ -181,12 +181,20 @@ test('keeps native touch swipes before hold, then drags without opening on relea
   const context = await browser.newContext({ viewport: { width: 390, height: 650 }, isMobile: true, hasTouch: true, storageState: dismissedInstallInvitation })
   try {
     const page = await context.newPage(), cdp = await context.newCDPSession(page)
+    await page.clock.install()
     await setup(page)
     await card(page, 'A2').scrollIntoViewIfNeeded()
     const initial = await writes(page), boardUrl = page.url()
-    // The browser paces the whole swipe, so its first move cannot lag behind the 250 ms hold the way
-    // separately sent touch events do on a loaded machine. The call resolves after the touch ends, without a fling.
-    const swipe = (x: number, y: number, dx: number, dy: number) => cdp.send('Input.synthesizeScrollGesture', { x, y, xDistance: dx, yDistance: dy, gestureSourceType: 'touch', speed: 1200 })
+    // Page time stands still during a swipe, so slow touch-event delivery cannot outlast the 250 ms hold.
+    const swipe = async (x: number, y: number, dx: number, dy: number) => {
+      await page.clock.pauseAt(await page.evaluate(() => Date.now() + 50))
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
+      for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * step / 6, y: y + dy * step / 6 }] })
+      const scrolled = page.evaluate(() => new Promise<void>(resolve => document.addEventListener('scrollend', () => resolve(), { once: true, capture: true })))
+      await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+      await scrolled
+      await page.clock.resume()
+    }
     let bounds = await card(page, 'A2').boundingBox()
     await swipe(300, bounds!.y + 25, -210, 0)
     const list = page.locator('[data-board-scroller]')

@@ -27,7 +27,12 @@ async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectB
   const user = userEvent.setup()
   return { repo, db, user }
 }
-async function editor(user: ReturnType<typeof userEvent.setup>) { await user.click(screen.getByRole('button', { name: 'Добавить заметку' })); return screen.getByLabelText('Новая заметка') }
+// The add trigger stays disabled until the previous save settles; a click before that is ignored.
+async function editor(user: ReturnType<typeof userEvent.setup>) {
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Добавить заметку' })).toBeEnabled())
+  await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
+  return screen.findByLabelText('Новая заметка')
+}
 const pencil = () => screen.findByRole('button', { name: 'Редактировать основное' })
 async function fields(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await pencil())
@@ -157,12 +162,19 @@ it('creates, edits without a no-op date, refuses blank notes, confirms deletion 
   expect(note).toHaveValue('First note')
   await user.click(screen.getByRole('button', { name: 'Добавить заметку' }))
   await waitFor(() => expect(screen.queryByLabelText('Новая заметка')).not.toBeInTheDocument()); await waitFor(() => expect(document.querySelector('.note-list')).toHaveTextContent('First note'))
+  // Each save settles when the note editor closes and its Edit trigger is enabled again.
+  const saved = async () => {
+    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Редактировать заметку' })).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Редактировать заметку' })).toBeEnabled())
+  }
   await user.click(screen.getByRole('button', { name: 'Редактировать заметку' }))
   await user.click(screen.getByRole('button', { name: 'Сохранить заметку' }))
+  await saved()
   expect((await repo.cardDetails('p', 'c'))!.notes[0].updatedAt).toBeUndefined()
   await user.click(screen.getByRole('button', { name: 'Редактировать заметку' })); note = screen.getByRole('textbox', { name: 'Редактировать заметку' })
   await user.clear(note); await user.type(note, 'Changed note')
   await user.click(screen.getByRole('button', { name: 'Сохранить заметку' }))
+  await saved()
   expect((await repo.cardDetails('p', 'c'))!.notes[0].updatedAt).toBeTruthy()
   const trigger = screen.getByRole('button', { name: 'Удалить заметку' })
   await waitFor(() => expect(trigger).toBeEnabled())

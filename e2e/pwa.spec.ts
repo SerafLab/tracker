@@ -77,9 +77,11 @@ for (const locale of ['ru', 'en'] as const) {
     await page.keyboard.press('Enter')
     await expect(item).toHaveAttribute('aria-checked', 'true')
     await expect(item).toBeFocused()
-    const bounds = await page.getByRole('menu').boundingBox()
-    expect(bounds!.x).toBeGreaterThanOrEqual(0)
-    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320)
+    // The menu repositions itself after the language change resizes it, so wait for the settled position.
+    await expect.poll(async () => {
+      const bounds = (await page.getByRole('menu').boundingBox())!
+      return bounds.x >= 0 && bounds.x + bounds.width <= 320
+    }).toBe(true)
     const manifests = await page.evaluate(async () => {
       const links = [...document.querySelectorAll<HTMLLinkElement>('link[rel="manifest"]')]
       const variants = await Promise.all(['ru', 'en'].map(async language => fetch(`/tracker/manifest.${language}.webmanifest`).then(response => response.json())))

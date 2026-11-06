@@ -59,8 +59,8 @@
 
 ## 3. Итоговая проверка
 
-- [ ] 3.1 Запустить `openspec validate catalogue-first-run-and-ink-default --strict` и `npm run check` с уникальным `E2E_PORT`. Обе команды проходят.
-- [ ] 3.2 Выборочный визуальный просмотр по `docs/agents/rules/visual-review.md`:
+- [x] 3.1 Запустить `openspec validate catalogue-first-run-and-ink-default --strict` и `npm run check` с уникальным `E2E_PORT`. Обе команды проходят.
+- [x] 3.2 Выборочный визуальный просмотр по `docs/agents/rules/visual-review.md`:
   - пустой каталог при 1440×900, 820×1180, 390×844 и 568×320 в Ink (RU) и при 390×844 в Green (EN);
   - состояние ошибки при 390×844;
   - каталог с проектами при 1440×900.

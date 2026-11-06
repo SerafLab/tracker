@@ -29,6 +29,8 @@ async function moveThroughMenu(user: ReturnType<typeof userEvent.setup>, name: s
   await user.selectOptions(within(dialog).getByRole('combobox'), within(dialog).getByRole('option', { name: destination }))
   await user.click(within(dialog).getByRole('button', { name: 'Переместить' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  // Focus returns to the moved card once the placement settles; the board is inert until then.
+  await waitFor(() => expect(screen.getByRole('button', { name: `Действия карточки ${name}` })).toHaveFocus())
 }
 function setViewport(width: number) { Object.defineProperty(window, 'innerWidth', { configurable: true, value: width }); window.dispatchEvent(new Event('resize')) }
 
@@ -155,14 +157,18 @@ describe('project board', () => {
   })
 
   it('moves through the menu in both directions, appends to peers and preserves focus', async () => {
-    const user = userEvent.setup(); render(<App repository={repository()} />)
-    await fill(user, 'Новый проект', 'Доска', 'Создать проект'); await screen.findByRole('heading', { name: 'Доска' })
-    await addStatus(user, 'Первый'); await addStatus(user, 'Средний'); await addStatus(user, 'Последний')
+    // Creation through the UI is covered elsewhere; seeding keeps this test within its time budget on a loaded machine.
+    const repo = repository()
+    await repo.createProject({ id: 'p', name: 'Доска', createdAt: 'now' }, [], true)
+    for (const [id, name] of [['first', 'Первый'], ['middle', 'Средний'], ['last', 'Последний']]) await repo.createStatus({ id, projectId: 'p', name })
+    await repo.createCard({ id: 'here', statusId: 'middle', name: 'Уже здесь', description: '', important: false, urgent: false })
+    await repo.createCard({ id: 'moving', statusId: 'first', name: 'Движущаяся', description: '', important: false, urgent: false })
+    location.hash = '#project/p'
+    const user = userEvent.setup(); render(<App repository={repo} />)
+    await screen.findByRole('heading', { level: 1, name: 'Доска' })
     const column = (name: string) => screen.getByRole('heading', { name }).closest('article')!
-    await addCard(user, column('Средний'), 'Уже здесь'); await addCard(user, column('Первый'), 'Движущаяся')
     await moveThroughMenu(user, 'Движущаяся', 'Средний')
     expect(Array.from(column('Средний').querySelectorAll('.card-name')).map(item => item.textContent)).toEqual(['Уже здесь', 'Движущаяся'])
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Действия карточки Движущаяся' })).toHaveFocus())
     await moveThroughMenu(user, 'Движущаяся', 'Последний')
     expect(column('Последний')).toContainElement(screen.getByText('Движущаяся'))
     await moveThroughMenu(user, 'Движущаяся', 'Средний')
@@ -359,8 +365,10 @@ it('edits fields on the detail page atomically, preserves failed drafts, and kee
   expect(Array.from(column.querySelectorAll('.card-name')).map(node => node.textContent)).toEqual(['Edited', 'First'])
   expect(column.querySelectorAll('.card-badge')).toHaveLength(1)
   const before = await repo.board(projectId)
-  // The board can render before the unsaved-changes dialog unmounts and releases the inert application bar.
+  // The board can render before the unsaved-changes dialog unmounts and releases the inert application bar,
+  // and before focus returns to the closed card; that late focus would close the settings menu.
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() => expect(screen.getByRole('link', { name: 'Edited' })).toHaveFocus())
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
   await user.click(await screen.findByRole('menuitemradio', { name: 'English' }))
   expect(await screen.findByText('Important')).toBeInTheDocument()
@@ -451,7 +459,7 @@ describe('notification area', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Опустить ниже' }))
     await waitFor(() => expect(transient()).toHaveTextContent('Расположение карточки сохранено.'))
   }
-  afterEach(() => { vi.unstubAllGlobals() })
+  afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals() })
 
   it('renders outside main and inert content, so a toast stays announced while a dialog is open', async () => {
     await boardWithCards()
@@ -470,12 +478,15 @@ describe('notification area', () => {
     await boardWithCards()
     act(() => simulateUpdateReady())
     expect(await screen.findByRole('status', { name: 'Обновление EasyTrack' })).toHaveTextContent('Доступно обновление EasyTrack.')
-    const user = userEvent.setup()
+    // Fake only the toast timer's clock instead of waiting it out in real time; IndexedDB keeps its real scheduling.
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     await moveDown(user, 'First')
     const persistent = document.querySelector('.notification-persistent')!
     expect(transient().compareDocumentPosition(persistent) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(persistent).toContainElement(offer())
-    await waitFor(() => expect(transient()).toBeEmptyDOMElement(), { timeout: TOAST_DURATION_MS + 1000 })
+    await act(() => vi.advanceTimersByTimeAsync(TOAST_DURATION_MS))
+    expect(transient()).toBeEmptyDOMElement()
     expect(within(offer()!).getByRole('button', { name: 'Обновить' })).toBeInTheDocument()
     expect(within(offer()!).getByRole('button', { name: 'Позже' })).toBeInTheDocument()
   })

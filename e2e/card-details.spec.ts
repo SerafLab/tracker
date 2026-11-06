@@ -108,7 +108,9 @@ test('restores indexed Back/Forward before asking about drafts and applies the c
   await expect(input).toHaveValue('Draft'); expect(await page.evaluate(() => history.length)).toBe(length)
   await page.goBack(); await expect(guard).toBeVisible()
   await guard.getByRole('button', { name: 'Сохранить и выйти', exact: true }).click()
-  await expect(page).toHaveURL(boardUrl); await expect(page.locator('.status-columns')).toBeVisible()
+  // The card is a panel beside the board, so the URL and columns change before the panel closes.
+  // Going Forward earlier supersedes the board route and keeps the still-mounted editor.
+  await expect(page).toHaveURL(boardUrl); await expect(page.locator('.card-detail')).toBeHidden()
   await page.goForward(); await expect(summaryOf(page).locator('.detail-text')).toHaveText('Draft')
   await enterEdit(page)
   await input.fill('Discarded')
@@ -116,7 +118,7 @@ test('restores indexed Back/Forward before asking about drafts and applies the c
   await expect(guard).toBeVisible(); await page.keyboard.press('Escape'); await expect(input).toHaveValue('Discarded')
   await page.goBack(); await expect(guard).toBeVisible()
   await guard.getByRole('button', { name: 'Выйти без сохранения', exact: true }).click()
-  await expect(page).toHaveURL(boardUrl)
+  await expect(page).toHaveURL(boardUrl); await expect(page.locator('.card-detail')).toBeHidden()
   await page.goForward(); await expect(summaryOf(page).locator('.detail-text')).toHaveText('Draft')
   expect(await page.evaluate(() => history.length)).toBe(length)
 })
@@ -141,7 +143,7 @@ test('native close warns for pending drafts and rapid Back preserves one guarded
   await page.evaluate(() => { history.back(); history.back() })
   await expect(guard).toHaveCount(1); await expect(page).toHaveURL(detailUrl)
   await guard.getByRole('button', { name: 'Сохранить и выйти', exact: true }).click()
-  await expect(page).toHaveURL(boardUrl)
+  await expect(page).toHaveURL(boardUrl); await expect(page.locator('.card-detail')).toBeHidden()
   await page.goForward()
   await expect(summaryOf(page).locator('.detail-text')).toHaveText('Native draft')
   await page.reload(); await expect(summaryOf(page).locator('.detail-text')).toHaveText('Native draft')

@@ -72,8 +72,9 @@ export function ActionDialog({ title, children, onClose, returnFocus }: { title:
   const closeFromKeyboard = useEffectEvent(onClose)
   const opener = useRef<HTMLElement | null>(document.activeElement instanceof HTMLElement ? document.activeElement : null)
   const panel = useRef<HTMLElement>(null)
+  // Inert background content follows the dialog's DOM in the same commit, never a passive-effect flush later.
+  useLayoutEffect(() => registerModal(), [])
   useEffect(() => {
-    const releaseModal = registerModal()
     const focusable = () => Array.from(panel.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]') ?? [])
     // Text entry gets initial focus; an option checkbox does not take it from the dialog's first action.
     ;(panel.current?.querySelector<HTMLElement>('input:not([type="checkbox"]), select, textarea') ?? focusable()[0])?.focus()
@@ -94,7 +95,6 @@ export function ActionDialog({ title, children, onClose, returnFocus }: { title:
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('focusin', keepFocus)
-      releaseModal()
       queueMicrotask(() => {
         const target = returnFocus?.current ?? opener.current
         if (target?.isConnected) target.focus({ preventScroll: true })

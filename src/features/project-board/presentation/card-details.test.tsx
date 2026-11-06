@@ -27,7 +27,7 @@ async function setup(hash = '#project/p/card/c', configure: (repo: DexieProjectB
   const user = userEvent.setup()
   return { repo, db, user }
 }
-async function editor(user: ReturnType<typeof userEvent.setup>) { await user.click(screen.getByRole('button', { name: 'Добавить заметку' })); return screen.getByLabelText('Новая заметка') }
+async function editor(user: ReturnType<typeof userEvent.setup>) { await user.click(screen.getByRole('button', { name: 'Добавить заметку' })); return screen.findByLabelText('Новая заметка') }
 const pencil = () => screen.findByRole('button', { name: 'Редактировать основное' })
 async function fields(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await pencil())

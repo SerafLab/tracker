@@ -358,9 +358,11 @@ it('edits fields on the detail page atomically, preserves failed drafts, and kee
   expect(Array.from(column.querySelectorAll('.card-name')).map(node => node.textContent)).toEqual(['Edited', 'First'])
   expect(column.querySelectorAll('.card-badge')).toHaveLength(1)
   const before = await repo.board(projectId)
+  // The board can render before the unsaved-changes dialog unmounts and releases the inert application bar.
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
   await user.click(await screen.findByRole('menuitemradio', { name: 'English' }))
-  expect(screen.getByText('Important')).toBeInTheDocument()
+  expect(await screen.findByText('Important')).toBeInTheDocument()
   expect(screen.queryByText('Urgent')).not.toBeInTheDocument()
   expect(await repo.board(projectId)).toEqual(before)
 })

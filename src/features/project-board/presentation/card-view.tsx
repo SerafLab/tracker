@@ -59,7 +59,7 @@ export const CardView = memo(function CardView({ card, notes, peers, statuses, d
       <a className="card-detail-link" draggable={false} aria-label={card.name} aria-disabled={disabled || undefined} href={`#project/${encodeURIComponent(projectId)}/card/${encodeURIComponent(card.id)}`} onClick={event => {
         if (disabled) { event.preventDefault(); return }
         if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) { event.preventDefault(); void onOpen(card.id) }
-      }}><span className="card-name">{card.name}</span>{card.description.trim() ? <span className="card-description-preview">{card.description}</span> : null}</a>
+      }}><span className="card-name">{card.name}</span><CardFlagBadges important={card.important} urgent={card.urgent} />{card.description.trim() ? <span className="card-description-preview">{card.description}</span> : null}</a>
       <ActionMenu disabled={disabled} triggerRef={menuTrigger} label={t('cardActions', { name: card.name })} actions={[
         { label: t('edit'), onSelect: () => void onOpen(card.id, { edit: true }) },
         ...(otherStatuses.length ? [{ label: t('moveToOther'), onSelect: () => { setDestination(otherStatuses[0].id); setMoving(true) } }] : []),
@@ -68,7 +68,6 @@ export const CardView = memo(function CardView({ card, notes, peers, statuses, d
         { label: t('delete'), onSelect: () => onDelete(card, menuTrigger) },
       ]} />
     </div>
-    <CardFlagBadges important={card.important} urgent={card.urgent} />
     {shownNotes.length ? <div className="card-notes">
       <ul id={notesId} className="card-note-list" aria-label={t('recentNotes')}>{shownNotes.map(note => <li key={note.id} className="card-note">{note.text}</li>)}</ul>
       {notes!.length > 1 ? <button type="button" className="card-notes-toggle bar-hint" data-hint={t(notesOpen ? 'hideNotes' : 'showNotes')} aria-label={t('recentNotesToggle', { name: card.name })} aria-expanded={notesOpen} aria-controls={notesId} onClick={() => setNotesOpen(open => !open)}><BoardIcon name="chevronDown" /></button> : null}

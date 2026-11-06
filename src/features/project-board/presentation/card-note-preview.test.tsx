@@ -11,12 +11,12 @@ vi.mock('virtual:pwa-register/react', () => ({ useRegisterSW: () => ({ needRefre
 const databases: ProjectBoardDatabase[] = []
 afterEach(async () => { cleanup(); localStorage.removeItem(noteOrderStorageKey); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(db => db.delete())) })
 
-async function setup(noteTexts: string[] = []) {
+async function setup(noteTexts: string[] = [], flags = { important: false, urgent: false }) {
   const db = new ProjectBoardDatabase(`preview-${crypto.randomUUID()}`); databases.push(db)
   const repo = new DexieProjectBoardRepository(db)
   await repo.createProject({ id: 'p', name: 'Project', createdAt: '2026-11-01T00:00:00Z' }, [], true)
   await repo.createStatus({ id: 's', projectId: 'p', name: 'Status' })
-  await repo.createCard({ id: 'c', statusId: 's', name: 'Card', description: 'Описание карточки', important: false, urgent: false })
+  await repo.createCard({ id: 'c', statusId: 's', name: 'Card', description: 'Описание карточки', ...flags })
   for (const [index, text] of noteTexts.entries()) await repo.createNote({ id: `n${index}`, cardId: 'c', text, createdAt: `2020-01-02T00:00:0${index}Z` })
   history.replaceState(null, '', '/#project/p')
   render(<App repository={repo} />)
@@ -137,4 +137,11 @@ it('keeps the local expand toggle enabled and focused while a board write is pen
   expect(button).toHaveFocus()
   await userEvent.setup().keyboard('{Enter}')
   expect(button).toHaveAttribute('aria-expanded', 'true')
+})
+
+it('shows the flag labels between the card name and the description preview', async () => {
+  await setup([], { important: true, urgent: true })
+  const parts = [...card().querySelector('.card-detail-link')!.children].map(item => item.className.split(' ')[0])
+  expect(parts).toEqual(['card-name', 'card-badges', 'card-description-preview'])
+  expect(within(card().querySelector<HTMLElement>('.card-badges')!).getAllByText(/Важная|Срочная/).map(item => item.textContent)).toEqual(['Важная', 'Срочная'])
 })

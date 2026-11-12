@@ -1,4 +1,18 @@
 {
+  "permissions": {
+    "deny": [
+      "Artifact",
+      "SearchPlugins",
+      "SuggestPluginInstall",
+      "SuggestSkills",
+      "ScheduleWakeup",
+      "SendUserFile",
+      "mcp__visualize",
+      "mcp__1a59c906-04da-521d-bda7-7f71b9f9e01c",
+      "mcp__ccd_session__read_widget_context",
+      "mcp__Claude_Browser"
+    ]
+  },
   "hooks": {
     "PreToolUse": [
       {

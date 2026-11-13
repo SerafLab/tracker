@@ -13,12 +13,15 @@ import { PwaUpdateRegistration } from './pwa/update-registration'
 import { usePersistentStorage } from './pwa/persistent-storage'
 import { RestartRequired } from './pwa/restart-required'
 import { NotificationProvider } from '../ui/notifications'
+import { SettingsNavigationContext } from '../ui/settings-navigation'
+import { SettingsPage } from './settings/settings-page'
 import { build } from './build'
 
 const routeFor = (id: Id, cardId?: Id) => `#project/${encodeURIComponent(id)}${cardId ? `/card/${encodeURIComponent(cardId)}` : ''}`
 function routeFromHash() {
+  if (location.hash === '#settings') return { kind: 'settings' } as const
   const match = location.hash.match(/^#project\/([^/]+)(?:\/card\/([^/]+))?$/)
-  try { return match ? { projectId: decodeURIComponent(match[1]), cardId: match[2] ? decodeURIComponent(match[2]) : undefined } : undefined }
+  try { return match ? { kind: 'project' as const, projectId: decodeURIComponent(match[1]), cardId: match[2] ? decodeURIComponent(match[2]) : undefined } : undefined }
   catch { return undefined }
 }
 type PendingTransition = { action: () => void | Promise<void> }
@@ -32,6 +35,11 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const translate = useRef(t)
   translate.current = t
   const requestPersistentStorage = usePersistentStorage()
+  const [screen, setScreen] = useState(() => location.hash === '#settings' ? 'settings' : 'workspace')
+  const settingsOpen = useRef(location.hash === '#settings')
+  const focusSettingsGear = useRef(false)
+  const returningDuringStorageOpen = useRef(false)
+  const historyBackFromSettings = useRef<(() => void) | null>(null)
   const staleConnection = useRef(false)
   const [restartRequired, setRestartRequired] = useState(false)
   const draftGuard = useRef<DraftGuard | null>(null)
@@ -79,7 +87,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     let request = 0
     let position: HistoryPosition = { index: indexFromState() ?? 0, hash: location.hash }
     // A reloaded/copied card address always starts as a full page.
-    history.replaceState({ ...history.state, easyTrackIndex: position.index, easyTrackPresentation: 'page' }, '')
+    history.replaceState({ ...history.state, easyTrackIndex: position.index, easyTrackPresentation: position.hash === '#settings' ? history.state?.easyTrackPresentation : 'page' }, '')
     let observed = `${position.index}:${position.hash}`
     let restoring = false
     let bypass = false
@@ -89,38 +97,63 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       const startedAt = ++request
       let expectedHash = location.hash
       const isCurrent = () => active && request === startedAt && location.hash === expectedHash
-      if (!await storageReady || !isCurrent()) return
+      let route = routeFromHash()
+      if (route?.kind === 'settings') {
+        settingsOpen.current = true
+        focusSettingsGear.current = false
+        returningDuringStorageOpen.current = false
+        setScreen('settings')
+        return
+      }
+      const showWorkspace = () => {
+        if (isCurrent() && settingsOpen.current) {
+          settingsOpen.current = false
+          focusSettingsGear.current = true
+          setScreen('workspace')
+        }
+      }
+      if (runtime.store.getState().storageState === 'opening' && settingsOpen.current) {
+        returningDuringStorageOpen.current = true
+        showWorkspace()
+      }
+      if (staleConnection.current || !await storageReady) { showWorkspace(); return }
+      if (!isCurrent()) return
       presentation.current = history.state?.easyTrackPresentation === 'panel' ? 'panel' : 'page'
       // Only a card route needs its presentation before it renders; leaving a card keeps the panel until the destination is shown.
       const applyPresentation = () => { if (isCurrent()) setCardPresentation(presentation.current) }
-      let route = routeFromHash()
-      if (!route && restoreLastProject) {
+      if (!route && restoreLastProject && !expectedHash) {
         let id: Id | undefined
         try { id = (await runtime.useCases.preference())?.lastProjectId } catch { /* A failed preference read still allows the catalogue. */ }
         if (!isCurrent()) return
         if (id) {
           history.replaceState({ ...history.state, easyTrackIndex: position.index }, '', routeFor(id))
           position.hash = location.hash; expectedHash = location.hash; observed = `${position.index}:${position.hash}`
-          route = { projectId: id, cardId: undefined }
+          route = { kind: 'project', projectId: id, cardId: undefined }
         }
       }
-      if (route) {
+      if (route?.kind === 'project') {
         if (route.cardId) {
           applyPresentation()
           const result = await runtime.store.getState().showCard(route.projectId, route.cardId, true)
-          if (result !== 'missing' || !isCurrent()) return
+          if (result !== 'missing' || !isCurrent()) { showWorkspace(); return }
         } else {
           const shown = await runtime.store.getState().showBoard(route.projectId, true)
           applyPresentation()
-          if (shown || !isCurrent()) return
+          if (shown || !isCurrent()) { showWorkspace(); return }
         }
         history.replaceState({ ...history.state, easyTrackIndex: position.index }, '', location.pathname + location.search)
         position.hash = ''; observed = `${position.index}:`
       }
+      if (location.hash) {
+        history.replaceState({ ...history.state, easyTrackIndex: position.index }, '', location.pathname + location.search)
+        position.hash = ''; observed = `${position.index}:`
+      }
+      expectedHash = location.hash
       const catalogue = runtime.store.getState().showCatalogue()
       await runtime.store.getState().clearLastProject()
       await catalogue
       applyPresentation()
+      showWorkspace()
     }
     const acceptPosition = (next: HistoryPosition) => { position = next; setEditRequest(null); void showRoute() }
     const onHistory = () => {
@@ -159,6 +192,14 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
         observed = `${position.index}:${hash}`
       }
       if (refresh) await showRoute()
+      else if (settingsOpen.current) {
+        settingsOpen.current = false
+        setScreen('workspace')
+      }
+    }
+    historyBackFromSettings.current = () => {
+      if (position.index > 0) history.back()
+      else void navigate.current('', true, { replace: true })
     }
     void showRoute(true)
     addEventListener('popstate', onHistory)
@@ -166,7 +207,22 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     return () => { active = false; ++request; removeEventListener('popstate', onHistory); removeEventListener('hashchange', onHistory) }
   }, [runtime, requestLeave])
 
+  const [settingsNavigation] = useState(() => ({
+    openSettings: () => requestLeave(() => navigate.current('#settings')),
+    preserveFocus: (gear: HTMLButtonElement) => {
+      // Returning to a still-loading screen can mount its gear before the destination is ready.
+      if (returningDuringStorageOpen.current && document.activeElement === gear) focusSettingsGear.current = true
+    },
+    restoreFocus: (gear: HTMLButtonElement) => {
+      if (focusSettingsGear.current && !gear.closest('[hidden], [inert]')) {
+        focusSettingsGear.current = false
+        if (runtime.store.getState().workspace.kind !== 'loading') returningDuringStorageOpen.current = false
+        gear.focus({ preventScroll: true })
+      }
+    },
+  }))
   const cardOpen = useStore(runtime.store, state => state.workspace.kind === 'card')
+  const storageReady = useStore(runtime.store, state => state.storageState === 'ready')
   const workspaceReady = useStore(runtime.store, state => !['loading', 'unavailable'].includes(state.workspace.kind))
   const agentPending = useStore(runtime.store, state => state.agentPending)
   const agentRefreshError = useStore(runtime.store, state => state.agentRefreshError)
@@ -201,7 +257,8 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const navigateToCard = async (projectId: Id, cardId: Id, options: { edit?: boolean } = {}) => {
     requestLeave(() => {
       setEditRequest({ cardId, seq: ++editSeq.current, edit: !!options.edit })
-      return navigate.current(routeFor(projectId, cardId), true, { presentation: 'panel', replace: !!routeFromHash()?.cardId && presentation.current === 'panel' })
+      const route = routeFromHash()
+      return navigate.current(routeFor(projectId, cardId), true, { presentation: 'panel', replace: route?.kind === 'project' && !!route.cardId && presentation.current === 'panel' })
     })
   }
   const expandCard = async () => { await navigate.current(location.hash, false, { presentation: 'page' }); presentation.current = 'page'; setCardPresentation('page') }
@@ -214,12 +271,12 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     else await navigate.current(routeFor(projectId), true, { replace: true })
   }, [])
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
-  const onProjectDeleted = async (id: Id) => { if (routeFromHash()?.projectId === id) await navigate.current('', false) }
-  const content = restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} editRequest={editRequest} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} /><PwaUpdateRegistration requestUpdate={requestLeave} />
+  const onProjectDeleted = async (id: Id) => { const route = routeFromHash(); if (route?.kind === 'project' && route.projectId === id) await navigate.current('', false) }
+  const content = screen === 'settings' ? <SettingsPage onBack={() => historyBackFromSettings.current?.()} onReturn={navigateToCatalogue} /> : restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} editRequest={editRequest} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} />
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
   const actions = { exportBackup: runtime.useCases.exportBackup, summary: runtime.useCases.summary, parseBackup: runtime.useCases.parseBackup, restore: (backup: Backup) => runtime.store.getState().restoreBackup(backup) }
-  const backupEnabled = workspaceReady && !restartRequired
-  return <NotificationProvider isolated={panelIsolated}><BackupProvider enabled={backupEnabled} actions={actions} requestLeave={requestLeave} showCatalogue={() => navigate.current('', false)}><InstallProvider ready={backupEnabled}>{content}</InstallProvider></BackupProvider></NotificationProvider>
+  const backupEnabled = storageReady && !restartRequired
+  return <SettingsNavigationContext value={settingsNavigation}><NotificationProvider isolated={panelIsolated}><BackupProvider enabled={backupEnabled} actions={actions} showCatalogue={() => navigate.current('', false)}><InstallProvider ready={screen === 'workspace' && workspaceReady && !restartRequired}>{content}{!restartRequired ? <PwaUpdateRegistration requestUpdate={requestLeave} /> : null}</InstallProvider></BackupProvider></NotificationProvider></SettingsNavigationContext>
 }
 export function App(props: Parameters<typeof WorkspaceApp>[0]) { return <LocaleProvider><ThemeProvider><WorkspaceApp {...props} /></ThemeProvider></LocaleProvider> }

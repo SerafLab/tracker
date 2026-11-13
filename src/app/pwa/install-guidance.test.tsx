@@ -2,6 +2,7 @@ import { act, cleanup, render, screen, within } from '@testing-library/react'
 import userEvent, { type UserEvent } from '@testing-library/user-event'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { SettingsPage } from '../settings/settings-page'
 import { AppBar } from '../../ui/app-bar'
 import { ActionDialog } from '../../features/project-board'
 import { InstallProvider } from './install-guidance'
@@ -17,19 +18,12 @@ function nativePrompt(outcome: 'accepted' | 'dismissed' = 'dismissed') {
 }
 
 function Harness({ ready = false }: { ready?: boolean }) {
-  return <InstallProvider ready={ready}><AppBar title="Каталог" /></InstallProvider>
+  return <InstallProvider ready={ready}><SettingsPage onBack={() => {}} onReturn={() => {}} /></InstallProvider>
 }
-/** Opens the application-bar settings and activates the installation entry with the given label. */
 async function chooseEntry(user: UserEvent, name: string) {
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  await user.click(within(await screen.findByRole('menu', { name: 'Настройки' })).getByRole('menuitem', { name }))
+  await user.click(await screen.findByRole('button', { name }))
 }
-const entryLabel = async (user: UserEvent) => {
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  const label = within(await screen.findByRole('menu', { name: 'Настройки' })).getAllByRole('menuitem')[0].textContent
-  await user.keyboard('{Escape}')
-  return label
-}
+const entryLabel = async () => within(await screen.findByRole('region', { name: 'Приложение' })).getByRole('button').textContent
 
 beforeEach(() => localStorage.removeItem(installInvitationStorageKey))
 afterEach(() => { cleanup(); setUserAgent(originalUserAgent); vi.unstubAllGlobals() })
@@ -78,7 +72,7 @@ describe('settings installation entry', () => {
     expect(screen.getByRole('dialog', { name: 'Установить EasyTrack' })).toHaveTextContent('могут быть удалены при очистке данных сайта')
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Настройки' })).toHaveFocus())
+    await vi.waitFor(() => expect(screen.getByRole('button', { name: 'Как установить EasyTrack' })).toHaveFocus())
   })
 
   it('uses a deferred native install prompt only after an explicit action and saves an accepted installation', async () => {
@@ -89,7 +83,7 @@ describe('settings installation entry', () => {
     const user = userEvent.setup()
     await chooseEntry(user, 'Установить EasyTrack')
     expect(event.prompt).toHaveBeenCalledOnce()
-    expect(await entryLabel(user)).toBe('Как установить EasyTrack')
+    expect(await entryLabel()).toBe('Как установить EasyTrack')
     await vi.waitFor(() => expect(isInvitationDismissed()).toBe(true))
   })
 
@@ -98,7 +92,7 @@ describe('settings installation entry', () => {
     act(() => { dispatchEvent(nativePrompt('dismissed')) })
     const user = userEvent.setup()
     await chooseEntry(user, 'Установить EasyTrack')
-    expect(await entryLabel(user)).toBe('Как установить EasyTrack')
+    expect(await entryLabel()).toBe('Как установить EasyTrack')
     await Promise.resolve()
     expect(isInvitationDismissed()).toBe(false)
   })
@@ -107,9 +101,9 @@ describe('settings installation entry', () => {
     render(<Harness />)
     act(() => { dispatchEvent(nativePrompt()) })
     const user = userEvent.setup()
-    expect(await entryLabel(user)).toBe('Установить EasyTrack')
+    expect(await entryLabel()).toBe('Установить EasyTrack')
     act(() => { dispatchEvent(new Event('appinstalled')) })
-    expect(await entryLabel(user)).toBe('Как установить EasyTrack')
+    expect(await entryLabel()).toBe('Как установить EasyTrack')
     expect(isInvitationDismissed()).toBe(true)
   })
 
@@ -228,4 +222,16 @@ describe('invitation trigger', () => {
     render(<Harness ready />)
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
+})
+
+it('does not invite on direct settings entry and shows the version from this build', async () => {
+  const { App } = await import('../app')
+  const { build } = await import('../build')
+  history.replaceState(null, '', '/#settings')
+  try {
+    render(<App repository={{ open: async () => {} } as never} />)
+    await screen.findByRole('region', { name: 'Данные' })
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(screen.getByText(`Версия ${build.version} (${build.commit})`)).toBeVisible()
+  } finally { history.replaceState(null, '', '/') }
 })

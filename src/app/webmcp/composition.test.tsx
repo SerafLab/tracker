@@ -82,12 +82,25 @@ it('native-contract fixture saves set names in the current UI language and order
   const ru = await call('create_project', { name: 'RU', statusSetId: 'development' }) as { data: { project: { id: string; statuses: { name: string }[] } } }
   expect(ru.data.project.statuses.map(status => status.name)).toEqual(['Запланировано', 'На паузе', 'В разработке', 'На проверке', 'Готово'])
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  await user.click(await screen.findByRole('menuitemradio', { name: 'English' }))
+  await user.click(await screen.findByRole('radio', { name: 'English' }))
   const en = await call('create_project', { name: 'EN', statusSetId: 'job-search' }) as { data: { project: { id: string } } }
   expect(await names(en.data.project.id)).toEqual(['Interested', 'Applied', 'Interviews', 'Offer', 'Rejected'])
   expect(await names(ru.data.project.id)).toHaveLength(5)
   const bare = await call('create_project', { name: 'Bare', statusSetId: 'none' }) as { data: { project: { id: string } } }
   expect(await call('apply_status_set', { projectId: bare.data.project.id, statusSetId: 'simple' })).toMatchObject({ ok: true, data: { board: { statuses: [{ name: 'To do' }, { name: 'In progress' }, { name: 'Done' }] } } })
   expect(await call('apply_status_set', { projectId: bare.data.project.id, statusSetId: 'simple' })).toMatchObject({ error: { code: 'conflict' } })
-  expect(location.hash).toBe('#project/p')
+  expect(location.hash).toBe('#settings')
+})
+
+it('reports settings as the current route and opens the requested project from it', async () => {
+  const { call, tools, connection, user } = await fixture()
+  const original = await tools.get('get_connection')!.execute({}) as { data: { contractVersion: number } }
+  const names = [...tools.keys()].sort()
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  await screen.findByRole('heading', { name: 'Настройки' })
+  expect(await tools.get('get_connection')!.execute({})).toEqual({ ...original, data: { ...original.data, route: '#settings' } })
+  expect(await call('show_workspace', { projectId: 'p' })).toMatchObject({ ok: true, data: { route: '#project/p' } })
+  await screen.findByRole('heading', { name: 'Project' })
+  expect([...tools.keys()].sort()).toEqual(names)
+  expect(await tools.get('get_connection')!.execute({})).toMatchObject({ sessionId: connection.sessionId })
 })

@@ -103,8 +103,9 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
     await page.getByRole('button', {name: en ? 'Settings' : 'Настройки'}).click()
     const locale = page.getByRole('group', { name: en ? 'Application language' : 'Язык приложения' })
     await expect(locale).toHaveCount(1)
-    await expect(locale.getByRole('menuitemradio')).toHaveText(['Русский', 'English'])
-    await page.keyboard.press('Escape')
+    await expect(locale.getByRole('radio', { name: 'Русский' })).toBeVisible()
+    await expect(locale.getByRole('radio', { name: 'English' })).toBeVisible()
+    await page.getByRole('button', { name: en ? 'Back' : 'Назад', exact: true }).click()
     await expect(first.locator('.card-badge')).toHaveCount(4)
     await page.evaluate(() => { if (document.activeElement instanceof HTMLElement) document.activeElement.blur() })
     await page.screenshot({ path: testInfo.outputPath(`calm-${language}-${width}.png`), fullPage: true })
@@ -160,17 +161,17 @@ for (const width of [320, 390, 1280, 1440]) for (const language of ['ru', 'en'] 
 
     if (width === 320) {
       await page.evaluate(() => window.scrollTo(0, 0))
-      await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
-      await expect(page.getByRole('menu', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
+      await page.getByRole('button', { name: en ? 'Project actions' : 'Действия проекта', exact: true }).click()
+      await expect(page.getByRole('menu', {name: en ? 'Project actions' : 'Действия проекта'})).toBeVisible()
       await page.locator('[data-board-scroller]').evaluate(element => { element.scrollTop = 250 })
       await expect.poll(() => page.locator('[data-board-scroller]').evaluate(element => element.scrollTop)).toBeGreaterThan(50)
-      const settingsAfterScroll = page.getByRole('menu', {name: en ? 'Settings' : 'Настройки'})
-      await expect(settingsAfterScroll).toBeVisible()
-      expect(await settingsAfterScroll.evaluate(element => { const box = element.getBoundingClientRect(); return box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth })).toBe(true)
+      const menuAfterScroll = page.getByRole('menu', {name: en ? 'Project actions' : 'Действия проекта'})
+      await expect(menuAfterScroll).toBeVisible()
+      expect(await menuAfterScroll.evaluate(element => { const box = element.getBoundingClientRect(); return box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth })).toBe(true)
       await page.keyboard.press('Escape')
-      // Nested board scrolling leaves the anchored bar settings available.
-      await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
-      await expect(page.getByRole('menu', {name: en ? 'Settings' : 'Настройки'})).toBeVisible()
+      // Nested board scrolling leaves the anchored project menu available.
+      await page.getByRole('button', { name: en ? 'Project actions' : 'Действия проекта', exact: true }).click()
+      await expect(page.getByRole('menu', {name: en ? 'Project actions' : 'Действия проекта'})).toBeVisible()
       await page.keyboard.press('Escape')
     }
   })

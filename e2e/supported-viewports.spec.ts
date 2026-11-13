@@ -23,8 +23,7 @@ async function seed(page: Page, language: 'ru' | 'en') {
   }, { project, statuses })
 }
 
-/** No horizontal page overflow; brand, gear and the creation plus are fully on screen, and settings open within the viewport. */
-async function expectScreenFits(page: Page, en: boolean, plus?: string) {
+async function expectScreenFits(page: Page, en: boolean, plus?: string, board = false) {
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
   const bar = page.locator('.app-bar').filter({ visible: true })
   const gear = bar.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true })
@@ -32,14 +31,14 @@ async function expectScreenFits(page: Page, en: boolean, plus?: string) {
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
   if (plus) await expect(bar.getByRole('button', { name: plus, exact: true })).toBeInViewport({ ratio: 1 })
   await expect(gear).toBeInViewport({ ratio: 1 })
-  await gear.click()
-  // The popover fits the viewport; on a short screen its menu scrolls inside it.
-  const menu = page.getByRole('menu', { name: en ? 'Settings' : 'Настройки' })
-  await expect(menu.locator('xpath=ancestor::*[@popover][1]')).toBeInViewport({ ratio: 1 })
-  await menu.getByRole('menuitemradio').last().scrollIntoViewIfNeeded()
-  await expect(menu.getByRole('menuitemradio').last()).toBeInViewport({ ratio: 1 })
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('menu')).toHaveCount(0)
+  if (board) {
+    const actions = bar.getByRole('button', { name: en ? 'Project actions' : 'Действия проекта', exact: true })
+    await expect(actions).toBeInViewport({ ratio: 1 })
+    await actions.click()
+    await expect(page.locator('.bar-menu')).toBeInViewport({ ratio: 1 })
+    await page.keyboard.press('Escape')
+    await expect(actions).toBeFocused()
+  }
 }
 
 for (const { width, height } of referenceViewports) for (const language of ['ru', 'en'] as const) {
@@ -56,7 +55,19 @@ for (const { width, height } of referenceViewports) for (const language of ['ru'
     await test.step('board', async () => {
       await page.goto(`/tracker/#project/${project}`)
       await expect(page.getByRole('heading', { level: 2 })).toHaveCount(statuses.length)
-      await expectScreenFits(page, en, en ? 'Add status' : 'Добавить статус')
+      await expectScreenFits(page, en, en ? 'Add status' : 'Добавить статус', true)
+    })
+    await test.step('settings', async () => {
+      await page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true }).click()
+      const heading = page.getByRole('heading', { name: en ? 'Settings' : 'Настройки', exact: true })
+      await expect(heading).toBeFocused()
+      const back = page.getByRole('button', { name: en ? 'Back' : 'Назад', exact: true })
+      await expect(page.locator('.app-brand')).toBeInViewport({ ratio: 1 })
+      await expect(back).toBeInViewport({ ratio: 1 })
+      await expect(page.getByRole('heading', { level: 2 })).toHaveText(en ? ['Appearance', 'Data', 'Application'] : ['Внешний вид', 'Данные', 'Приложение'])
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+      await back.click()
+      await expect(page.getByRole('button', { name: en ? 'Settings' : 'Настройки', exact: true })).toBeFocused()
     })
     await test.step('card panel', async () => {
       await page.locator('.work-card').first().getByRole('link').first().click()

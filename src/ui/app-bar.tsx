@@ -1,97 +1,40 @@
-import { useContext, useId, useLayoutEffect, useRef, useState, type RefObject } from 'react'
+import { useContext, useEffect, useLayoutEffect, useRef, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useModalOpen } from './modal-state'
-import { LanguageMenuGroup, LanguagePreferenceWarning } from '../i18n/provider'
-import { ThemeMenuGroup, ThemePreferenceWarning } from './theme-provider'
-import { focusFirstMenuItem, moveMenuFocus } from './menu-focus'
-import { SettingsEntryContext } from './settings-entry'
+import { SettingsNavigationContext } from './settings-navigation'
+import { BarMenu } from './bar-menu'
 import { TruncatedText } from './truncated-text'
 
 type BarAction = { disabled?: boolean; label: string; onSelect: () => void; triggerRef: RefObject<HTMLButtonElement | null> }
 
-type AppBarProps = ({ title: string; context?: never } | { title?: never; context: { project: string; status: string } }) & { onReturn?: () => void; creation?: BarAction; rename?: Omit<BarAction, 'label'>; deleteProject?: Omit<BarAction, 'label'> }
+type AppBarProps = ({ title: string; context?: never } | { title?: never; context: { project: string; status: string } }) & { onReturn?: () => void; creation?: BarAction; onBack?: () => void; projectActions?: { disabled?: boolean; triggerRef: BarAction['triggerRef']; onRename: () => void; onDelete: () => void } }
 
-export function AppBar({ title, context, onReturn, creation, rename, deleteProject }: AppBarProps) {
+export function AppBar({ title, context, onReturn, creation, onBack, projectActions }: AppBarProps) {
   const { t } = useTranslation()
   const modalOpen = useModalOpen()
-  const settingsEntries = useContext(SettingsEntryContext)
-  const [open, setOpen] = useState(false)
-  const localGear = useRef<HTMLButtonElement>(null)
-  const gear = rename?.triggerRef ?? deleteProject?.triggerRef ?? localGear
-  const panel = useRef<HTMLDivElement>(null)
-  const menu = useRef<HTMLDivElement>(null)
-  const id = useId()
-  useLayoutEffect(() => { if (modalOpen) setOpen(false) }, [modalOpen])
+  const navigation = useContext(SettingsNavigationContext)
+  const gear = useRef<HTMLButtonElement>(null)
   useLayoutEffect(() => {
-    if (!open || modalOpen || !panel.current) return
-    const element = panel.current
-    element.showPopover()
-    const position = () => {
-      const trigger = gear.current?.getBoundingClientRect()
-      if (!trigger) return
-      const bounds = element.getBoundingClientRect()
-      element.style.left = `${Math.max(8, Math.min(window.innerWidth - bounds.width - 8, trigger.right - bounds.width))}px`
-      element.style.top = `${Math.max(8, Math.min(window.innerHeight - bounds.height - 8, trigger.bottom + 6))}px`
-    }
-    const outside = (event: Event) => {
-      if (event.target instanceof Node && !element.contains(event.target) && !gear.current?.contains(event.target)) setOpen(false)
-    }
-    const keyboard = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); setOpen(false); gear.current?.focus() }
-      else if (moveMenuFocus(menu.current, event.key)) event.preventDefault()
-    }
-    const toggle = (event: Event) => { if ((event as ToggleEvent).newState === 'closed') setOpen(false) }
-    position()
-    focusFirstMenuItem(menu.current)
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(position)
-    observer?.observe(element)
-    if (gear.current?.closest('.app-bar-inner')) observer?.observe(gear.current.closest('.app-bar-inner')!)
-    const scroll = (event: Event) => {
-      // Nested scrollers do not move the application bar.
-      if (event.target !== document) return
-      const trigger = gear.current?.getBoundingClientRect()
-      if (trigger && trigger.height > 0 && (trigger.bottom <= 0 || trigger.top >= window.innerHeight)) setOpen(false)
-      else position()
-    }
-    document.addEventListener('pointerdown', outside)
-    document.addEventListener('focusin', outside)
-    document.addEventListener('keydown', keyboard)
-    document.addEventListener('scroll', scroll, true)
-    window.addEventListener('resize', position)
-    element.addEventListener('toggle', toggle)
-    return () => {
-      observer?.disconnect()
-      document.removeEventListener('pointerdown', outside)
-      document.removeEventListener('focusin', outside)
-      document.removeEventListener('keydown', keyboard)
-      document.removeEventListener('scroll', scroll, true)
-      window.removeEventListener('resize', position)
-      element.removeEventListener('toggle', toggle)
-    }
-  }, [open, modalOpen, gear])
+    const button = gear.current
+    return () => { if (button) navigation?.preserveFocus(button) }
+  }, [navigation])
+  useEffect(() => { queueMicrotask(() => { if (gear.current) navigation?.restoreFocus(gear.current) }) }, [navigation])
   const brand = <><svg className="brand-mark" aria-hidden="true" viewBox="0 0 24 24"><path d="M4 5h7M4 12h4M4 19h10m-3-7 4 4 6-9" /></svg>EasyTrack</>
   return <header className="app-bar" inert={modalOpen} aria-hidden={modalOpen || undefined}>
     <div className="app-bar-inner">
-      {onReturn ? <button className="app-brand bar-hint" data-hint={t('allProjects')} aria-label={`EasyTrack — ${t('allProjects')}`} translate="no" onClick={() => { setOpen(false); onReturn() }}>{brand}</button> : <span className="app-brand" translate="no">{brand}</span>}
+      {onReturn ? <button className="app-brand bar-hint" data-hint={t('allProjects')} aria-label={`EasyTrack — ${t('allProjects')}`} translate="no" onClick={onReturn}>{brand}</button> : <span className="app-brand" translate="no">{brand}</span>}
       {context
         ? <div className="app-bar-context"><TruncatedText text={context.project} className="app-bar-context-text" wrapClassName="app-bar-context-project" /><span className="app-bar-context-separator" aria-hidden="true">›</span><TruncatedText text={context.status} className="app-bar-context-text" wrapClassName="app-bar-context-status" /></div>
-        : <TruncatedText as="h1" text={title ?? ''} className="page-title" />}
+        : <TruncatedText as="h1" text={title ?? ''} className="page-title" focusOnMount={!!onBack && !modalOpen} />}
       <div className="app-bar-controls">
-        {creation ? <button disabled={creation.disabled} ref={creation.triggerRef} className="button button-primary button-icon bar-hint" data-hint={creation.label} aria-label={creation.label} onClick={() => { setOpen(false); creation.onSelect() }}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></button> : null}
-        <button ref={gear} className="button button-quiet button-icon bar-hint" data-hint={t('settings')} aria-label={t('settings')} aria-haspopup="menu" aria-expanded={open && !modalOpen} aria-controls={id} onClick={() => setOpen(value => !value)}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 3-.6 2.4-2 .9L4 5.6 2 9l1.8 1.7v2.6L2 15l2 3.4 2.4-.7 2 .9L9 21h4l.6-2.4 2-.9 2.4.7 2-3.4-1.8-1.7v-2.6L20 9l-2-3.4-2.4.7-2-.9L13 3Z" /><circle cx="11" cy="12" r="3" /></svg></button>
-        {open && !modalOpen ? <div ref={panel} className="settings-panel menu-items" popover="auto">
-          <div id={id} ref={menu} role="menu" aria-label={t('settings')} className="menu-list">
-            {rename ? <button disabled={rename.disabled} className="menu-item" role="menuitem" onClick={() => { setOpen(false); rename.onSelect() }}>{t('renameProject')}</button> : null}
-            {deleteProject ? <button disabled={deleteProject.disabled} className="menu-item" role="menuitem" onClick={() => { setOpen(false); deleteProject.onSelect() }}>{t('deleteProject')}</button> : null}
-            {/* Focus the gear first so a dialog opened by the entry returns focus there. */}
-            {settingsEntries.map(entry => <button key={entry.label} className="menu-item" role="menuitem" onClick={() => { setOpen(false); gear.current?.focus(); entry.onSelect() }}>{entry.label}</button>)}
-            {rename || deleteProject || settingsEntries.length ? <div role="separator" className="menu-separator" /> : null}
-            <LanguageMenuGroup />
-            <ThemeMenuGroup />
-          </div>
-          <LanguagePreferenceWarning />
-          <ThemePreferenceWarning />
-        </div> : null}
+        {creation && !onBack ? <button disabled={creation.disabled} ref={creation.triggerRef} className="button button-primary button-icon bar-hint" data-hint={creation.label} aria-label={creation.label} onClick={creation.onSelect}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></button> : null}
+        {projectActions && !onBack ? <BarMenu label={t('boardProjectActions')} triggerRef={projectActions.triggerRef} disabled={projectActions.disabled} items={[
+          { label: t('renameProject'), select: projectActions.onRename },
+          { label: t('deleteProject'), select: projectActions.onDelete },
+        ]} /> : null}
+        {onBack
+          ? <button className="button button-quiet button-icon bar-hint" data-hint={t('back')} aria-label={t('back')} onClick={onBack}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m11 5-7 7 7 7M4 12h16" /></svg></button>
+          : <button ref={gear} className="button button-quiet button-icon bar-hint" data-hint={t('settings')} aria-label={t('settings')} onClick={navigation?.openSettings}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m9 3-.6 2.4-2 .9L4 5.6 2 9l1.8 1.7v2.6L2 15l2 3.4 2.4-.7 2 .9L9 21h4l.6-2.4 2-.9 2.4.7 2-3.4-1.8-1.7v-2.6L20 9l-2-3.4-2.4.7-2-.9L13 3Z" /><circle cx="11" cy="12" r="3" /></svg></button>}
       </div>
     </div>
   </header>

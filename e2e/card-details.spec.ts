@@ -124,7 +124,7 @@ test('restores indexed Back/Forward before asking about drafts and applies the c
 })
 
 const guardOf = (page: Page) => page.getByRole('dialog', { name: 'Несохранённые изменения' })
-// Playwright's page.url() lags renderer navigations; the location read inside the page is authoritative.
+// page.url() follows browser-side navigation events and may lag same-document history steps; read location in the page.
 const locationIs = (page: Page, url: string) => expect.poll(() => page.evaluate(() => location.href)).toBe(url)
 const rapidBack = (page: Page) => page.evaluate(() => { history.back(); history.back() })
 
@@ -214,24 +214,17 @@ test('rapid Back with a failed save stays on the card with the draft and saves a
 })
 
 test('native close warns for pending drafts and rapid Back preserves one guarded transition', async ({ page }) => {
-  const boardUrl = await createBoard(page)
-  await page.getByRole('link', { name: 'Detail card', exact: true }).click()
-  const detailUrl = page.url(), description = page.getByLabel('Описание карточки', { exact: true })
-  await enterEdit(page)
-  await description.fill('Native draft')
+  const { boardUrl, detailUrl, description } = await openDraft(page)
   const dialog = page.waitForEvent('dialog')
   const close = page.close({ runBeforeUnload: true })
   const warning = await dialog
   expect(warning.type()).toBe('beforeunload'); await warning.dismiss(); await close
   expect(page.isClosed()).toBe(false)
   await locationIs(page, detailUrl); await expect(description).toHaveValue('Native draft')
-  await page.evaluate(() => { history.back(); history.back() })
-  const guard = page.getByRole('dialog', { name: 'Несохранённые изменения' })
-  await expect(guard).toHaveCount(1); await locationIs(page, detailUrl)
+  let guard = await guardedRapidBack(page, detailUrl)
   await guard.getByRole('button', { name: 'Остаться', exact: true }).click()
   await expect(guard).toHaveCount(0); await locationIs(page, detailUrl); await expect(description).toHaveValue('Native draft')
-  await page.evaluate(() => { history.back(); history.back() })
-  await expect(guard).toHaveCount(1); await locationIs(page, detailUrl)
+  guard = await guardedRapidBack(page, detailUrl)
   await guard.getByRole('button', { name: 'Сохранить и выйти', exact: true }).click()
   await expectLeft(page, boardUrl)
   await page.goForward(); await locationIs(page, detailUrl)

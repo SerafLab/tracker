@@ -196,12 +196,14 @@ test('keeps native touch swipes before hold, then drags without opening on relea
       const room = await list.evaluate((node, [name, dir]) => {
         const element = node as HTMLElement & Record<string, number>, offset = element[name as string]
         const range = name === 'scrollLeft' ? element.scrollWidth - element.clientWidth : element.scrollHeight - element.clientHeight
-        const w = window as unknown as { swipe: { peak: number, ended: Promise<void> } }
-        w.swipe = { peak: 0, ended: new Promise<void>(resolve => {
-          element.addEventListener('scroll', () => { w.swipe.peak = Math.max(w.swipe.peak, (element[name as string] - offset) * (dir as number)) })
+        const w = window as unknown as { swipe?: { peak: number, ended: Promise<void>, done: AbortController } }
+        w.swipe?.done.abort() // A previous swipe's listeners must not write into this swipe's peak.
+        const done = new AbortController(), swipe = { peak: 0, done, ended: new Promise<void>(resolve => {
+          element.addEventListener('scroll', () => { swipe.peak = Math.max(swipe.peak, (element[name as string] - offset) * (dir as number)) }, { signal: done.signal })
           // Scrollends of earlier programmatic scrolls arrive before any directional movement and are ignored.
-          element.addEventListener('scrollend', () => { if (w.swipe.peak > 0) resolve() })
+          element.addEventListener('scrollend', () => { if (swipe.peak > 0) resolve() }, { signal: done.signal })
         }) }
+        w.swipe = swipe
         return (dir as number) > 0 ? range - offset : offset
       }, [axis, sign] as const)
       const needed = Math.min(travel / 2, room)
@@ -211,7 +213,7 @@ test('keeps native touch swipes before hold, then drags without opening on relea
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
       await expect.poll(() => page.evaluate(() => (window as unknown as { swipe: { peak: number } }).swipe.peak)).toBeGreaterThanOrEqual(needed)
       // The next gesture must not begin during the fling or snap.
-      await page.evaluate(() => (window as unknown as { swipe: { ended: Promise<void> } }).swipe.ended)
+      await page.evaluate(async () => { const { swipe } = window as unknown as { swipe: { ended: Promise<void>, done: AbortController } }; await swipe.ended; swipe.done.abort() })
     }
     let bounds = await card(page, 'A2').boundingBox()
     await swipe(300, bounds!.y + 25, -210, 0)

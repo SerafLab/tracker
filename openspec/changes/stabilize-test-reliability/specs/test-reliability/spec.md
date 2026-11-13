@@ -37,7 +37,7 @@ The required browser checks SHALL cover native close cancellation with a draft, 
 - **THEN** checks confirm that failure retains the card and draft, while Discard applies the chosen destination without persisting the discarded draft
 
 ### Requirement: Native touch regression coverage
-The required browser checks SHALL verify horizontal and vertical native scrolling from a card before hold activation, intentional drag after hold, and cancellation. A scroll assertion SHALL compare the target workspace's position before and after the gesture and SHALL NOT pass from pre-existing scroll position alone.
+The required browser checks SHALL verify horizontal and vertical native scrolling from a card before hold activation, intentional drag after hold, and cancellation. A scroll assertion SHALL measure the target workspace's displacement in the gesture direction from its position measured before the gesture, SHALL NOT depend on the resting position chosen by scroll snapping, and SHALL NOT pass from pre-existing scroll position alone.
 
 #### Scenario: Swipe scrolls without editing or navigation
 - **WHEN** a native swipe begins on a card with available scroll range in its direction before hold activation

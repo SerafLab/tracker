@@ -38,4 +38,4 @@
 ## 6. Интеграция
 
 - [x] 6.1 Выборочно просмотреть снимки по `docs/agents/rules/visual-review.md`: страница настроек (320 и 1280 px, RU и EN, готовое и недоступное хранилище), панель доски с «⋯» и открытым меню на 320 px. Записать фактически просмотренное.
-- [ ] 6.2 Выполнить `npm run check` с уникальным `E2E_PORT` и `openspec validate settings-page --strict`. Обе проверки проходят.
+- [x] 6.2 Выполнить `npm run check` с уникальным `E2E_PORT` и `openspec validate settings-page --strict`. Обе проверки проходят.

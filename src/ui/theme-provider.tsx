@@ -1,4 +1,4 @@
-import { createContext, useContext, useId, useState, type ReactNode } from 'react'
+import { createContext, useContext, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { applyTheme, themeStorageKey, type ColorTheme } from './theme'
 
@@ -6,30 +6,24 @@ const ThemeContext = createContext<{ theme: ColorTheme; select: (theme: ColorThe
 
 const themes: { theme: ColorTheme; label: 'themeGreen' | 'themeInk' }[] = [{ theme: 'green', label: 'themeGreen' }, { theme: 'ink', label: 'themeInk' }]
 
-export function ThemeMenuGroup() {
+export function ThemeChoice() {
   const { t } = useTranslation()
   const preference = useContext(ThemeContext)
-  const captionId = useId()
   if (!preference) return null
-  return <>
-    <div role="separator" className="menu-separator" />
-    <div id={captionId} className="menu-caption">{t('colorTheme')}</div>
-    <div role="group" aria-labelledby={captionId} className="menu-group">
-      {themes.map(({ theme, label }) => {
-        const checked = preference.theme === theme
-        return <button key={theme} type="button" role="menuitemradio" aria-checked={checked} className="menu-item menu-item-radio" onClick={() => preference.select(theme)}>
-          {t(label)}
-          {checked ? <svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="m5 12 5 5 9-10" /></svg> : null}
-        </button>
-      })}
-    </div>
-  </>
+  return <fieldset className="settings-choice">
+    <legend>{t('colorTheme')}</legend>
+    {themes.map(({ theme, label }) => <label key={theme}>
+      <input type="radio" name="theme" checked={preference.theme === theme} onChange={() => preference.select(theme)} />
+      {t(label)}
+    </label>)}
+    <ThemePreferenceWarning />
+  </fieldset>
 }
 
-export function ThemePreferenceWarning() {
+function ThemePreferenceWarning() {
   const { t } = useTranslation()
   const preference = useContext(ThemeContext)
-  return preference?.warning ? <p role="alert" className="menu-warning">{t('themePreferenceWarning')}</p> : null
+  return preference?.warning ? <p role="alert" className="settings-warning">{t('themePreferenceWarning')}</p> : null
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {

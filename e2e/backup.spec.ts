@@ -42,7 +42,7 @@ async function writeData(page: Page, data: Data) {
     })
     db.close()
   }, { data, tables })
-  await page.reload()
+  await page.goto('/tracker/')
 }
 
 async function readData(page: Page): Promise<Data> {
@@ -67,8 +67,8 @@ async function start(page: Page, data: Data, en = false) {
 }
 
 async function chooseEntry(page: Page, name: string) {
-  await page.getByRole('button', { name: /^(Настройки|Settings)$/ }).click()
-  await page.getByRole('menuitem', { name, exact: true }).click()
+  if (new URL(page.url()).hash !== '#settings') await page.getByRole('button', { name: /^(Настройки|Settings)$/ }).click()
+  await page.getByRole('button', { name, exact: true }).click()
 }
 
 async function restoreFile(page: Page, en: boolean, path: string) {
@@ -88,7 +88,7 @@ test.describe('backup', () => {
     await download.saveAs(path)
     const file = JSON.parse(await readFile(path, 'utf8'))
     expect(file).toMatchObject({ format: 'easytrack-backup', formatVersion: 1, app: { version: expect.any(String), commit: expect.any(String) } })
-    await expect(page.getByRole('button', { name: /^Настройки$/ })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Выгрузить резервную копию' })).toBeFocused()
     const before = await readData(page)
 
     await writeData(page, replacement)
@@ -141,7 +141,7 @@ test.describe('backup', () => {
     await page.reload()
     await expect(page.getByRole('button', { name: 'Назад к доске' })).toBeVisible()
     await page.getByRole('button', { name: 'Настройки' }).click()
-    await expect(page.getByRole('menuitem').filter({ hasText: /резервн/ })).toHaveText(['Выгрузить резервную копию', 'Восстановить из резервной копии'])
+    await expect(page.getByRole('region', { name: 'Данные' }).getByRole('button')).toHaveText(['Выгрузить резервную копию', 'Восстановить из резервной копии'])
   })
 
   test('rejects damaged and unrelated files without changing data', async ({ page }, info) => {
@@ -160,28 +160,24 @@ test.describe('backup', () => {
       await expect(dialog).toBeVisible()
       await dialog.getByRole('button', { name: 'Закрыть' }).last().click()
       await expect(dialog).toBeHidden()
-      await expect(page.getByRole('button', { name: 'Настройки' })).toBeFocused()
+      await expect(page.getByRole('button', { name: 'Восстановить из резервной копии' })).toBeFocused()
     }
     expect(await readData(page)).toEqual(before)
   })
 
-  for (const en of [false, true]) test(`menu and comparison dialog fit 320px in ${en ? 'en' : 'ru'}`, async ({ page }, info) => {
+  for (const en of [false, true]) test(`settings and comparison dialog fit 320px in ${en ? 'en' : 'ru'}`, async ({ page }, info) => {
     await page.setViewportSize(viewportFor(320))
     await start(page, original, en)
     const exporting = page.waitForEvent('download')
     await chooseEntry(page, t(en, 'Выгрузить резервную копию', 'Export backup'))
     const path = info.outputPath('narrow.json')
     await (await exporting).saveAs(path)
+    await page.getByRole('button', { name: t(en, 'Назад', 'Back'), exact: true }).click()
     await page.getByRole('button', { name: 'Alpha', exact: true }).click()
     await page.getByRole('button', { name: t(en, 'Настройки', 'Settings') }).click()
-    const menu = page.getByRole('menu')
-    const labels = en ? ['Rename project', 'Delete project', 'Export backup', 'Restore from backup', 'How to install EasyTrack'] : ['Переименовать проект', 'Удалить проект', 'Выгрузить резервную копию', 'Восстановить из резервной копии', 'Как установить EasyTrack']
-    for (const label of labels) await expect(menu.getByRole('menuitem', { name: label, exact: true })).toBeVisible()
-    const box = (await menu.boundingBox())!
-    expect(box.x).toBeGreaterThanOrEqual(0)
-    expect(box.x + box.width).toBeLessThanOrEqual(320)
+    const data = page.getByRole('region', { name: t(en, 'Данные', 'Data') })
+    await expect(data.getByRole('button')).toHaveText(en ? ['Export backup', 'Restore from backup'] : ['Выгрузить резервную копию', 'Восстановить из резервной копии'])
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await page.keyboard.press('Escape')
     await restoreFile(page, en, path)
     const dialog = page.getByRole('dialog', { name: t(en, 'Заменить данные резервной копией?', 'Replace data with the backup?') })
     await expect(dialog).toContainText(t(en, 'Проекты: 2 → 2', 'Projects: 2 → 2'))
@@ -192,6 +188,6 @@ test.describe('backup', () => {
     await page.screenshot({ path: info.outputPath(`backup-dialog-${en ? 'en' : 'ru'}-320.png`) })
     await dialog.getByRole('button', { name: t(en, 'Отмена', 'Cancel') }).click()
     await expect(dialog).toBeHidden()
-    await expect(page.getByRole('button', { name: t(en, 'Настройки', 'Settings') })).toBeFocused()
+    await expect(page.getByRole('button', { name: t(en, 'Восстановить из резервной копии', 'Restore from backup') })).toBeFocused()
   })
 })

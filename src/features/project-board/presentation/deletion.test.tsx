@@ -84,14 +84,15 @@ it.each(['card', 'status'] as const)('keeps the %s and dialog after a storage fa
   }
 })
 
-it('translates deletion menus and dialogs while offering project deletion through board settings', async () => {
+it('translates deletion menus and dialogs while offering project deletion through board project actions', async () => {
   const { user } = await setup(false)
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
+  await user.click(screen.getByRole('button', { name: 'Действия проекта' }))
   expect(screen.getByRole('menuitem', { name: 'Удалить проект' })).toBeInTheDocument()
   await user.keyboard('{Escape}')
   await user.click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
-  await user.click(await screen.findByRole('menuitemradio', { name: 'English' }))
-  await user.click(screen.getByRole('button', { name: 'Status actions for Status' }))
+  await user.click(await screen.findByRole('radio', { name: 'English' }))
+  await user.click(await screen.findByRole('button', { name: 'Back' }))
+  await user.click(await screen.findByRole('button', { name: 'Status actions for Status' }))
   await user.click(screen.getByRole('menuitem', { name: 'Delete' }))
   const dialog = screen.getByRole('dialog', { name: 'Delete status' })
   expect(within(dialog).getByText('Delete status “Status”?')).toBeInTheDocument()

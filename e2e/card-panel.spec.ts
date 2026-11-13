@@ -140,7 +140,7 @@ test('board actions preserve drafts and destructive actions ask the editor guard
   await dialog.getByRole('button', { name: 'Остаться', exact: true }).click()
   await expect(page.getByRole('textbox', { name: 'Описание карточки' })).toHaveValue('Retained while board changes')
   await expect(page.getByRole('link', { name: 'Card 0', exact: true })).toHaveCount(1)
-  await page.getByRole('button', { name: 'Настройки', exact: true }).click()
+  await page.getByRole('button', { name: 'Действия проекта', exact: true }).click()
   await page.getByRole('menuitem', { name: 'Удалить проект', exact: true }).click()
   await expect(dialog).toBeVisible()
   await dialog.getByRole('button', { name: 'Сохранить и выйти', exact: true }).click()

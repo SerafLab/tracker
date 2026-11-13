@@ -1,9 +1,11 @@
 import { useTranslation } from 'react-i18next'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, type RefObject, useRef, useState, type ReactNode } from 'react'
 import { ActionDialog } from '../../features/project-board'
-import { SettingsEntries } from '../../ui/settings-entry'
 import { useModalOpen } from '../../ui/modal-state'
 import { dismissInvitation, isAppleMobile, isInvitationDismissed, useInstallState, type InstallState } from './install-state'
+
+const InstallEntryContext = createContext<{ label: string; select: (trigger: HTMLButtonElement) => void } | null>(null)
+export const useInstallEntry = () => useContext(InstallEntryContext)
 
 /**
  * Owns installation for the app shell: the settings entry, its dialogs and the first-visit invitation.
@@ -22,20 +24,23 @@ export function InstallProvider({ ready = false, children }: { ready?: boolean; 
     if (!standalone && !modalOpen && !isInvitationDismissed()) setDialog('invitation')
   }, [ready, standalone, modalOpen, setDialog])
   const label = state.deferredPrompt ? t('install') : standalone ? t('localDataTitle') : t('installHelp')
-  const onSelect = () => { if (state.deferredPrompt) void state.install(); else setDialog('guidance') }
-  return <SettingsEntries entries={[{ label, onSelect }]}>{children}<InstallDialog state={state} /></SettingsEntries>
+  const opener = useRef<HTMLButtonElement>(null)
+  const select = (trigger: HTMLButtonElement) => {
+    opener.current = trigger
+    if (state.deferredPrompt) void state.install()
+    else setDialog('guidance')
+  }
+  return <InstallEntryContext value={{ label, select }}>
+    {children}
+    {state.dialog === 'invitation' ? <InstallInvitation state={state} /> : null}
+    {state.dialog === 'guidance' ? <InstallGuidance state={state} opener={opener} /> : null}
+  </InstallEntryContext>
 }
 
-function InstallDialog({ state }: { state: InstallState }) {
-  if (state.dialog === 'invitation') return <InstallInvitation state={state} />
-  if (state.dialog === 'guidance') return <InstallGuidance state={state} />
-  return null
-}
-
-function InstallGuidance({ state }: { state: InstallState }) {
+function InstallGuidance({ state, opener }: { state: InstallState; opener: RefObject<HTMLButtonElement | null> }) {
   const { t } = useTranslation()
   const close = () => state.setDialog(null)
-  return <ActionDialog title={state.standalone ? t('localDataTitle') : t('install')} onClose={close}><div className="install-guidance">
+  return <ActionDialog title={state.standalone ? t('localDataTitle') : t('install')} onClose={close} returnFocus={opener}><div className="install-guidance">
     {state.standalone ? null : <><p>{t('installBefore')}</p><p>{isAppleMobile() ? t('installApple') : t('installBrowser')}</p></>}
     <p>{t('localData')}</p>
     <div className="form-actions"><button className="button button-primary" onClick={close}>{t('understood')}</button></div>

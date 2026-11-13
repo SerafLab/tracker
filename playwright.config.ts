@@ -14,7 +14,7 @@ export default defineConfig({
     locale: 'ru-RU',
     // Invitation tests opt out with an empty storage state.
     storageState: dismissedInstallInvitation,
-    // First failure is traced without retries; explicit contexts use e2e/traced-context.ts.
+    // First failure is traced without retries; also covers contexts from browser.newContext().
     trace: 'retain-on-failure',
   },
   webServer: {

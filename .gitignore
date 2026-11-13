@@ -14,6 +14,7 @@ dist/
 # Local editor and browser-test artifacts
 .vscode/
 test-results/
+playwright-report/
 
 # Generated backup fixtures (npm run fixtures:backup)
 fixtures/

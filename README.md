@@ -74,6 +74,8 @@ npx playwright install chromium
 npm run check
 ```
 
+Если проверки запускаются параллельно в нескольких рабочих деревьях, задайте каждому свой порт: `E2E_PORT=4391 npm run check`. Занятый порт приводит к явной ошибке, а не к подключению к чужому серверу. При сбое trace и отчёт лежат в `test-results/` и `playwright-report/` (`npx playwright show-report`); в GitHub Actions — в артефакте `browser-diagnostics-<run>-<attempt>`. Порядок разбора — в [правилах тестирования](docs/agents/rules/testing.md) и [отчёте о стабильности тестов](docs/agents/test-reliability.md).
+
 `npm run check` создаёт production-сборку и выполняет архитектурные, unit/RTL и browser-level проверки, включая сценарий двух проектов, изменения порядка статусов, переименования и переноса карточки, повторное открытие доски, offline reopen и подтверждаемое обновление.
 
 После публикации пройдите следующий чеклист на GitHub Pages:

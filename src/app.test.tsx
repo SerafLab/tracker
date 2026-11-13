@@ -110,9 +110,10 @@ describe('project board', () => {
     const outside = screen.getByRole('button', { name: 'Добавить статус' })
     if (pointerType === 'touch') await user.pointer([{ keys: '[TouchA>]', target: outside }, { keys: '[/TouchA]' }])
     else await user.click(outside)
+    // Dialog opening and focus transfer are async: wait for the final state, not the intermediate one.
+    const dialog = await screen.findByRole('dialog', { name: 'Новый статус' })
+    await waitFor(() => expect(within(dialog).getByLabelText('Название статуса')).toHaveFocus())
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-    expect(screen.getByRole('dialog', { name: 'Новый статус' })).toBeInTheDocument()
-    expect(screen.getByLabelText('Название статуса')).toHaveFocus()
   })
 
   it('creates isolated projects and uses dialogs for populated-catalogue creation', async () => {

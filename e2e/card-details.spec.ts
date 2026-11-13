@@ -138,7 +138,7 @@ async function openDraft(page: Page, text = 'Native draft') {
   return { boardUrl, detailUrl, description }
 }
 
-/** Two rapid Back steps raise exactly one guard and settle on the card before it is answered. */
+/** Two rapid Back steps raise exactly one guard; the card address is checked, later steps wait for the guard's own end state. */
 async function guardedRapidBack(page: Page, detailUrl: string) {
   await rapidBack(page)
   const guard = guardOf(page)
@@ -173,7 +173,7 @@ test('rapid Back asks once and Stay keeps the card, draft and history', async ({
   expect(await page.evaluate(() => history.length)).toBe(length)
 })
 
-test('rapid Back with Save and leave persists the draft once and Forward reopens the card', async ({ page }) => {
+test('rapid Back with Save and leave persists the draft and Forward reopens the card', async ({ page }) => {
   const { boardUrl, detailUrl } = await openDraft(page)
   const guard = await guardedRapidBack(page, detailUrl)
   await guard.getByRole('button', { name: 'Сохранить и выйти', exact: true }).click()

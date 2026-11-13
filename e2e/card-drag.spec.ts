@@ -196,13 +196,17 @@ test('keeps native touch swipes before hold, then drags without opening on relea
       const room = await list.evaluate((node, [name, dir]) => {
         const element = node as HTMLElement & Record<string, number>, offset = element[name as string]
         const range = name === 'scrollLeft' ? element.scrollWidth - element.clientWidth : element.scrollHeight - element.clientHeight
-        const w = window as unknown as { swipe?: { peak: number, ended: Promise<void>, done: AbortController } }
+        const w = window as unknown as { swipe?: { peak: number, drags: number, ended: Promise<void>, done: AbortController } }
         w.swipe?.done.abort() // A previous swipe's listeners must not write into this swipe's peak.
-        const done = new AbortController(), swipe = { peak: 0, done, ended: new Promise<void>(resolve => {
+        const done = new AbortController(), swipe = { peak: 0, drags: 0, done, ended: new Promise<void>(resolve => {
           element.addEventListener('scroll', () => { swipe.peak = Math.max(swipe.peak, (element[name as string] - offset) * (dir as number)) }, { signal: done.signal })
           // Scrollends of earlier programmatic scrolls arrive before any directional movement and are ignored.
           element.addEventListener('scrollend', () => { if (swipe.peak > 0) resolve() }, { signal: done.signal })
         }) }
+        // A swipe must never activate hold-to-drag, even briefly.
+        const drags = new MutationObserver(records => { swipe.drags += records.filter(record => (record.target as Element).getAttribute('data-dragging') === 'true').length })
+        drags.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-dragging'] })
+        done.signal.addEventListener('abort', () => drags.disconnect())
         w.swipe = swipe
         return (dir as number) > 0 ? range - offset : offset
       }, [axis, sign] as const)
@@ -211,9 +215,11 @@ test('keeps native touch swipes before hold, then drags without opening on relea
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] })
       for (let step = 1; step <= 6; step++) await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + dx * step / 6, y: y + dy * step / 6 }] })
       await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+      expect(await page.evaluate(() => (window as unknown as { swipe: { drags: number } }).swipe.drags), 'swipe did not activate drag').toBe(0)
       await expect.poll(() => page.evaluate(() => (window as unknown as { swipe: { peak: number } }).swipe.peak)).toBeGreaterThanOrEqual(needed)
       // The next gesture must not begin during the fling or snap.
-      await page.evaluate(async () => { const { swipe } = window as unknown as { swipe: { ended: Promise<void>, done: AbortController } }; await swipe.ended; swipe.done.abort() })
+      const drags = await page.evaluate(async () => { const { swipe } = window as unknown as { swipe: { drags: number, ended: Promise<void>, done: AbortController } }; await swipe.ended; swipe.done.abort(); return swipe.drags })
+      expect(drags, 'swipe did not activate drag').toBe(0)
     }
     let bounds = await card(page, 'A2').boundingBox()
     await swipe(300, bounds!.y + 25, -210, 0)

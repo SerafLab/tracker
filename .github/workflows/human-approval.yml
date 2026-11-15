@@ -1,0 +1,49 @@
+name: Human approval
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  high-risk-paths:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      PR: ${{ github.event.pull_request.number }}
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      ACTION: ${{ github.event.action }}
+      APPROVED: ${{ contains(github.event.pull_request.labels.*.name, 'human-approved') }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+      - name: Set up Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5
+        with:
+          node-version-file: .nvmrc
+      - name: Require human approval for high-risk paths
+        run: |
+          files=$(node scripts/risk-paths.mjs "$BASE_SHA" "$HEAD_SHA")
+          if [ -z "$files" ]; then
+            echo "No high-risk paths changed." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          { echo "### High-risk paths: human review required"; echo "$files" | sed 's/.*/- `&`/'; } >> "$GITHUB_STEP_SUMMARY"
+          # Approval belongs to the reviewed commits: a new push withdraws it.
+          if [ "$ACTION" = synchronize ] && [ "$APPROVED" = true ]; then
+            gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label human-approved
+            echo "::error::New commits after approval: the human-approved label was removed. Review again and re-add it."
+            exit 1
+          fi
+          if [ "$APPROVED" != true ]; then
+            echo "::error::High-risk paths changed. A human reviews them and adds the human-approved label:"
+            echo "$files"
+            exit 1
+          fi

@@ -28,6 +28,7 @@ export const HIGH_RISK_PATHS = [
   'scripts/guard-human-approval.mjs',
   'scripts/limit-runner-launches.mjs',
   'scripts/check-architecture.mjs',
+  'scripts/cross-review.sh',
   'scripts/mcp-transport-probe.check.mjs',
   'scripts/theme-contrast.check.mjs',
   'vitest.config.ts',

@@ -6,7 +6,7 @@ import { LocaleProvider } from '../i18n/provider'
 import { ThemeProvider } from '../ui/theme-provider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, ProjectBoardApp, ProjectBoardDatabase, type Backup, type DraftGuard, type EditRequest, type Id, type ProjectBoardRepository } from '../features/project-board'
+import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, NoteOrderProvider, ProjectBoardApp, ProjectBoardDatabase, type Backup, type DraftGuard, type EditRequest, type Id, type ProjectBoardRepository } from '../features/project-board'
 import { BackupProvider } from './backup/backup-provider'
 import { InstallProvider } from './pwa/install-guidance'
 import { PwaUpdateRegistration } from './pwa/update-registration'
@@ -279,4 +279,4 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const backupEnabled = storageReady && !restartRequired
   return <SettingsNavigationContext value={settingsNavigation}><NotificationProvider isolated={panelIsolated}><BackupProvider enabled={backupEnabled} actions={actions} showCatalogue={() => navigate.current('', false)}><InstallProvider ready={screen === 'workspace' && workspaceReady && !restartRequired}>{content}{!restartRequired ? <PwaUpdateRegistration requestUpdate={requestLeave} /> : null}</InstallProvider></BackupProvider></NotificationProvider></SettingsNavigationContext>
 }
-export function App(props: Parameters<typeof WorkspaceApp>[0]) { return <LocaleProvider><ThemeProvider><WorkspaceApp {...props} /></ThemeProvider></LocaleProvider> }
+export function App(props: Parameters<typeof WorkspaceApp>[0]) { return <LocaleProvider><ThemeProvider><NoteOrderProvider><WorkspaceApp {...props} /></NoteOrderProvider></ThemeProvider></LocaleProvider> }

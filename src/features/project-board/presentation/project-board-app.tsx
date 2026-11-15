@@ -7,15 +7,8 @@ import type { ProjectBoardStore } from '../state/project-board-store'
 import { ProjectBoardView } from './project-board-view'
 import { ProjectCatalogueView } from './project-catalogue-view'
 import { CardDetailView, type EditRequest } from './card-detail-view'
-import { NoteOrderProvider } from './note-order'
 
-type ProjectBoardAppProps = Parameters<typeof ProjectBoardWorkspace>[0]
-
-export function ProjectBoardApp(props: ProjectBoardAppProps) {
-  return <NoteOrderProvider><ProjectBoardWorkspace {...props} /></NoteOrderProvider>
-}
-
-function ProjectBoardWorkspace({ onPanelIsolationChange, cardPresentation = 'page', editRequest, onExpandCard, onCloseCard, onPanelCardMissing, store, navigateToProject, navigateToCatalogue, navigateToCard, onProjectDeleted, registerDraftGuard, requestLeave, onMutationSaved }: {
+export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'page', editRequest, onExpandCard, onCloseCard, onPanelCardMissing, store, navigateToProject, navigateToCatalogue, navigateToCard, onProjectDeleted, registerDraftGuard, requestLeave, onMutationSaved }: {
   onPanelIsolationChange?: (isolated: boolean) => void
   cardPresentation?: 'panel' | 'page'
   editRequest?: EditRequest | null

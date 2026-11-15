@@ -247,3 +247,43 @@ it.each(['panel', 'page'] as const)('guards the %s draft and returns to the same
   expect(location.hash).toBe('#project/a/card/c')
   await waitFor(() => expect(gear()).toHaveFocus())
 })
+
+it.each(['panel', 'page'] as const)('keeps the %s note order across Settings and Back when storage refuses writes', async presentation => {
+  const status = { id: 's', projectId: project.id, name: 'Todo', position: 0 }
+  const card = { id: 'c', statusId: status.id, name: 'Card', description: '', position: 0, important: false, urgent: false }
+  const notes = [
+    { id: 'old', cardId: card.id, text: 'Older note', createdAt: '2025-01-01T00:00:00Z' },
+    { id: 'new', cardId: card.id, text: 'Newer note', createdAt: '2025-01-02T00:00:00Z' },
+  ]
+  const repo = repository({
+    boardView: vi.fn().mockResolvedValue({ ...board, statuses: [{ ...status, cards: [card] }] }),
+    cardDetails: vi.fn().mockResolvedValue({ project, status, card, notes }),
+  })
+  history.replaceState(null, '', presentation === 'panel' ? '/#project/a' : '/#project/a/card/c')
+  const user = userEvent.setup()
+  const setItem = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('Storage is blocked', 'SecurityError') })
+  const newest = 'Порядок заметок: сначала новые'
+  const oldest = 'Порядок заметок: сначала старые'
+  const displayedNotes = () => screen.getAllByText(/^(Older|Newer) note$/).map(note => note.textContent)
+  try {
+    const view = render(<App repository={repo} />)
+    if (presentation === 'panel') await user.click(await screen.findByRole('link', { name: card.name }))
+    await user.click(await screen.findByRole('button', { name: newest }))
+    await screen.findByRole('button', { name: oldest })
+    expect(displayedNotes()).toEqual(['Older note', 'Newer note'])
+
+    await user.click(screen.getByRole('button', { name: 'Настройки' }))
+    await screen.findByRole('heading', { name: 'Настройки' })
+    await user.click(screen.getByRole('button', { name: 'Назад' }))
+    await screen.findByRole('button', { name: presentation === 'panel' ? 'Закрыть карточку' : 'Назад к доске' })
+    expect(location.hash).toBe('#project/a/card/c')
+    expect(displayedNotes()).toEqual(['Older note', 'Newer note'])
+
+    view.unmount()
+    render(<App repository={repo} />)
+    await screen.findByRole('button', { name: newest })
+    expect(displayedNotes()).toEqual(['Newer note', 'Older note'])
+  } finally {
+    setItem.mockRestore()
+  }
+})

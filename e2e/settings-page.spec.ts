@@ -43,6 +43,7 @@ test('keeps direct settings across a reload and replaces the entry with the cata
 test('keeps the board history entry across a settings reload', async ({ page }) => {
   await seedBoard(page)
   await gear(page).click()
+  await expect(heading(page)).toBeFocused()
   await page.reload()
   await expect(heading(page)).toBeFocused()
   await page.goBack()

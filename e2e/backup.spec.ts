@@ -67,7 +67,8 @@ async function start(page: Page, data: Data, en = false) {
 }
 
 async function chooseEntry(page: Page, name: string) {
-  if (new URL(page.url()).hash !== '#settings') await page.getByRole('button', { name: /^(Настройки|Settings)$/ }).click()
+  if (await page.evaluate(() => location.hash) !== '#settings') await page.getByRole('button', { name: /^(Настройки|Settings)$/ }).click()
+  await expect(page.getByRole('heading', { name: /^(Настройки|Settings)$/ })).toBeVisible()
   await page.getByRole('button', { name, exact: true }).click()
 }
 

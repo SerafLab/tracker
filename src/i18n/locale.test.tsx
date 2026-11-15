@@ -70,7 +70,8 @@ it.each(['loading', 'unavailable'] as const)('keeps keyboard language switching 
   if (kind === 'unavailable') await screen.findByRole('heading', {name: 'Рабочая доска недоступна'})
   await userEvent.setup().click(screen.getByRole('button', { name: /^(Настройки|Settings)$/ }))
   const selector = await screen.findByRole('radio', { name: 'English' })
-  await userEvent.setup().click(selector)
+  selector.focus()
+  await userEvent.setup().keyboard(' ')
   expect(await screen.findByRole('heading', { name: 'Settings' })).toBeInTheDocument()
   expect(screen.queryByRole('heading', { name: 'Data' })).not.toBeInTheDocument()
   expect(selector).toHaveFocus()
@@ -143,7 +144,7 @@ it.each(['en', 'ru'] as const)('translates validation and save errors in %s', as
   expect(await screen.findByText(locale === 'en' ? /Could not save changes/ : /Не удалось сохранить изменения/)).toBeInTheDocument()
 })
 
-it.each(['en', 'ru'] as const)('translates platform installation, update and restart notices in %s', async locale => {
+it.each(['en', 'ru'] as const)('translates platform installation and update notices in %s', async locale => {
   localStorage.setItem(localeStorageKey, locale)
   vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('iPhone')
   const user = userEvent.setup()

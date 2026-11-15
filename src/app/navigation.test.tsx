@@ -186,13 +186,14 @@ it('adds settings to history, supports browser Back and Forward, and opens the c
   expect(location.hash).toBe('')
 })
 
-it('normalizes unknown addresses to the catalogue even with a last project', async () => {
+it('opens the last project for an unknown address at startup', async () => {
   history.replaceState(null, '', '/#unknown')
   const repo = repository({ preference: vi.fn().mockResolvedValue({ id: 'workspace', lastProjectId: 'a' }) })
   render(<App repository={repo} />)
-  await screen.findByRole('button', { name: project.name })
-  expect(location.hash).toBe('')
-  expect(repo.boardView).not.toHaveBeenCalled()
+  await screen.findByRole('heading', { name: project.name })
+  expect(location.hash).toBe('#project/a')
+  expect(repo.boardView).toHaveBeenCalledExactlyOnceWith('a')
+  expect(vi.mocked(repo.setLastProject).mock.calls.map(([id]) => id)).not.toContain(undefined)
 })
 
 it('adds a history entry when the catalogue gear opens settings', async () => {

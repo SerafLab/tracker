@@ -121,7 +121,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       presentation.current = history.state?.easyTrackPresentation === 'panel' ? 'panel' : 'page'
       // Only a card route needs its presentation before it renders; leaving a card keeps the panel until the destination is shown.
       const applyPresentation = () => { if (isCurrent()) setCardPresentation(presentation.current) }
-      if (!route && restoreLastProject && !expectedHash) {
+      if (!route && restoreLastProject) {
         let id: Id | undefined
         try { id = (await runtime.useCases.preference())?.lastProjectId } catch { /* A failed preference read still allows the catalogue. */ }
         if (!isCurrent()) return

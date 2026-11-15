@@ -47,8 +47,12 @@ bundled skills из TOML в таком режиме не применяется;
 | Уровень | Claude (`model`) | ChatGPT / Codex (модель запуска) |
 |---|---|---|
 | light | `haiku` | `gpt-6-luna` |
-| mid | `sonnet` | `gpt-6.1-sol` |
-| top | `opus` | `gpt-6-astra` |
+| mid | `sonnet` | `gpt-6.1-terra` |
+| top | `opus` | `gpt-6.1-sol` |
+
+Уровни двух семейств выровнены по аналогам: у OpenAI число в ID — поколение, имя — уровень; Luna ≈ Haiku, Terra ≈ Sonnet, Sol ≈ Opus, Astra ≈ Fable. Astra, как и Fable, в маршрутизацию не входит. Основной моделью для кода [OpenAI](https://learn.chatgpt.com/docs/models) называет Sol, поэтому Terra на mid — эксперимент: если runner на Terra не справляется, поднять mid до Sol.
+
+При смене поколения брать последнюю версию того же уровня (`/model` в Codex) и менять ID модели везде: эта таблица, `scripts/cross-review.sh`, `~/.codex/agents/*.toml`, `~/.codex/AGENTS.md`. Модель основного чата в `~/.codex/config.toml` выбирается отдельно.
 
 Типы агентов:
 

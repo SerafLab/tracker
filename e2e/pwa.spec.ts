@@ -68,20 +68,16 @@ for (const locale of ['ru', 'en'] as const) {
     await openAndControl(page)
     await page.setViewportSize(viewportFor(320))
     await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
-    const item = page.getByRole('menuitemradio', { name: locale === 'en' ? 'English' : 'Русский' })
-    const other = page.getByRole('menuitemradio', { name: locale === 'en' ? 'Русский' : 'English' })
+    const item = page.getByRole('radio', { name: locale === 'en' ? 'English' : 'Русский' })
+    const other = page.getByRole('radio', { name: locale === 'en' ? 'Русский' : 'English' })
     // Start from the other language so the keyboard choice is a real change.
-    if (await item.getAttribute('aria-checked') === 'true') { await other.click(); await expect(other).toHaveAttribute('aria-checked', 'true') }
-    await expect(item).toHaveAttribute('aria-checked', 'false')
+    if (await item.isChecked()) { await other.click(); await expect(other).toBeChecked() }
+    await expect(item).not.toBeChecked()
     await item.focus()
-    await page.keyboard.press('Enter')
-    await expect(item).toHaveAttribute('aria-checked', 'true')
+    await page.keyboard.press('Space')
+    await expect(item).toBeChecked()
     await expect(item).toBeFocused()
-    // The menu repositions itself after the language change resizes it, so wait for the settled position.
-    await expect.poll(async () => {
-      const bounds = (await page.getByRole('menu').boundingBox())!
-      return bounds.x >= 0 && bounds.x + bounds.width <= 320
-    }).toBe(true)
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     const manifests = await page.evaluate(async () => {
       const links = [...document.querySelectorAll<HTMLLinkElement>('link[rel="manifest"]')]
       const variants = await Promise.all(['ru', 'en'].map(async language => fetch(`/tracker/manifest.${language}.webmanifest`).then(response => response.json())))
@@ -96,12 +92,12 @@ for (const locale of ['ru', 'en'] as const) {
     await expect(page.locator('html')).toHaveAttribute('lang', locale)
     await context.setOffline(true)
     await page.reload()
-    await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
+    await expect(page.getByRole('heading', { name: /^(Настройки|Settings)$/ })).toBeVisible()
     await expect(page.getByRole('group')).toHaveCount(2)
     await expect(page.getByRole('group', { name: /^(Application language|Язык приложения)$/ })).toHaveCount(1)
     await expect(page.getByRole('group', { name: /^(Application color theme|Цветовая тема приложения)$/ })).toHaveCount(1)
-    await expect(page.getByRole('menuitemradio', { name: locale === 'en' ? 'English' : 'Русский' })).toHaveAttribute('aria-checked', 'true')
-    await expect(page.getByRole('banner').getByRole('button', { name: locale === 'en' ? 'Create project' : 'Создать проект' })).toBeVisible()
+    await expect(page.getByRole('radio', { name: locale === 'en' ? 'English' : 'Русский' })).toBeChecked()
+    await expect(page.getByRole('banner').getByRole('button', { name: locale === 'en' ? 'Back' : 'Назад' })).toBeVisible()
     expect(await page.evaluate(async () => {
       const active = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')!
       return (await fetch(active.href).then(response => response.json())).lang
@@ -122,15 +118,16 @@ for (const width of [1280, 320]) {
     await page.getByRole('button', { name: 'Добавить статус' }).first().click()
     await page.getByLabel('Название статуса').fill('Незавершённый черновик')
     const dialog = page.getByRole('dialog')
-    await expect(dialog.getByRole('menuitemradio')).toHaveCount(0)
-    await expect(page.getByRole('menuitemradio')).toHaveCount(0)
+    await expect(dialog.getByRole('radio')).toHaveCount(0)
+    await expect(page.getByRole('radio')).toHaveCount(0)
     await page.keyboard.press('Escape')
     await page.getByRole('button', {name: /^(Настройки|Settings)$/}).click()
-    const selector = page.getByRole('menuitemradio', { name: 'English' })
+    const selector = page.getByRole('radio', { name: 'English' })
     await selector.focus()
-    await page.keyboard.press('Enter')
-    await expect(selector).toHaveAttribute('aria-checked', 'true')
+    await page.keyboard.press('Space')
+    await expect(selector).toBeChecked()
     await expect(selector).toBeFocused()
+    await page.getByRole('button', { name: 'Back', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Мой проект' })).toBeVisible()
     await page.getByRole('button', { name: 'Add status' }).click()
     await expect(dialog).toHaveAccessibleName('New status')
@@ -166,10 +163,10 @@ test.describe('first-visit installation invitation', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0)
     // The settings entry stays available after dismissal.
     await page.getByRole('button', { name: en ? 'Settings' : 'Настройки' }).click()
-    await page.getByRole('menuitem', { name: en ? 'How to install EasyTrack' : 'Как установить EasyTrack' }).click()
+    await page.getByRole('button', { name: en ? 'How to install EasyTrack' : 'Как установить EasyTrack' }).click()
     await expect(page.getByRole('dialog', { name: en ? 'Install EasyTrack' : 'Установить EasyTrack' })).toBeVisible()
     await page.keyboard.press('Escape')
-    await expect(page.getByRole('button', { name: en ? 'Settings' : 'Настройки' })).toBeFocused()
+    await expect(page.getByRole('button', { name: en ? 'How to install EasyTrack' : 'Как установить EasyTrack' })).toBeFocused()
   })
 
   test('does not open in the installed application', async ({ page }) => {
@@ -181,7 +178,7 @@ test.describe('first-visit installation invitation', () => {
     await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект' })).toBeVisible()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await page.getByRole('button', { name: 'Настройки' }).click()
-    await page.getByRole('menuitem', { name: 'Где хранятся проекты' }).click()
+    await page.getByRole('button', { name: 'Где хранятся проекты' }).click()
     await expect(page.getByRole('dialog', { name: 'Где хранятся проекты' })).toContainText('не синхронизируются')
   })
 })

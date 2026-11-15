@@ -27,22 +27,22 @@ async function open(initial = data) {
   return { repo, user: userEvent.setup() }
 }
 async function restore(user: ReturnType<typeof userEvent.setup>, backup: Backup, label = 'Восстановить из резервной копии') {
-  await user.click(await screen.findByRole('button', { name: /^(Настройки|Settings)$/ }))
-  await user.click(await screen.findByRole('menuitem', { name: label }))
+  const gear = screen.queryByRole('button', { name: /^(Настройки|Settings)$/ })
+  if (gear) await user.click(gear)
+  await user.click(await screen.findByRole('button', { name: label }))
   await user.upload(document.querySelector<HTMLInputElement>('input[type="file"]')!, new File([JSON.stringify(backup)], 'copy.json', { type: 'application/json' }))
 }
 
 beforeEach(() => { history.replaceState(null, '', '/'); vi.mocked(deliverBackup).mockClear() })
 afterEach(async () => { cleanup(); history.replaceState(null, '', '/'); await Promise.all(databases.splice(0).map(async db => { db.close(); await db.delete() })) })
 
-it('keeps data, the card draft and focus on the gear when the user stays after Replace', async () => {
+it('keeps data, the card draft and focus on the gear when the user stays before opening settings', async () => {
   const { repo, user } = await open()
   await user.click(await screen.findByRole('button', { name: 'Project A' }))
   await user.click(await screen.findByRole('link', { name: 'First' }))
   await user.click(await screen.findByRole('button', { name: 'Добавить заметку' }))
   await user.type(screen.getByLabelText('Новая заметка'), 'Draft')
-  await restore(user, copy(restoredData))
-  await user.click(within(await screen.findByRole('dialog', { name: 'Заменить данные резервной копией?' })).getByRole('button', { name: 'Заменить' }))
+  await user.click(screen.getByRole('button', { name: 'Настройки' }))
   await user.click(within(await screen.findByRole('dialog', { name: 'Несохранённые изменения' })).getByRole('button', { name: 'Остаться' }))
   await waitFor(() => expect(screen.getByRole('button', { name: 'Настройки' })).toHaveFocus())
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -66,7 +66,7 @@ it('leaves device settings out of the copy and unchanged by a restore', async ()
   const before = { ...localStorage }
   const { user } = await open()
   await user.click(await screen.findByRole('button', { name: 'Settings' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Export backup' }))
+  await user.click(await screen.findByRole('button', { name: 'Export backup' }))
   await waitFor(() => expect(deliverBackup).toHaveBeenCalledOnce())
   const exported = vi.mocked(deliverBackup).mock.calls[0][0]
   expect(Object.keys(exported).sort()).toEqual(['app', 'data', 'exportedAt', 'format', 'formatVersion'])
@@ -76,4 +76,17 @@ it('leaves device settings out of the copy and unchanged by a restore', async ()
   expect(await screen.findByText('Data restored from the backup')).toBeInTheDocument()
   expect({ ...localStorage }).toEqual(before)
   expect(document.documentElement.lang).toBe('en')
+})
+
+
+it('leaves the settings page and old data in place when replacement fails', async () => {
+  const { repo, user } = await open()
+  vi.spyOn(repo, 'replaceAll').mockRejectedValueOnce(Error('write failed'))
+  await restore(user, copy(restoredData))
+  await user.click(within(await screen.findByRole('dialog', { name: 'Заменить данные резервной копией?' })).getByRole('button', { name: 'Заменить' }))
+  const error = await screen.findByRole('dialog', { name: 'Не удалось восстановить данные' })
+  expect(location.hash).toBe('#settings')
+  expect((await repo.snapshot()).projects.map(project => project.name)).toEqual(['Project A'])
+  await user.click(within(error).getAllByRole('button', { name: 'Закрыть' }).at(-1)!)
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Восстановить из резервной копии' })).toHaveFocus())
 })

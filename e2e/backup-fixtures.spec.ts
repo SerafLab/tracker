@@ -15,7 +15,7 @@ async function restoreEdgeCases(page: Page) {
   await expect(page.locator('.app-bar')).toBeVisible()
   const chooser = page.waitForEvent('filechooser')
   await page.getByRole('button', { name: 'Настройки' }).click()
-  await page.getByRole('menuitem', { name: 'Восстановить из резервной копии', exact: true }).click()
+  await page.getByRole('button', { name: 'Восстановить из резервной копии', exact: true }).click()
   await (await chooser).setFiles({ name: 'edge-cases.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) })
   await page.getByRole('dialog', { name: 'Заменить данные резервной копией?' }).getByRole('button', { name: 'Заменить' }).click()
   await expect(page.locator('.notification-transient .toast')).toHaveText('Данные восстановлены из резервной копии')

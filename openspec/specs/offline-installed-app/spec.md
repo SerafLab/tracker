@@ -8,11 +8,11 @@
 ## Requirements
 
 ### Requirement: EasyTrack is installable and identifiable
-The system SHALL expose installable web-app metadata for the `/tracker/` application, identifying it as `EasyTrack`, using local icons, and requesting standalone display. It SHALL provide a persistent, accessible installation entry in the application-bar settings on every screen that shows the application bar, and SHALL NOT show a floating installation control over application content.
+The system SHALL expose installable web-app metadata for the `/tracker/` application, identifying it as `EasyTrack`, using local icons, and requesting standalone display. It SHALL provide a persistent, accessible installation entry in the «Приложение» section of the settings page in every application state, and SHALL NOT show a floating installation control over application content.
 
 #### Scenario: Visitor opens installation guidance
 - **WHEN** a visitor activates the settings installation entry while the browser has not offered a native installation prompt
-- **THEN** the system explains how to install on the current platform without requiring an installation prompt to be available
+- **THEN** the system explains how to install on the current platform without requiring an installation prompt to be available, and closing the guidance returns focus to the entry
 
 #### Scenario: Browser offers native installation
 - **WHEN** the browser has offered a native installation prompt and the visitor activates the settings installation entry labelled «Установить EasyTrack»

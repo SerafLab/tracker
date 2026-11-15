@@ -4,161 +4,94 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { createRef } from 'react'
 import { LocaleProvider } from '../i18n/provider'
 import { localeStorageKey } from '../i18n/locale'
-import { RestartRequired } from '../app/pwa/restart-required'
 import { ActionDialog } from '../features/project-board/presentation/controls'
 import { AppBar } from './app-bar'
-import { SettingsEntries } from './settings-entry'
+import { SettingsNavigationContext } from './settings-navigation'
 
 afterEach(cleanup)
 
-it.each(['ru', 'en'])('offers contextual icon controls and keyboard settings in %s', async locale => {
+it.each(['ru', 'en'])('names and orders the board actions and settings control in %s', async locale => {
   localStorage.setItem(localeStorageKey, locale)
   const en = locale === 'en'
   const user = userEvent.setup()
-  const back = vi.fn(), create = vi.fn(), rename = vi.fn()
-  render(<LocaleProvider><AppBar title="Проект" onReturn={back} creation={{label: en ? 'Add status' : 'Добавить статус', onSelect: create, triggerRef: createRef()}} rename={{onSelect: rename, triggerRef: createRef()}} /></LocaleProvider>)
-  const gear = screen.getByRole('button', { name: en ? 'Settings' : 'Настройки' })
-  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-  expect(screen.getAllByRole('heading', {level: 1})).toHaveLength(1)
-  const brand = screen.getByRole('button', { name: /EasyTrack/ })
-  await user.tab(); expect(brand).toHaveFocus()
-  expect(brand).toHaveAttribute('data-hint', en ? 'All projects' : 'Все проекты')
-  await user.keyboard('{Enter}'); expect(back).toHaveBeenCalledOnce()
-  await user.tab(); expect(screen.getByRole('button', {name: en ? 'Add status' : 'Добавить статус'})).toHaveFocus()
-  await user.keyboard('{Enter}'); expect(create).toHaveBeenCalledOnce()
+  const openSettings = vi.fn()
+  const back = vi.fn(), create = vi.fn(), rename = vi.fn(), remove = vi.fn()
+  render(<LocaleProvider><SettingsNavigationContext value={{ openSettings, preserveFocus: () => {}, restoreFocus: () => {} }}>
+    <AppBar title="Project" onReturn={back}
+      creation={{ label: en ? 'Add status' : 'Добавить статус', onSelect: create, triggerRef: createRef() }}
+      projectActions={{ onRename: rename, onDelete: remove, triggerRef: createRef() }} />
+  </SettingsNavigationContext></LocaleProvider>)
+  const actions = en ? 'Project actions' : 'Действия проекта'
+  const settings = en ? 'Settings' : 'Настройки'
+  const actionTrigger = screen.getByRole('button', { name: actions })
+  const gear = screen.getByRole('button', { name: settings })
+  expect(actionTrigger).toHaveAttribute('data-hint', actions)
+  expect(gear).toHaveAttribute('data-hint', settings)
+  for (const target of [screen.getByRole('button', { name: /EasyTrack/ }), screen.getByRole('button', { name: en ? 'Add status' : 'Добавить статус' }), actionTrigger]) {
+    await user.tab()
+    expect(target).toHaveFocus()
+  }
+  await user.keyboard('{Enter}')
+  const menu = await screen.findByRole('menu', { name: actions })
+  const [first, second] = within(menu).getAllByRole('menuitem')
+  expect(first).toHaveFocus()
+  await user.keyboard('{ArrowDown}'); expect(second).toHaveFocus()
+  await user.keyboard('{ArrowDown}'); expect(first).toHaveFocus()
+  await user.keyboard('{ArrowUp}'); expect(second).toHaveFocus()
+  await user.keyboard('{Escape}'); await waitFor(() => expect(actionTrigger).toHaveFocus())
+  expect(menu).not.toBeInTheDocument()
   await user.tab(); expect(gear).toHaveFocus()
-  expect(gear).toHaveTextContent('')
-  expect(gear).toHaveAttribute('data-hint', en ? 'Settings' : 'Настройки')
-  expect(gear).toHaveAttribute('aria-haspopup', 'menu')
-  await user.keyboard('{Enter}'); expect(gear).toHaveAttribute('aria-expanded', 'true')
-  expect(await screen.findByRole('menuitem', {name: en ? 'Rename project' : 'Переименовать проект'})).toHaveFocus()
-  await user.keyboard('{Escape}'); await waitFor(() => expect(gear).toHaveFocus())
+  await user.keyboard('{Enter}'); expect(openSettings).toHaveBeenCalledOnce()
+  await user.click(actionTrigger)
+  await user.click(screen.getByRole('heading', { name: 'Project' }))
   expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-  await user.click(gear)
-  await user.click(brand)
-  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-  await user.click(gear)
-  await user.click(await screen.findByRole('menuitem', {name: en ? 'Rename project' : 'Переименовать проект'}))
+  await user.click(actionTrigger)
+  await user.click(screen.getByRole('menuitem', { name: en ? 'Rename project' : 'Переименовать проект' }))
   expect(rename).toHaveBeenCalledOnce()
-  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
+  await waitFor(() => expect(actionTrigger).toHaveFocus())
 })
 
-it('lists actions, a separator and the language group in order with a wrapping arrow-key cycle', async () => {
+it.each(['ru', 'en'])('focuses the settings heading and offers only localised navigation in %s', async locale => {
+  localStorage.setItem(localeStorageKey, locale)
   const user = userEvent.setup()
-  render(<LocaleProvider><SettingsEntries entries={[{ label: 'Как установить EasyTrack', onSelect: () => {} }]}><AppBar title="Проект" rename={{onSelect: () => {}, triggerRef: createRef()}} deleteProject={{onSelect: () => {}, triggerRef: createRef()}} /></SettingsEntries></LocaleProvider>)
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  const menu = await screen.findByRole('menu', { name: 'Настройки' })
-  const items = [...within(menu).getAllByRole('menuitem'), ...within(menu).getAllByRole('menuitemradio')]
-  expect(items.map(item => item.textContent)).toEqual(['Переименовать проект', 'Удалить проект', 'Как установить EasyTrack', 'Русский', 'English'])
-  expect(within(menu).getAllByRole('separator')).toHaveLength(1)
-  const group = within(menu).getByRole('group', { name: 'Язык приложения' })
-  expect(within(group).getAllByRole('menuitemradio')).toHaveLength(2)
-  expect(items[0]).toHaveFocus()
-  for (const item of [...items.slice(1), items[0]]) { await user.keyboard('{ArrowDown}'); expect(item).toHaveFocus() }
-  await user.keyboard('{ArrowUp}'); expect(items[4]).toHaveFocus()
-  expect(screen.getByRole('button', { name: 'Настройки' })).toHaveAttribute('aria-controls', menu.id)
-  await user.click(within(menu).getByText('Язык приложения'))
-  await user.keyboard('{ArrowUp}'); expect(items[4]).toHaveFocus()
+  const onBack = vi.fn()
+  const label = locale === 'en' ? 'Back' : 'Назад'
+  render(<LocaleProvider><AppBar title="Settings heading" onReturn={() => {}} onBack={onBack} /></LocaleProvider>)
+  expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
+  const buttons = screen.getAllByRole('button')
+  expect(buttons).toHaveLength(2)
+  const back = screen.getByRole('button', { name: label })
+  expect(back).toHaveAttribute('data-hint', label)
+  await user.click(back)
+  expect(onBack).toHaveBeenCalledOnce()
 })
 
-it('omits the separator when no action precedes the language group', async () => {
+it('closes the project menu when a creation modal opens and returns focus to the plus', async () => {
   const user = userEvent.setup()
-  render(<LocaleProvider><AppBar title="Каталог" /></LocaleProvider>)
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  const menu = await screen.findByRole('menu', { name: 'Настройки' })
-  expect(within(menu).queryByRole('separator')).not.toBeInTheDocument()
-  expect(within(menu).getByRole('group', { name: 'Язык приложения' })).toBeInTheDocument()
-  expect(within(menu).getByRole('menuitemradio', { name: 'Русский' })).toHaveFocus()
-})
-
-it('keeps the menu open and focus on the chosen language item', async () => {
-  const user = userEvent.setup()
-  render(<LocaleProvider><AppBar title="Каталог" /></LocaleProvider>)
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  const english = await screen.findByRole('menuitemradio', { name: 'English' })
-  expect(english).toHaveAttribute('lang', 'en')
-  await user.click(english)
-  expect(await screen.findByRole('group', { name: 'Application language' })).toBeInTheDocument()
-  expect(screen.getByRole('menu', { name: 'Settings' })).toBeInTheDocument()
-  expect(english).toHaveAttribute('aria-checked', 'true')
-  expect(screen.getByRole('menuitemradio', { name: 'Русский' })).toHaveAttribute('aria-checked', 'false')
-  expect(english).toHaveFocus()
-  await user.keyboard('{Escape}')
-  await waitFor(() => expect(screen.getByRole('button', { name: 'Settings' })).toHaveFocus())
-})
-
-it('renders a supplied application settings entry before the language group and closes settings when it is chosen', async () => {
-  const user = userEvent.setup()
-  const select = vi.fn(() => expect(gear).toHaveFocus())
-  render(<LocaleProvider><SettingsEntries entries={[{ label: 'Как установить EasyTrack', onSelect: select }]}><AppBar title="Каталог" /></SettingsEntries></LocaleProvider>)
-  const gear = screen.getByRole('button', { name: 'Настройки' })
-  await user.click(gear)
-  const menu = await screen.findByRole('menu', { name: 'Настройки' })
-  const entry = within(menu).getByRole('menuitem', { name: 'Как установить EasyTrack' })
-  expect(entry.compareDocumentPosition(within(menu).getByRole('menuitemradio', { name: 'Русский' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  await user.click(entry)
-  expect(select).toHaveBeenCalledOnce()
-  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
-})
-
-it('omits the application settings entry without a provider', async () => {
-  const user = userEvent.setup()
-  render(<LocaleProvider><AppBar title="Каталог" /></LocaleProvider>)
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(within(await screen.findByRole('menu', { name: 'Настройки' })).queryAllByRole('menuitem')).toHaveLength(0)
-})
-
-it('keeps settings and recovery on the restart screen without project actions', async () => {
-  const restart = vi.fn(), user = userEvent.setup()
-  render(<LocaleProvider><RestartRequired onRestart={restart} /></LocaleProvider>)
-  expect(screen.getAllByRole('heading', {level: 1})).toHaveLength(1)
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(await screen.findAllByRole('group', { name: 'Язык приложения' })).toHaveLength(1)
-  expect(screen.queryByRole('button', { name: /Создать|Добавить|Переименовать|Удалить/ })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Перезапустить' }))
-  expect(restart).toHaveBeenCalledOnce()
-  expect(screen.queryByRole('group', { name: 'Язык приложения' })).not.toBeInTheDocument()
-})
-
-it('closes the top-layer settings when a modal opens and keeps replacement bars isolated', async () => {
-  const user = userEvent.setup()
-  const view = render(<LocaleProvider><AppBar title="Loading" /></LocaleProvider>)
-  await user.click(screen.getByRole('button', {name: 'Настройки'}))
-  expect(await screen.findByRole('group', { name: 'Язык приложения' })).toBeInTheDocument()
-  view.rerender(<LocaleProvider><AppBar title="Loading" /><ActionDialog title="Install" onClose={() => {}}><button>Close</button></ActionDialog></LocaleProvider>)
-  expect(document.querySelector('.settings-panel')).not.toBeInTheDocument()
-  view.rerender(<LocaleProvider><AppBar key="catalogue" title="Catalogue" /><ActionDialog title="Install" onClose={() => {}}><button>Close</button></ActionDialog></LocaleProvider>)
+  const props = { title: 'Project', creation: { label: 'Add status', onSelect: vi.fn(), triggerRef: createRef<HTMLButtonElement>() },
+    projectActions: { onRename: vi.fn(), onDelete: vi.fn(), triggerRef: createRef<HTMLButtonElement>() } }
+  const bar = <AppBar {...props} />
+  const view = render(<LocaleProvider>{bar}</LocaleProvider>)
+  await user.click(screen.getByRole('button', { name: 'Действия проекта' }))
+  await screen.findByRole('menu')
+  await user.click(screen.getByRole('button', { name: 'Add status' }))
+  const rerender = (open: boolean) => view.rerender(<LocaleProvider>{bar}{open ? <ActionDialog title="New status" onClose={() => rerender(false)} returnFocus={props.creation.triggerRef}><button>Close</button></ActionDialog> : null}</LocaleProvider>)
+  rerender(true)
+  expect(document.querySelector('.bar-menu')).not.toBeInTheDocument()
   expect(document.querySelector('.app-bar')).toHaveAttribute('inert')
-  expect(screen.queryByRole('group', { name: /Язык приложения|Application language/ })).not.toBeInTheDocument()
-  expect(within(screen.getByRole('dialog')).queryByRole('menuitemradio')).not.toBeInTheDocument()
-  view.rerender(<LocaleProvider><AppBar title="Catalogue" /></LocaleProvider>)
-  expect(screen.getByRole('banner')).not.toHaveAttribute('inert')
-  expect(screen.queryByRole('group', { name: /Язык приложения|Application language/ })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Add status' })).toHaveFocus())
 })
 
-
-it('only dismisses offscreen settings on document scrolling, not resizing or nested scrolling', async () => {
-  let resize = () => {}
-  vi.stubGlobal('ResizeObserver', class {
-    constructor(callback: () => void) { resize = callback }
-    observe() {}
-    disconnect() {}
-  })
+it('dismisses the project menu on document scrolling but keeps it during nested board scrolling', async () => {
   const user = userEvent.setup()
-  render(<LocaleProvider><AppBar title="Project" /><section data-testid="board-scroller" /></LocaleProvider>)
-  const gear = screen.getByRole('button', {name: 'Настройки'})
-  await user.click(gear)
-  vi.spyOn(gear, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 12, 44, 44))
-  // Full-page capture can briefly change viewport metrics and scroll a nested board.
-  vi.stubGlobal('innerHeight', 1)
-  try {
-    act(() => resize())
-    expect(screen.getByRole('menu')).toBeInTheDocument()
-    fireEvent.scroll(screen.getByTestId('board-scroller'))
-    expect(screen.getByRole('menu')).toBeInTheDocument()
-    fireEvent.scroll(document)
-    expect(screen.queryByRole('group', { name: /Язык приложения|Application language/ })).not.toBeInTheDocument()
-  } finally { vi.unstubAllGlobals() }
+  render(<LocaleProvider><AppBar title="Project" projectActions={{ onRename: vi.fn(), onDelete: vi.fn(), triggerRef: createRef() }} /><section data-testid="board-scroller" /></LocaleProvider>)
+  await user.click(screen.getByRole('button', { name: 'Действия проекта' }))
+  await screen.findByRole('menu')
+  fireEvent.scroll(screen.getByTestId('board-scroller'))
+  expect(screen.getByRole('menu')).toBeInTheDocument()
+  fireEvent.scroll(document)
+  expect(screen.queryByRole('menu')).not.toBeInTheDocument()
 })
 
 it('only focuses truncated headings and remeasures title, resize and font changes', async () => {
@@ -201,16 +134,4 @@ it('only focuses truncated headings and remeasures title, resize and font change
   } finally {
     vi.restoreAllMocks(); vi.unstubAllGlobals(); Reflect.deleteProperty(document, 'fonts')
   }
-})
-
-it('lists inherited entries before nested ones and cycles through them with the keyboard', async () => {
-  const user = userEvent.setup()
-  render(<LocaleProvider><SettingsEntries entries={[{ label: 'Выгрузить резервную копию', onSelect: () => {} }, { label: 'Восстановить из резервной копии', onSelect: () => {} }]}><SettingsEntries entries={[{ label: 'Как установить EasyTrack', onSelect: () => {} }]}><AppBar title="Проект" rename={{onSelect: () => {}, triggerRef: createRef()}} deleteProject={{onSelect: () => {}, triggerRef: createRef()}} /></SettingsEntries></SettingsEntries></LocaleProvider>)
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  const menu = await screen.findByRole('menu', { name: 'Настройки' })
-  const items = [...within(menu).getAllByRole('menuitem'), ...within(menu).getAllByRole('menuitemradio')]
-  const names = ['Переименовать проект', 'Удалить проект', 'Выгрузить резервную копию', 'Восстановить из резервной копии', 'Как установить EasyTrack', 'Русский', 'English']
-  expect(items.map(item => item.textContent)).toEqual(names)
-  expect(items[0]).toHaveFocus()
-  for (const item of [...items.slice(1), items[0]]) { await user.keyboard('{ArrowDown}'); expect(item).toHaveFocus() }
 })

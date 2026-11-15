@@ -55,9 +55,8 @@ it('preserves the confirmed board after refresh failure, blocks conflicting acti
   expect(screen.getByRole('button', { name: 'Действия карточки First' })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Добавить статус' })).toBeDisabled()
   expect(document.querySelector('.status-columns')).toHaveAttribute('inert')
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(screen.getByRole('menuitem', { name: 'Удалить проект' })).toBeDisabled()
-  await user.keyboard('{Escape}')
+  expect(screen.getByRole('button', { name: 'Действия проекта' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Настройки' })).toBeEnabled()
   await user.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Обновить доску' }))
   await waitFor(() => expect(names()).toEqual(['Both', 'Middle', 'First', 'Last', 'None']))
   // The toast and the restored focus follow the refreshed board, so wait for each of them.

@@ -125,8 +125,7 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
       title={board.name}
       onReturn={() => void onReturn()}
       creation={{ disabled: busy, label: t('addStatus'), triggerRef: addStatusTrigger, onSelect: () => setCreatingStatus(true) }}
-      rename={{ disabled: busy, triggerRef: projectMenu, onSelect: () => setRenamingProject(true) }}
-      deleteProject={{ disabled: busy, triggerRef: projectMenu, onSelect: () => onRequestDestructiveAction(() => setDeletingProject(true)) }}
+      projectActions={{ disabled: busy, triggerRef: projectMenu, onRename: () => setRenamingProject(true), onDelete: () => onRequestDestructiveAction(() => setDeletingProject(true)) }}
     />
     {showSaveError || refreshFailed ? <div className="board-alerts">
       {showSaveError ? <p className="save-error" role={moveDialogCardId || deleting ? undefined : 'alert'}>{t('saveError')}</p> : null}

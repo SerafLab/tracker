@@ -73,8 +73,8 @@ async function expectInkSelected(page: Page) {
   await expect(page.locator('html')).not.toHaveAttribute('data-theme')
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await expect(page.getByRole('group', { name: 'Application color theme' })).toHaveCount(1)
-  await expect(page.getByRole('menuitemradio', { name: 'Ink' })).toHaveAttribute('aria-checked', 'true')
-  await expect(page.getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'false')
+  await expect(page.getByRole('radio', { name: 'Ink' })).toBeChecked()
+  await expect(page.getByRole('radio', { name: 'Green' })).not.toBeChecked()
 }
 
 test('a first launch uses Ink', async ({ page }) => {
@@ -127,12 +127,12 @@ test('Ink leaves no green on the board in hover, keyboard focus, selection, scro
   await expect(page.locator('#probe-skeleton')).toHaveCSS('background-color', 'rgb(223, 230, 239)')
   await page.locator('#probe-skeleton').evaluate(element => element.remove())
 
-  await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await expect(page.locator('.settings-panel')).toBeVisible()
-  expect(await page.locator('.settings-panel').evaluate(element => getComputedStyle(element).boxShadow)).toContain('rgba(22, 35, 51')
+  await page.getByRole('button', { name: 'Project actions', exact: true }).click()
+  await expect(page.locator('.bar-menu')).toBeVisible()
+  expect(await page.locator('.bar-menu').evaluate(element => getComputedStyle(element).boxShadow)).toContain('rgba(22, 35, 51')
   expect(await greenElements(page)).toEqual([])
   await page.keyboard.press('Escape')
-  await expect(page.locator('.settings-panel')).toBeHidden()
+  await expect(page.locator('.bar-menu')).toBeHidden()
 
   const card = page.locator('.work-card').first()
   const box = await card.boundingBox()
@@ -148,14 +148,14 @@ test('Ink leaves no green on the board in hover, keyboard focus, selection, scro
   await page.mouse.up()
 })
 
-test('a theme choice that cannot be saved still applies and warns in the settings menu', async ({ page }) => {
+test('a theme choice that cannot be saved still applies and warns in settings', async ({ page }) => {
   await page.addInitScript(() => { Storage.prototype.setItem = () => { throw Error('blocked') } })
   await page.goto('/tracker/')
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
-  await page.getByRole('menuitemradio', { name: 'Green' }).click()
+  await page.getByRole('radio', { name: 'Green' }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'green')
-  await expect(page.locator('.settings-panel').getByRole('alert')).toContainText('Could not save your color theme')
-  await expect(page.getByRole('menuitemradio', { name: 'Green' })).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByRole('group', { name: 'Application color theme' }).getByRole('alert')).toContainText('Could not save your color theme')
+  await expect(page.getByRole('radio', { name: 'Green' })).toBeChecked()
   await expect(page.getByRole('group', { name: 'Application color theme' })).toHaveCount(1)
   await expect(page.getByRole('group', { name: 'Application language' })).toHaveCount(1)
 })

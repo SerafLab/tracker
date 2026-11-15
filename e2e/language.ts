@@ -1,11 +1,11 @@
 import { expect, type Page } from '@playwright/test'
 
-/** Switches the interface language through the settings menu and closes the menu. */
+/** Switches the interface language through the settings page and returns to the previous screen. */
 export async function selectLanguage(page: Page, language: 'ru' | 'en') {
   await page.getByRole('button', { name: /^(Настройки|Settings)$/ }).click()
-  const item = page.getByRole('menuitemradio', { name: language === 'ru' ? 'Русский' : 'English' })
+  const item = page.getByRole('radio', { name: language === 'ru' ? 'Русский' : 'English' })
   await item.click()
-  await expect(item).toHaveAttribute('aria-checked', 'true')
-  await page.keyboard.press('Escape')
-  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(item).toBeChecked()
+  await page.getByRole('button', { name: /^(Назад|Back)$/ }).click()
+  await expect(page.getByRole('button', { name: /^(Настройки|Settings)$/ })).toBeVisible()
 }

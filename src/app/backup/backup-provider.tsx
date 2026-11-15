@@ -1,8 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { flushSync } from 'react-dom'
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionDialog, type Backup, type BackupSummary, type ParseBackupResult } from '../../features/project-board'
-import { SettingsEntries } from '../../ui/settings-entry'
 import { useToast } from '../../ui/notifications'
 import { deliverBackup } from './delivery'
 
@@ -17,14 +15,16 @@ export type BackupActions = {
 type Message = 'backupExportFailed' | 'backupInvalid' | 'backupNewer' | 'backupRestoreFailed'
 type Dialog = { kind: 'error'; message: Message } | { kind: 'compare'; backup: Backup; current: BackupSummary }
 
-/**
- * Owns backup export and restore for the app shell: the two settings entries, the hidden file input and the dialogs.
- * Entries exist only while `enabled` (a workspace is shown).
- */
-export function BackupProvider({ enabled, actions, requestLeave, showCatalogue, children }: {
+type BackupEntry = {
+  exportBackup: (trigger: HTMLButtonElement) => void
+  startRestore: (trigger: HTMLButtonElement) => void
+}
+const BackupContext = createContext<BackupEntry | null>(null)
+export const useBackup = () => useContext(BackupContext)
+
+export function BackupProvider({ enabled, actions, showCatalogue, children }: {
   enabled: boolean
   actions: BackupActions
-  requestLeave: (action: () => void | Promise<void>) => void
   showCatalogue: () => Promise<void>
   children: ReactNode
 }) {
@@ -32,9 +32,9 @@ export function BackupProvider({ enabled, actions, requestLeave, showCatalogue, 
   const { showToast } = useToast()
   const [dialog, setDialog] = useState<Dialog | null>(null)
   const input = useRef<HTMLInputElement>(null)
-  // The settings gear: the app bar focuses it before an entry runs.
   const opener = useRef<HTMLButtonElement | null>(null)
-  const remember = () => { opener.current = document.activeElement instanceof HTMLButtonElement ? document.activeElement : null }
+  const replacing = useRef(false)
+  const [restorePending, setRestorePending] = useState(false)
   useEffect(() => {
     const element = input.current
     const cancelled = () => opener.current?.focus()
@@ -47,44 +47,55 @@ export function BackupProvider({ enabled, actions, requestLeave, showCatalogue, 
     catch { return false }
   }
   const choose = async (file: File | undefined) => {
-    if (!file) return
+    if (!file) { opener.current?.focus(); return }
     let result: ParseBackupResult
     try { result = actions.parseBackup(await file.text()) } catch { result = { ok: false, reason: 'invalid' } }
     if (!result.ok) { setDialog({ kind: 'error', message: result.reason === 'newer' ? 'backupNewer' : 'backupInvalid' }); return }
     try { setDialog({ kind: 'compare', backup: result.backup, current: await actions.summary() }) }
     catch { setDialog({ kind: 'error', message: 'backupRestoreFailed' }) }
   }
-  const replace = (backup: Backup) => {
-    // Unmount the comparison and put focus on the gear first, so a draft question returns focus there.
-    flushSync(() => setDialog(null))
-    opener.current?.focus()
-    requestLeave(async () => {
+  const replace = async (backup: Backup) => {
+    if (replacing.current) return
+    replacing.current = true
+    setRestorePending(true)
+    try {
       let restored = false
       try { restored = await actions.restore(backup) } catch { /* Reported below. */ }
       if (!restored) { setDialog({ kind: 'error', message: 'backupRestoreFailed' }); return }
+      setDialog(null)
       await showCatalogue()
       showToast(t('backupRestored'))
-    })
+    } finally {
+      replacing.current = false
+      setRestorePending(false)
+    }
   }
-  const entries = enabled ? [
-    { label: t('backupExport'), onSelect: () => { remember(); void exportCurrent().then(ok => { if (!ok) setDialog({ kind: 'error', message: 'backupExportFailed' }) }) } },
-    // The chooser must open synchronously in the click handler to keep the user activation.
-    { label: t('backupRestore'), onSelect: () => { remember(); input.current?.click() } },
-  ] : []
-  return <SettingsEntries entries={entries}>
+  const entry: BackupEntry | null = enabled ? {
+    exportBackup: trigger => {
+      opener.current = trigger
+      void exportCurrent().then(ok => {
+        if (!ok) setDialog({ kind: 'error', message: 'backupExportFailed' })
+        else trigger.focus()
+      })
+    },
+    // Keep the file chooser within the browser's user activation.
+    startRestore: trigger => { opener.current = trigger; input.current?.click() },
+  } : null
+  return <BackupContext value={entry}>
     {children}
     <input ref={input} type="file" hidden tabIndex={-1} accept=".json,application/json" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void choose(file) }} />
     {dialog?.kind === 'error' ? <ActionDialog title={t(dialog.message)} onClose={() => setDialog(null)} returnFocus={opener}>
       <div className="form-actions"><button className="button button-primary" onClick={() => setDialog(null)}>{t('close')}</button></div>
     </ActionDialog> : null}
-    {dialog?.kind === 'compare' ? <CompareDialog key={dialog.backup.exportedAt} dialog={dialog} language={i18n.language} opener={opener} onExport={exportCurrent} onClose={() => setDialog(null)} onReplace={() => replace(dialog.backup)} /> : null}
-  </SettingsEntries>
+    {dialog?.kind === 'compare' ? <CompareDialog key={dialog.backup.exportedAt} dialog={dialog} language={i18n.language} opener={opener} onExport={exportCurrent} pending={restorePending} onClose={() => { if (!replacing.current) setDialog(null) }} onReplace={() => void replace(dialog.backup)} /> : null}
+  </BackupContext>
 }
 
-function CompareDialog({ dialog, language, opener, onExport, onClose, onReplace }: {
+function CompareDialog({ dialog, language, opener, pending, onExport, onClose, onReplace }: {
   dialog: Extract<Dialog, { kind: 'compare' }>
   language: string
   opener: React.RefObject<HTMLButtonElement | null>
+  pending: boolean
   onExport: () => Promise<boolean>
   onClose: () => void
   onReplace: () => void
@@ -101,9 +112,9 @@ function CompareDialog({ dialog, language, opener, onExport, onClose, onReplace 
     <p>{t('backupReplaceWarning')}</p>
     {exportFailed ? <p className="field-error" role="alert">{t('backupExportFailed')}</p> : null}
     <div className="form-actions">
-      <button className="button button-secondary" onClick={() => void onExport().then(ok => setExportFailed(!ok))}>{t('backupExportFirst')}</button>
-      <button className="button button-secondary" onClick={onClose}>{t('cancel')}</button>
-      <button className="button button-primary" onClick={onReplace}>{t('backupReplace')}</button>
+      <button className="button button-secondary" disabled={pending} onClick={() => void onExport().then(ok => setExportFailed(!ok))}>{t('backupExportFirst')}</button>
+      <button className="button button-secondary" disabled={pending} onClick={onClose}>{t('cancel')}</button>
+      <button className="button button-primary" disabled={pending} onClick={onReplace}>{t('backupReplace')}</button>
     </div>
   </div></ActionDialog>
 }

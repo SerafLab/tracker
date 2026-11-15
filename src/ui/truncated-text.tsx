@@ -1,7 +1,8 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 
-export function TruncatedText({ as: Tag = 'span', text, className, wrapClassName }: { as?: 'h1' | 'span'; text: string; className: string; wrapClassName?: string }) {
+export function TruncatedText({ as: Tag = 'span', text, className, wrapClassName, focusOnMount = false }: { as?: 'h1' | 'span'; text: string; className: string; wrapClassName?: string; focusOnMount?: boolean }) {
   const heading = useRef<HTMLElement>(null)
+  useLayoutEffect(() => { if (focusOnMount) heading.current?.focus({ preventScroll: true }) }, [focusOnMount])
   const hint = useRef<HTMLDivElement>(null)
   const [truncated, setTruncated] = useState(false)
   const [dismissed, setDismissed] = useState(false)
@@ -29,7 +30,7 @@ export function TruncatedText({ as: Tag = 'span', text, className, wrapClassName
     }
   }, [text])
   return <div className={`page-title-wrap${wrapClassName ? ` ${wrapClassName}` : ''}`} data-hint-dismissed={dismissed || undefined} onMouseEnter={() => setDismissed(false)} onFocus={() => setDismissed(false)}>
-    <Tag ref={heading as never} className={className} tabIndex={truncated ? 0 : undefined} onKeyDown={event => {
+    <Tag ref={heading as never} className={className} tabIndex={truncated ? 0 : focusOnMount ? -1 : undefined} onKeyDown={event => {
       if (event.key === 'Escape') { setDismissed(true); return }
       const surface = hint.current
       if (!surface || surface.scrollHeight <= surface.clientHeight) return

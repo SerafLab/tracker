@@ -36,10 +36,10 @@ async function openCatalogueDeletion(user: ReturnType<typeof userEvent.setup>, i
   return { trigger, dialog: screen.getByRole('dialog', { name: 'Удалить проект' }) }
 }
 async function openBoardDeletion(user: ReturnType<typeof userEvent.setup>) {
-  const trigger = screen.getByRole('button', { name: 'Настройки' })
+  const trigger = screen.getByRole('button', { name: 'Действия проекта' })
   await user.click(trigger)
   await user.click(screen.getByRole('menuitem', { name: 'Удалить проект' }))
-  expect(document.querySelector('.settings-panel')).not.toBeInTheDocument()
+  expect(document.querySelector('.bar-menu')).not.toBeInTheDocument()
   return { trigger, dialog: screen.getByRole('dialog', { name: 'Удалить проект' }) }
 }
 
@@ -59,8 +59,7 @@ it('reads catalogue summary without opening or remembering the project, and canc
   await user.keyboard('{Escape}')
   expect(trigger).toHaveFocus()
   expect(await repo.projects()).toHaveLength(3)
-  await user.click(screen.getByRole('button', { name: 'Настройки' }))
-  expect(screen.queryByRole('menuitem', { name: 'Удалить проект' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^Действия проекта$/ })).not.toBeInTheDocument()
 })
 
 it('prevents deletion until its summary loads and permits retrying a failed summary', async () => {

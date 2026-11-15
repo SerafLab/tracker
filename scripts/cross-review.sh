@@ -4,7 +4,7 @@
 # Requires a clean tree. Prints the report path; the reviewer's log sits next to it.
 # Codex: ChatGPT subscription; --ignore-user-config skips ~/.codex/config.toml, which may route Codex to local Ollama.
 # Claude: Claude subscription; --restricted with only Read/Grep/Glob, no settings or MCP; commits and diff come on stdin.
-# Env: CROSS_REVIEW_CODEX_MODEL (gpt-6-astra), CROSS_REVIEW_CLAUDE_MODEL (opus), CROSS_REVIEW_EFFORT (high).
+# Env: CROSS_REVIEW_CODEX_MODEL (gpt-6.1-sol), CROSS_REVIEW_CLAUDE_MODEL (opus), CROSS_REVIEW_EFFORT (high).
 set -euo pipefail
 
 reviewer=${1:?usage: scripts/cross-review.sh <codex|claude> [base] [change]}
@@ -37,7 +37,7 @@ effort=${CROSS_REVIEW_EFFORT:-high}
 case $reviewer in
   codex)
     codex exec --ignore-user-config --ephemeral -s read-only \
-      -m "${CROSS_REVIEW_CODEX_MODEL:-gpt-6-astra}" -c model_reasoning_effort="$effort" \
+      -m "${CROSS_REVIEW_CODEX_MODEL:-gpt-6.1-sol}" -c model_reasoning_effort="$effort" \
       -o "$out" "$prompt" </dev/null >"$log" 2>&1 ;;
   claude)
     { git log --format='commit %H%n%B' "$since..HEAD"; git diff "$since..HEAD"; } |

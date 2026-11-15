@@ -3,7 +3,7 @@
 # Usage: scripts/cross-review.sh <codex|claude> [base-branch] [openspec-change-id]
 # Requires a clean tree. Prints the report path; the reviewer's log sits next to it.
 # Codex: ChatGPT subscription; --ignore-user-config skips ~/.codex/config.toml, which may route Codex to local Ollama.
-# Claude: Claude subscription; only read tools and read-only git commands are allowed.
+# Claude: Claude subscription; --restricted with only Read/Grep/Glob, no settings or MCP; the diff comes on stdin.
 # Env: CROSS_REVIEW_MODEL, CROSS_REVIEW_EFFORT (defaults: gpt-6-astra/opus, high).
 set -euo pipefail
 
@@ -39,9 +39,9 @@ case $reviewer in
       -m "${CROSS_REVIEW_MODEL:-gpt-6-astra}" -c model_reasoning_effort="$effort" \
       -o "$out" "$prompt" </dev/null >"$log" 2>&1 ;;
   claude)
-    claude -p "$prompt" --model "${CROSS_REVIEW_MODEL:-opus}" --effort "$effort" --no-session-persistence \
-      --allowedTools Read Grep Glob 'Bash(git diff:*)' 'Bash(git log:*)' 'Bash(git show:*)' 'Bash(git status:*)' \
-      </dev/null >"$out" 2>"$log" ;;
+    git diff "$since..HEAD" | claude -p "$prompt Diff передан во вводе." --model "${CROSS_REVIEW_MODEL:-opus}" --effort "$effort" \
+      --no-session-persistence --restricted --strict-mcp-config --tools Read Grep Glob \
+      >"$out" 2>"$log" ;;
   *) echo "Ревьюер: codex или claude" >&2; exit 1 ;;
 esac || { echo "$reviewer завершился с ошибкой, журнал: $log" >&2; exit 1; }
 

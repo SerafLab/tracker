@@ -30,7 +30,13 @@ jobs:
           node-version-file: .nvmrc
       - name: Require human approval for high-risk paths
         run: |
-          files=$(node scripts/risk-paths.mjs "$BASE_SHA" "$HEAD_SHA")
+          # The base version of the list judges the PR, so a PR cannot exempt itself by editing it.
+          script=scripts/risk-paths.mjs
+          if git cat-file -e "$BASE_SHA:$script" 2>/dev/null; then
+            script="$RUNNER_TEMP/risk-paths.mjs"
+            git show "$BASE_SHA:scripts/risk-paths.mjs" > "$script"
+          fi
+          files=$(node "$script" "$BASE_SHA" "$HEAD_SHA")
           if [ -z "$files" ]; then
             echo "No high-risk paths changed." >> "$GITHUB_STEP_SUMMARY"
             exit 0

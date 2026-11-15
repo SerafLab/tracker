@@ -24,4 +24,4 @@
 
 ## Рискованные пути
 
-Список — `HIGH_RISK_PATHS` в [scripts/risk-paths.mjs](scripts/risk-paths.mjs): данные пользователя, service worker, зависимости, CI и хуки, правила агентов. PR, который их затрагивает, сливается только после проверки человеком: человек ставит метку `human-approved`. Агент метку не ставит; новый push снимает её (workflow `Human approval`).
+Список — `HIGH_RISK_PATHS` в [scripts/risk-paths.mjs](scripts/risk-paths.mjs): данные пользователя, service worker, зависимости, CI и хуки, правила агентов. PR, который их затрагивает, сливается только после проверки человеком: человек ставит метку `human-approved`. Агент метку не ставит. Workflow `Human approval` (проверка `high-risk-paths`) судит PR по списку из `main` и снимает метку при новом push; хук Claude Code разрешает слияние только после успешной проверки на текущих коммитах.

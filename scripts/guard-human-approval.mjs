@@ -1,11 +1,19 @@
-// Claude Code PreToolUse hook: only a human approves high-risk PRs.
-// Denies adding the approval label, and merging (or enabling auto-merge for) a PR that touches
-// high-risk paths without that label. Fails closed when the PR cannot be read. See REVIEW.md.
+// Claude Code PreToolUse hook: only a human approves high-risk PRs. See REVIEW.md.
+// A merge (or auto-merge) is allowed only when the `high-risk-paths` check of the Human approval
+// workflow passed on the PR head: no high-risk paths, or a human labelled exactly these commits.
+// Also denies agents adding the approval label, merging through the API and pushing to main.
+// Fails closed when the PR cannot be read.
 import { execFileSync } from 'node:child_process'
-import { APPROVAL_LABEL, highRiskFiles } from './risk-paths.mjs'
 
-const ADDS_LABEL = new RegExp(`--add-label[\\s=]+\\S*${APPROVAL_LABEL}|\\bgh\\s+(api|label)\\b[^\\n;&|]*${APPROVAL_LABEL}`)
-const MERGE = /\bgh\s+pr\s+merge\b(?:\s+(\d+|https:\/\/github\.com\/\S+\/pull\/\d+)(?=\s|$))?/
+const LABEL = 'human-approved'
+const CHECK = 'high-risk-paths'
+const AT_COMMAND = String.raw`(?:^|[;&|(\n])\s*`
+const GH = String.raw`${AT_COMMAND}gh\s+(?:(?:-R|--repo)[\s=]\S+\s+)?`
+
+const ADDS_LABEL = new RegExp(String.raw`${GH}(?:pr|issue)\s+edit\b[^\n;&|]*--add-label[\s=]+\S*${LABEL}|${GH}api\b[^\n;&|]*labels[^\n;&|]*${LABEL}`)
+const API_MERGE = new RegExp(String.raw`${GH}api\b[^\n;&|]*pulls/\d+/merge`)
+const PUSH_MAIN = new RegExp(String.raw`${AT_COMMAND}git\s+push\b[^\n;&|]*[\s:+](?:refs/heads/)?main(?=\s|$)`)
+const MERGE = new RegExp(String.raw`${GH}pr\s+merge\b(?:\s+(\d+|https://github\.com/\S+/pull/\d+)(?=\s|$))?`)
 
 function deny(reason) {
   process.stdout.write(JSON.stringify({
@@ -14,15 +22,15 @@ function deny(reason) {
 }
 
 function checkMerge(pr) {
-  let view
+  let checks
   try {
-    view = JSON.parse(execFileSync('gh', ['pr', 'view', pr, '--json', 'files,labels'], { encoding: 'utf8' }))
+    checks = JSON.parse(execFileSync('gh', ['pr', 'view', pr, '--json', 'statusCheckRollup'], { encoding: 'utf8' })).statusCheckRollup
   } catch (error) {
-    return deny(`Не удалось прочитать PR ${pr} для проверки рискованных путей: ${error.message}`)
+    return deny(`Не удалось прочитать проверки PR ${pr}: ${error.message}`)
   }
-  const risky = highRiskFiles(view.files.map(file => file.path))
-  if (risky.length > 0 && !view.labels.some(label => label.name === APPROVAL_LABEL)) {
-    deny(`PR ${pr} затрагивает рискованные пути и ждёт проверки человеком (метка "${APPROVAL_LABEL}"): ${risky.join(', ')}. Не сливать; сообщить пользователю список файлов. Метку ставит только человек.`)
+  const latest = checks.filter(check => check.name === CHECK).sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? '')).at(-1)
+  if (latest?.status !== 'COMPLETED' || latest.conclusion !== 'SUCCESS') {
+    deny(`Проверка ${CHECK} в PR ${pr}: ${latest ? `${latest.status} ${latest.conclusion ?? ''}`.trim() : 'нет'}. Если PR затрагивает рискованные пути, его сливают только после метки "${LABEL}" от человека на текущих коммитах. Не сливать и не ставить метку; сообщить пользователю ссылку на PR и список файлов (\`node scripts/risk-paths.mjs\`).`)
   }
 }
 
@@ -34,9 +42,11 @@ if (tool === 'Bash') {
   const command = input.command ?? ''
   const merge = MERGE.exec(command)
   if (ADDS_LABEL.test(command)) {
-    deny(`Метку "${APPROVAL_LABEL}" ставит только человек после проверки рискованных путей.`)
+    deny(`Метку "${LABEL}" ставит только человек после проверки рискованных путей.`)
+  } else if (API_MERGE.test(command) || PUSH_MAIN.test(command)) {
+    deny('Изменения попадают в main только через `gh pr merge <номер>` после проверок PR.')
   } else if (merge && !merge[1]) {
-    deny('Укажите PR явно: `gh pr merge <номер> …`, чтобы хук проверил рискованные пути.')
+    deny('Укажите PR явно: `gh pr merge <номер> …`, чтобы хук проверил одобрение.')
   } else if (merge) {
     checkMerge(merge[1])
   }

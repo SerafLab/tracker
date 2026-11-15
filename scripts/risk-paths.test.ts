@@ -7,7 +7,8 @@ it('keeps exact high-risk files and files under high-risk directories', () => {
     'src/app/backup/delivery.ts',
     '.github/workflows/ci.yml',
     'docs/agents/rules/testing.md',
-  ])).toHaveLength(4)
+    'src/app/pwa/update-notice.tsx',
+  ])).toHaveLength(5)
 })
 
 it('ignores ordinary product, test and doc files', () => {

@@ -11,12 +11,15 @@ export const HIGH_RISK_PATHS = [
   // Stored user data: IndexedDB schema and migrations, backup format, restore.
   'src/features/project-board/infrastructure/indexeddb/database.ts',
   'src/features/project-board/application/backup.ts',
+  'src/features/project-board/domain/backup.ts',
   'src/app/backup/',
   // Service worker and build: a broken update strands installed copies.
   'vite.config.ts',
+  'src/app/pwa/',
   // Dependencies and the check script itself.
   'package.json',
   'package-lock.json',
+  '.nvmrc',
   // Gates: CI, deploy, hooks, test runners, architecture rules.
   '.github/',
   '.githooks/',
@@ -25,6 +28,8 @@ export const HIGH_RISK_PATHS = [
   'scripts/guard-human-approval.mjs',
   'scripts/limit-runner-launches.mjs',
   'scripts/check-architecture.mjs',
+  'scripts/mcp-transport-probe.check.mjs',
+  'scripts/theme-contrast.check.mjs',
   'vitest.config.ts',
   'playwright.config.ts',
   // Agent process rules.
@@ -32,6 +37,8 @@ export const HIGH_RISK_PATHS = [
   'CLAUDE.md',
   'REVIEW.md',
   'docs/agents/rules/',
+  '.codex/',
+  '.agents/',
 ]
 
 export function highRiskFiles(files) {

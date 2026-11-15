@@ -7,13 +7,15 @@ import { execFileSync } from 'node:child_process'
 
 const LABEL = 'human-approved'
 const CHECK = 'high-risk-paths'
-const AT_COMMAND = String.raw`(?:^|[;&|(\n])\s*`
-const GH = String.raw`${AT_COMMAND}gh\s+(?:(?:-R|--repo)[\s=]\S+\s+)?`
+const WORKFLOW = 'Human approval'
+// Broad on purpose: a mention inside an argument may be denied too; a missed bypass is worse.
+const SEGMENT = String.raw`[^\n;&|]*`
+const GH = String.raw`\bgh\b(?:\s+(?:-R|--repo)[\s=](\S+))?`
 
-const ADDS_LABEL = new RegExp(String.raw`${GH}(?:pr|issue)\s+edit\b[^\n;&|]*--add-label[\s=]+\S*${LABEL}|${GH}api\b[^\n;&|]*labels[^\n;&|]*${LABEL}`)
-const API_MERGE = new RegExp(String.raw`${GH}api\b[^\n;&|]*pulls/\d+/merge`)
-const PUSH_MAIN = new RegExp(String.raw`${AT_COMMAND}git\s+push\b[^\n;&|]*[\s:+](?:refs/heads/)?main(?=\s|$)`)
-const MERGE = new RegExp(String.raw`${GH}pr\s+merge\b(?:\s+(\d+|https://github\.com/\S+/pull/\d+)(?=\s|$))?`)
+const ADDS_LABEL = new RegExp(String.raw`(?:--add-label|--label|\s-l)[\s=]${SEGMENT}${LABEL}|${GH}${SEGMENT}\bapi\b${SEGMENT}labels${SEGMENT}${LABEL}`)
+const API_MERGE = new RegExp(String.raw`${GH}${SEGMENT}\bapi\b${SEGMENT}pulls/\S+/merge`)
+const PUSH_MAIN = new RegExp(String.raw`\bgit\b${SEGMENT}\bpush\b${SEGMENT}[\s:+](?:refs/heads/)?main(?=$|[\s;&|)])`)
+const MERGE = new RegExp(String.raw`${GH}\s+pr\s+merge\b(?:\s+(\d+|https://github\.com/\S+/pull/\d+)(?=\s|$))?`)
 
 function deny(reason) {
   process.stdout.write(JSON.stringify({
@@ -21,14 +23,19 @@ function deny(reason) {
   }))
 }
 
-function checkMerge(pr) {
+function checkMerge(pr, repo) {
   let checks
   try {
-    checks = JSON.parse(execFileSync('gh', ['pr', 'view', pr, '--json', 'statusCheckRollup'], { encoding: 'utf8' })).statusCheckRollup
+    checks = JSON.parse(execFileSync('gh', ['pr', 'view', pr, '--json', 'statusCheckRollup', ...(repo ? ['--repo', repo] : [])], { encoding: 'utf8' })).statusCheckRollup
   } catch (error) {
     return deny(`Не удалось прочитать проверки PR ${pr}: ${error.message}`)
   }
-  const latest = checks.filter(check => check.name === CHECK).sort((a, b) => (a.startedAt ?? '').localeCompare(b.startedAt ?? '')).at(-1)
+  // A queued run has no start time yet and is the newest.
+  const started = check => check.startedAt && !check.startedAt.startsWith('0001') ? check.startedAt : '\uffff'
+  const latest = checks
+    .filter(check => check.name === CHECK && check.workflowName === WORKFLOW)
+    .sort((a, b) => started(a).localeCompare(started(b)))
+    .at(-1)
   if (latest?.status !== 'COMPLETED' || latest.conclusion !== 'SUCCESS') {
     deny(`Проверка ${CHECK} в PR ${pr}: ${latest ? `${latest.status} ${latest.conclusion ?? ''}`.trim() : 'нет'}. Если PR затрагивает рискованные пути, его сливают только после метки "${LABEL}" от человека на текущих коммитах. Не сливать и не ставить метку; сообщить пользователю ссылку на PR и список файлов (\`node scripts/risk-paths.mjs\`).`)
   }
@@ -45,10 +52,10 @@ if (tool === 'Bash') {
     deny(`Метку "${LABEL}" ставит только человек после проверки рискованных путей.`)
   } else if (API_MERGE.test(command) || PUSH_MAIN.test(command)) {
     deny('Изменения попадают в main только через `gh pr merge <номер>` после проверок PR.')
-  } else if (merge && !merge[1]) {
+  } else if (merge && !merge[2]) {
     deny('Укажите PR явно: `gh pr merge <номер> …`, чтобы хук проверил одобрение.')
   } else if (merge) {
-    checkMerge(merge[1])
+    checkMerge(merge[2], merge[1])
   }
 } else if (tool === 'mcp__ccd_pr__set_auto_merge' && input.enabled) {
   checkMerge(input.url)

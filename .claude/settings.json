@@ -20,6 +20,12 @@
         "hooks": [
           { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/limit-runner-launches.mjs\"" }
         ]
+      },
+      {
+        "matcher": "Bash|mcp__ccd_pr__set_auto_merge",
+        "hooks": [
+          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/guard-human-approval.mjs\"" }
+        ]
       }
     ]
   }

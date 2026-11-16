@@ -60,7 +60,7 @@ export function ActionMenu({ label, actions, triggerRef, disabled = false }: { d
       document.removeEventListener('keydown', closeOnKeyboard)
       window.removeEventListener('resize', closeOnViewportChange)
     }
-  }, [open])
+  }, [open, button])
   return <div className="menu"><button ref={button} disabled={disabled} className="button button-quiet button-icon" aria-label={label} aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(value => !value)}><BoardIcon name="more" /></button>
     {open ? <div ref={menu} className="menu-items" popover="manual" role="menu" aria-label={label}>{actions.map(action => <button className="menu-item" role="menuitem" key={action.label} disabled={action.disabled} onClick={() => { setOpen(false); button.current?.focus(); action.onSelect() }}>{action.label}</button>)}</div> : null}
   </div>
@@ -70,7 +70,7 @@ export function ActionDialog({ title, children, onClose, returnFocus }: { title:
   const { t } = useTranslation()
   const titleId = useId()
   const closeFromKeyboard = useEffectEvent(onClose)
-  const opener = useRef<HTMLElement | null>(document.activeElement instanceof HTMLElement ? document.activeElement : null)
+  const [opener] = useState(() => document.activeElement instanceof HTMLElement ? document.activeElement : null)
   const panel = useRef<HTMLElement>(null)
   // Inert background content follows the dialog's DOM in the same commit, never a passive-effect flush later.
   useLayoutEffect(() => registerModal(), [])
@@ -90,17 +90,20 @@ export function ActionDialog({ title, children, onClose, returnFocus }: { title:
     const keepFocus = (event: FocusEvent) => {
       if (event.target instanceof Node && !panel.current?.contains(event.target)) focusable()[0]?.focus()
     }
+    // Read lazily: the parent may assign the return-focus target after this dialog mounts.
+    const restoreFocus = () => {
+      const target = returnFocus?.current ?? opener
+      if (target?.isConnected) target.focus({ preventScroll: true })
+    }
     document.addEventListener('keydown', onKeyDown)
     document.addEventListener('focusin', keepFocus)
     return () => {
       document.removeEventListener('keydown', onKeyDown)
       document.removeEventListener('focusin', keepFocus)
-      queueMicrotask(() => {
-        const target = returnFocus?.current ?? opener.current
-        if (target?.isConnected) target.focus({ preventScroll: true })
-      })
+      queueMicrotask(restoreFocus)
     }
-  }, [])
+  }, [returnFocus, opener])
+  // oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/prefer-tag-over-role -- modal dialog panel; native <dialog> is not used
   return <div className="dialog-backdrop" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}><section ref={panel} className="action-dialog" role="dialog" aria-modal="true" aria-labelledby={titleId} onMouseDown={event => event.stopPropagation()}><header className="dialog-header"><h2 id={titleId} className="dialog-title">{title}</h2><button className="button button-quiet button-icon" aria-label={t('close')} onClick={onClose}><BoardIcon name="close" /></button></header>{children}</section></div>
 }
 
@@ -110,6 +113,7 @@ export function NameForm({ label, button, initialName = '', onSubmit, onCancel }
   const [invalid, setInvalid] = useState(false)
   const errorId = useId()
   const submit = async (event: SyntheticEvent) => { event.preventDefault(); if (!name.trim()) { setInvalid(true); return }; setInvalid(false); await onSubmit(name); setName('') }
+  // oxlint-disable-next-line jsx-a11y/no-autofocus -- the form opens in a dialog or inline editor and takes initial focus deliberately
   return <form onSubmit={event => void submit(event)}><label className="field"><span className="field-label">{label}</span><input className="text-input" autoFocus value={name} aria-describedby={invalid ? errorId : undefined} onChange={event => setName(event.target.value)} /></label>{invalid ? <p id={errorId} className="field-error" role="alert">{t('nameRequired')}</p> : null}<div className="form-actions">{onCancel ? <button type="button" className="button button-secondary" onClick={onCancel}>{t('cancel')}</button> : null}<button className="button button-primary">{button}</button></div></form>
 }
 

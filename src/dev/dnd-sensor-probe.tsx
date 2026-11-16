@@ -67,9 +67,10 @@ function Probe() {
   }
   const open = (card: Card) => { setOpened(card); setOpens(value => value + 1); mark(`Открытие ${card.id}`) }
   return <><header className="probe-header"><h1>Проверка удержания и прокрутки</h1><p>Только тестовые карточки в памяти. Данные EasyTrack не читаются и не изменяются.</p><p>Свайп — прокрутить. Удержание 250 мс — перенос. Короткое нажатие / Enter — открыть. Меню — отдельное действие.</p>
+    {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- <output> is inline and would change the counters layout */}
     <div className="probe-counters" role="status" data-starts={starts} data-opens={opens}>Начатых переносов: {starts}. Открытий: {opens}. {active ? 'Перенос активен' : 'Ожидание'}</div>
     <details><summary>Диагностика и журнал</summary><p className="probe-agent">{navigator.userAgent}</p><ol>{log.map((line, index) => <li key={`${line}-${index}`}>{line}</li>)}</ol></details></header>
-    {opened ? <aside className="surface-card probe-detail" role="region" aria-label="Открытая карточка"><strong>{opened.name}</strong><p>Проверка открытия: карточка не должна появляться после drag/cancel/swipe.</p><button className="button button-primary" onClick={() => setOpened(null)}>Закрыть карточку</button></aside> : null}
+    {opened ? <section className="surface-card probe-detail" aria-label="Открытая карточка"><strong>{opened.name}</strong><p>Проверка открытия: карточка не должна появляться после drag/cancel/swipe.</p><button className="button button-primary" onClick={() => setOpened(null)}>Закрыть карточку</button></section> : null}
     <DragDropProvider sensors={sensors} plugins={plugins}
       onDragStart={event => { const id = String(event.operation.source?.id); activeRef.current = id; suppression.current = id; setActive(id); setStarts(value => value + 1); mark(`start ${id}; ${event.nativeEvent?.type}`) }}
       onDragMove={event => { if (activeRef.current) { const point = event.operation.position.current; setPreview(project(activeRef.current, point.x, point.y)) } }}

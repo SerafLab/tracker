@@ -178,6 +178,7 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   }
   const date = (value: string) => new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
   const noteEditor = editor ? <form className="note-editor" onSubmit={event => { event.preventDefault(); void run(saveNote) }}>
+    {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- the note editor takes initial focus when opened deliberately */}
     <div className="field"><label className="field-label" htmlFor={noteInputId}>{t(editor.id ? 'editNote' : 'newNote')}</label><textarea id={noteInputId} className="text-input" rows={5} autoFocus value={editor.text} disabled={saving || busy} aria-describedby={noteError ? noteErrorId : undefined} onChange={event => setEditor({ ...editor, text: event.target.value })} /></div>
     {noteError ? <p id={noteErrorId} role="alert" className="field-error">{t(noteError)}</p> : null}
     <div className="form-actions"><button type="button" className="button button-secondary" disabled={saving || busy} onClick={closeEditor}>{t('cancel')}</button><button className="button button-primary" disabled={saving || busy}>{t(editor.id ? 'saveNote' : 'addNote')}</button></div>
@@ -194,6 +195,7 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   const Heading = panel ? 'h2' : 'h1'
   return <div className={panel ? 'card-detail-container card-panel' : 'card-detail-container card-page'}>
     {!panel ? <AppBar context={{ project: details.project.name, status: details.status.name }} onReturn={() => void onCatalogue()} /> : null}
+    {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Tab trapping for the modal card panel */}
     <section ref={main} role={panel ? narrow ? 'dialog' : 'region' : 'main'} aria-modal={panel && narrow || undefined} aria-label={panel ? t('cardDetailsRegion') : undefined} onKeyDown={event => {
       if (!panel || !narrow || modalOpen || event.key !== 'Tab') return
       const elements = Array.from(main.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]') ?? [])

@@ -280,7 +280,14 @@ test('cancels a gesture when a confirmed board refresh replaces its starting sna
   const before = await writes(page)
   // Another confirmed mutation refreshes the board while the pointer is still down.
   await page.getByRole('button', { name: 'Добавить статус', exact: true }).evaluate(element => (element as HTMLButtonElement).click())
-  await page.getByRole('dialog').getByRole('textbox').fill('New snapshot')
+  // Not fill(): during a drag dnd-kit's PreventSelection clears every selection, including the dialog input's caret,
+  // and Chrome then drops Input.insertText. Set the value through the DOM like the click and submit around it.
+  const name = page.getByRole('dialog').getByRole('textbox')
+  await name.evaluate(element => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(element, 'New snapshot')
+    element.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await expect(name).toHaveValue('New snapshot')
   await page.getByRole('dialog').locator('form').evaluate(element => (element as HTMLFormElement).requestSubmit())
   await expect(page.getByRole('heading', { name: 'New snapshot', exact: true })).toBeVisible()
   await expect(page.locator('.card-placement-marker')).toHaveCount(0)

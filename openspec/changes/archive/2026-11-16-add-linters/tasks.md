@@ -43,4 +43,4 @@
 
 ## 5. Итоговая проверка
 
-- [ ] 5.1 Полная проверка: `E2E_PORT=<свободный порт> npm run check` проходит; `openspec validate add-linters --strict` проходит; `node scripts/risk-paths.mjs` перечисляет ожидаемые рискованные файлы для раздела «Human review» в PR.
+- [x] 5.1 Полная проверка: `E2E_PORT=<свободный порт> npm run check` проходит; `openspec validate add-linters --strict` проходит; `node scripts/risk-paths.mjs` перечисляет ожидаемые рискованные файлы для раздела «Human review» в PR.

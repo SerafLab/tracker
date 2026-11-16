@@ -217,7 +217,7 @@ describe('project board', () => {
     const dialog = await screen.findByRole('dialog')
     const moveSelect = within(dialog).getByRole('combobox', { name: /Переместить/ })
     expect(within(moveSelect).getAllByRole('option')).toHaveLength(2)
-    const duplicate = within(moveSelect).getByRole('option', { name: 'Одинаковый' }) as HTMLOptionElement
+    const duplicate = within(moveSelect).getByRole<HTMLOptionElement>('option', { name: 'Одинаковый' })
     await user.selectOptions(moveSelect, duplicate.value)
     await user.keyboard('{Tab}{Tab}{Enter}')
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())

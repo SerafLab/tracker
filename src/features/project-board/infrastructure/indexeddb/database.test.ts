@@ -22,6 +22,7 @@ describe('ProjectBoardDatabase', () => {
 
 
 const schema = { projects: 'id, createdAt', statuses: 'id, projectId, [projectId+position]', cards: 'id, statusId, [statusId+position]', workspace: 'id' }
+interface Row { id: string }
 async function legacy() {
   const name = `migration-${crypto.randomUUID()}`
   const old = new Dexie(name); databases.push(old)
@@ -31,7 +32,7 @@ async function legacy() {
   await old.table('statuses').bulkAdd([{ id: 's', projectId: 'p', name: 'S', position: 0 }, { id: 't', projectId: 'q', name: 'T', position: 0 }])
   await old.table('cards').bulkAdd([{ id: 'z', statusId: 's', name: 'Z', position: 0 }, { id: 'a', statusId: 's', name: 'A', position: 1 }, { id: 'b', statusId: 't', name: 'B', position: 0 }])
   await old.table('workspace').put({ id: 'workspace', lastProjectId: 'q' })
-  const before = await Promise.all(Object.keys(schema).map(table => old.table(table).toArray()))
+  const before = await Promise.all(Object.keys(schema).map(table => old.table(table).toArray())) as [Row[], Row[], (Row & { statusId: string; position: number })[], Row[]]
   old.close()
   return { name, before }
 }

@@ -164,8 +164,8 @@ it.each(['board', 'catalogue'] as const)('orders an in-flight preference write b
   const pending = deferred<void>()
   let saved: string | undefined
   const api = useCases({
-    boardView: vi.fn(async id => ({ ...board, id })),
-    setLastProject: vi.fn(async id => {
+    boardView: vi.fn(async (id: string) => ({ ...board, id })),
+    setLastProject: vi.fn(async (id?: string) => {
       if (id === 'project') await pending.promise
       saved = id
     }),
@@ -185,7 +185,7 @@ it.each(['board', 'catalogue'] as const)('orders an in-flight preference write b
 it('orders a pending preference clear before a newly opened board', async () => {
   const pending = deferred<void>()
   let saved: string | undefined
-  const api = useCases({ setLastProject: vi.fn(async id => { if (!id) await pending.promise; saved = id }) })
+  const api = useCases({ setLastProject: vi.fn(async (id?: string) => { if (!id) await pending.promise; saved = id }) })
   const store = createProjectBoardStore(api)
   const clearing = store.getState().clearLastProject()
   await vi.waitFor(() => expect(api.setLastProject).toHaveBeenCalledWith(undefined))
@@ -432,7 +432,7 @@ it.each(['commit', 'refresh', 'refresh-failed'] as const)('clears catalogue pref
   let preference: string | undefined = board.id
   const api = useCases({
     moveCard: vi.fn(() => commit.promise),
-    setLastProject: vi.fn(async id => { preference = id }),
+    setLastProject: vi.fn(async (id?: string) => { preference = id }),
     preference: vi.fn(async () => ({ id: 'workspace' as const, lastProjectId: preference })),
   })
   const store = createProjectBoardStore(api)

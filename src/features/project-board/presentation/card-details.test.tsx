@@ -76,9 +76,12 @@ for (const [ids, deletedId, nextId, mode] of [
     await vi.runAllTimersAsync()
   })
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  if (delayed) {
+  const expectBusy = () => {
     expect(screen.getByRole('button', { name: 'Добавить заметку' })).toBeDisabled()
     expect(document.body).toHaveFocus()
+  }
+  if (delayed) {
+    expectBusy()
     if (mode === 'new-focus') screen.getByRole('button', { name: 'Назад к доске' }).focus()
     rerender(<LocaleProvider><NoteOrderProvider><CardDetailView {...props} details={savedDetails} /></NoteOrderProvider></LocaleProvider>)
   }
@@ -88,7 +91,8 @@ for (const [ids, deletedId, nextId, mode] of [
   else if (nextId) target = within(container.querySelector(`[data-note-id="${nextId}"]`) as HTMLElement).getByRole('button', { name: 'Редактировать заметку' })
   else target = screen.getByRole('button', { name: 'Добавить заметку' })
   expect(target).toHaveFocus()
-  if (mode === 'draft') expect(target).toHaveValue('Retained draft')
+  const expectDraft = () => expect(target).toHaveValue('Retained draft')
+  if (mode === 'draft') expectDraft()
 })
 
 it('opens a direct detail address, hides project actions, returns to its board and rejects foreign cards', async () => {
@@ -319,7 +323,7 @@ async function deleteFromBoard(user: ReturnType<typeof userEvent.setup>, name: s
 
 it('closes the panel and returns to the board URL when the open card is deleted from the board', async () => {
   const { user } = await setup('#project/p')
-  const boardIndex = history.state?.easyTrackIndex
+  const boardIndex = (history.state as { easyTrackIndex?: number } | null)?.easyTrackIndex
   await openPanel(user)
   const length = history.length
   await deleteFromBoard(user, 'Card')
@@ -328,7 +332,7 @@ it('closes the panel and returns to the board URL when the open card is deleted 
   await waitFor(() => expect(location.hash).toBe('#project/p'))
   expect(history.length).toBe(length)
   // Back removed the panel entry instead of duplicating the board entry.
-  await waitFor(() => expect(history.state?.easyTrackIndex).toBe(boardIndex))
+  await waitFor(() => expect((history.state as { easyTrackIndex?: number } | null)?.easyTrackIndex).toBe(boardIndex))
   expect(screen.queryByText('Карточка недоступна')).toBeNull()
   expect(await screen.findByRole('heading', { level: 1, name: 'Project' })).toBeInTheDocument()
   await waitFor(() => expect(document.activeElement).not.toBe(document.body))
@@ -378,7 +382,7 @@ it('offers the captured install prompt from settings across board, catalogue, ca
   const settingsEntry = async () => {
     expect(document.querySelector('.install-help')).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Настройки' }))
-    return await screen.findByRole('button', { name: 'Установить EasyTrack' })
+    return screen.findByRole('button', { name: 'Установить EasyTrack' })
   }
   const checkEntry = async () => { await settingsEntry(); await user.click(screen.getByRole('button', { name: 'Назад' })); await screen.findByRole('button', { name: 'Настройки' }) }
   await screen.findByRole('link', { name: 'Card' })

@@ -209,7 +209,7 @@ describe('invitation trigger', () => {
     const user = userEvent.setup()
     render(<Launch />)
     await user.click(screen.getByRole('button', { name: 'modal' }))
-    act(() => { (screen.getByRole('button', { name: 'ready', hidden: true }) as HTMLButtonElement).click() })
+    act(() => { screen.getByRole<HTMLButtonElement>('button', { name: 'ready', hidden: true }).click() })
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()

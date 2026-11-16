@@ -325,7 +325,7 @@ it.each(['creation', 'deletion'] as const)('serializes concurrent status creatio
   else { deletion = repo.deleteProject('p'); creation = create() }
   const [created, deleted] = await Promise.allSettled([creation, deletion])
   expect(deleted.status).toBe('fulfilled')
-  const outcome = { creation: { status: 'fulfilled' }, deletion: { status: 'rejected', reason: expect.objectContaining({ message: 'Проект не найден' }) } }
+  const outcome = { creation: { status: 'fulfilled' }, deletion: { status: 'rejected', reason: { message: 'Проект не найден' } } }
   expect(created).toMatchObject(outcome[first])
   expect(await repo.board('p')).toBeUndefined()
   expect(await db.statuses.where('projectId').equals('p').count()).toBe(0)
@@ -458,7 +458,7 @@ it('counts each project across its statuses without loading card payloads and re
     { id: 'c', projectId: 'many', name: 'Second', position: 1 },
   ])
   await database.cards.bulkAdd(['a', 'b', 'b', 'c'].map((statusId, i) => ({ id: `card-${i}`, statusId, name: 'Card', position: i, description: 'Long payload', important: false, urgent: false })))
-  const readingCards = vi.fn(card => card)
+  const readingCards = vi.fn((card: unknown) => card)
   database.cards.hook('reading', readingCards)
   expect(await repo.catalogue()).toEqual(projects.map((project, i) => ({ ...project, cardCount: [0, 1, 3, 0][i] })))
   expect(readingCards).not.toHaveBeenCalled()

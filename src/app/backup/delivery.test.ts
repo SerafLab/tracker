@@ -26,7 +26,7 @@ it('names the file by local time', () => {
 })
 
 it('downloads on a desktop even when sharing is available', async () => {
-  const share = vi.fn().mockResolvedValue(undefined)
+  const share = vi.fn<(data: ShareData) => Promise<void>>().mockResolvedValue(undefined)
   device({ coarse: false, share })
   await deliverBackup(backup, now)
   expect(share).not.toHaveBeenCalled()
@@ -37,11 +37,11 @@ it('downloads on a desktop even when sharing is available', async () => {
 })
 
 it('shares the file on a touch device', async () => {
-  const share = vi.fn().mockResolvedValue(undefined)
+  const share = vi.fn<(data: ShareData) => Promise<void>>().mockResolvedValue(undefined)
   device({ coarse: true, share })
   await deliverBackup(backup, now)
   expect(share).toHaveBeenCalledOnce()
-  const file = share.mock.calls[0][0].files[0] as File
+  const file = share.mock.calls[0][0].files![0]
   expect(file.name).toBe('easytrack-backup-2026-11-06-1430.json')
   expect(file.type).toBe('application/json')
   expect(clicked).toEqual([])

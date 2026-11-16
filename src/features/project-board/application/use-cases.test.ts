@@ -60,8 +60,8 @@ it('validates card names and preserves both independent flags for create and upd
     await api.updateCard('id', { name: '  Edit  ', description: '', important, urgent })
     expect(port.updateCard).toHaveBeenLastCalledWith('id', { name: 'Edit', description: '', important, urgent })
   }
-  expect(() => api.createCard('s', { name: ' ', description: '', important: true, urgent: true })).toThrow()
-  expect(() => api.updateCard('id', { name: ' ', description: '', important: false, urgent: false })).toThrow()
+  expect(() => api.createCard('s', { name: ' ', description: '', important: true, urgent: true })).toThrow('Название обязательно')
+  expect(() => api.updateCard('id', { name: ' ', description: '', important: false, urgent: false })).toThrow('Название обязательно')
 })
 
 

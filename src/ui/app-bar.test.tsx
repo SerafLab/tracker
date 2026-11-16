@@ -98,7 +98,7 @@ it('only focuses truncated headings and remeasures title, resize and font change
   let available = 200
   const callbacks = new Set<() => void>()
   vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.tagName === 'H1' ? available : 0 })
-  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.tagName === 'H1' ? this.textContent!.length * 10 : 0 })
+  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockImplementation(function (this: HTMLElement) { return this.tagName === 'H1' ? this.textContent.length * 10 : 0 })
   vi.stubGlobal('ResizeObserver', class {
     callback: () => void
     constructor(callback: () => void) { this.callback = callback; callbacks.add(callback) }
@@ -127,7 +127,7 @@ it('only focuses truncated headings and remeasures title, resize and font change
     fireEvent(window, new Event('resize'))
     expect(heading).toHaveAttribute('tabindex', '0')
     available = 2000
-    act(() => fonts.dispatchEvent(new Event('loadingdone')))
+    act(() => { fonts.dispatchEvent(new Event('loadingdone')) })
     expect(heading).not.toHaveAttribute('tabindex')
     view.unmount()
     expect(callbacks.size).toBe(0)

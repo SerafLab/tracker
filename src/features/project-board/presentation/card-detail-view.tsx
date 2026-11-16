@@ -26,14 +26,14 @@ type Props = {
   onExpand?: () => Promise<void>
   details: CardDetails
   busy: boolean
-  onReturn(): Promise<void>
-  onCatalogue(): Promise<void>
-  onSave(input: CardInput): Promise<boolean>
-  onCreateNote(text: string): Promise<Note | undefined>
-  onUpdateNote(id: Id, text: string): Promise<Note | undefined>
-  onDeleteNote(id: Id): Promise<boolean>
+  onReturn: () => Promise<void>
+  onCatalogue: () => Promise<void>
+  onSave: (input: CardInput) => Promise<boolean>
+  onCreateNote: (text: string) => Promise<Note | undefined>
+  onUpdateNote: (id: Id, text: string) => Promise<Note | undefined>
+  onDeleteNote: (id: Id) => Promise<boolean>
   registerDraftGuard: RegisterDraftGuard
-  requestLeave(action: () => void | Promise<void>): void
+  requestLeave: (action: () => void | Promise<void>) => void
 }
 
 export function CardDetailView({ refreshFailed = false, retrying = false, onRetryRefresh, narrow = false, presentation = 'page', editRequest = null, onExpand, details, busy, onReturn, onCatalogue, onSave, onCreateNote, onUpdateNote, onDeleteNote, registerDraftGuard, requestLeave }: Props) {
@@ -67,11 +67,15 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   const shownNotes = orderNotes(details.notes, order)
   const savedFields = fieldsOf(details)
   // Only synchronize a newly confirmed external snapshot when there are no local edits.
-  useEffect(() => {
-    if (sameFields(savedFields, confirmed)) return
-    if (!fieldsDirty) setFields(savedFields)
-    confirmedRef.current = savedFields; setConfirmed(savedFields)
-  }, [details.card])
+  const [seenCard, setSeenCard] = useState(details.card)
+  if (seenCard !== details.card) {
+    setSeenCard(details.card)
+    if (!sameFields(savedFields, confirmed)) {
+      if (!fieldsDirty) setFields(savedFields)
+      setConfirmed(savedFields)
+    }
+  }
+  useLayoutEffect(() => { confirmedRef.current = confirmed }, [confirmed])
   useLayoutEffect(() => { main.current?.focus({ preventScroll: true }) }, [details.card.id])
   useLayoutEffect(() => {
     if (!editRequest || editRequest.cardId !== details.card.id || handledRequest.current === editRequest.seq) return
@@ -121,13 +125,14 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   const submitFields = () => run(async () => { if (await saveFields()) setEditing(false) })
   const discard = () => { setFields(confirmed); setEditor(null); setFieldError(null); setNoteError(null) }
   const current = useRef({ fieldsDirty, noteDirty, saveAll, discard })
-  current.current = { fieldsDirty, noteDirty, saveAll, discard }
+  useLayoutEffect(() => { current.current = { fieldsDirty, noteDirty, saveAll, discard } })
   useLayoutEffect(() => {
     registerDraftGuard({ isDirty: () => current.current.fieldsDirty || current.current.noteDirty, save: () => current.current.saveAll(), discard: () => current.current.discard() })
     return () => registerDraftGuard(null)
   }, [registerDraftGuard])
   useEffect(() => {
     if (!fieldsDirty && !noteDirty) return
+    // oxlint-disable-next-line typescript/no-deprecated -- returnValue is still required by some browsers to show the prompt
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
     addEventListener('beforeunload', beforeUnload)
     return () => removeEventListener('beforeunload', beforeUnload)
@@ -177,6 +182,7 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   }
   const date = (value: string) => new Intl.DateTimeFormat(i18n.resolvedLanguage, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
   const noteEditor = editor ? <form className="note-editor" onSubmit={event => { event.preventDefault(); void run(saveNote) }}>
+    {/* oxlint-disable-next-line jsx-a11y/no-autofocus -- the note editor takes initial focus when opened deliberately */}
     <div className="field"><label className="field-label" htmlFor={noteInputId}>{t(editor.id ? 'editNote' : 'newNote')}</label><textarea id={noteInputId} className="text-input" rows={5} autoFocus value={editor.text} disabled={saving || busy} aria-describedby={noteError ? noteErrorId : undefined} onChange={event => setEditor({ ...editor, text: event.target.value })} /></div>
     {noteError ? <p id={noteErrorId} role="alert" className="field-error">{t(noteError)}</p> : null}
     <div className="form-actions"><button type="button" className="button button-secondary" disabled={saving || busy} onClick={closeEditor}>{t('cancel')}</button><button className="button button-primary" disabled={saving || busy}>{t(editor.id ? 'saveNote' : 'addNote')}</button></div>
@@ -193,6 +199,7 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   const Heading = panel ? 'h2' : 'h1'
   return <div className={panel ? 'card-detail-container card-panel' : 'card-detail-container card-page'}>
     {!panel ? <AppBar context={{ project: details.project.name, status: details.status.name }} onReturn={() => void onCatalogue()} /> : null}
+    {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-element-interactions -- Tab trapping for the modal card panel */}
     <section ref={main} role={panel ? narrow ? 'dialog' : 'region' : 'main'} aria-modal={panel && narrow || undefined} aria-label={panel ? t('cardDetailsRegion') : undefined} onKeyDown={event => {
       if (!panel || !narrow || modalOpen || event.key !== 'Tab') return
       const elements = Array.from(main.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]') ?? [])

@@ -50,9 +50,11 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
   useEffect(() => {
     if (missingInPanel && missingProjectId) void onPanelCardMissing?.(missingProjectId)
   }, [missingInPanel, missingProjectId, onPanelCardMissing])
+  const openCardId = workspace.kind === 'card' ? workspace.details.card.id : undefined
+  const workspaceKind = workspace.kind
   useEffect(() => {
-    if (workspace.kind === 'card') lastCard.current = workspace.details.card.id
-    else if (workspace.kind === 'board' && lastCard.current) {
+    if (openCardId) lastCard.current = openCardId
+    else if (workspaceKind === 'board' && lastCard.current) {
       const id = lastCard.current; lastCard.current = null
       const card = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find(node => node.dataset.cardId === id)
       const target = card?.querySelector<HTMLElement>('.card-detail-link')
@@ -60,7 +62,7 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
         ?? root.current?.querySelector<HTMLElement>('.board-workspace button:not(:disabled)')
       target?.focus({ preventScroll: true })
     }
-  }, [workspace.kind, workspace.kind === 'card' ? workspace.details.card.id : undefined])
+  }, [workspaceKind, openCardId])
   const agentPending = useStore(store, state => state.agentPending)
   const agentRefreshError = useStore(store, state => state.agentRefreshError)
   const applyingStatusSet = useStore(store, state => state.applyingStatusSet)
@@ -107,7 +109,7 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
 
   const board = workspace.kind === 'board' ? workspace.board : boardSnapshot
   return <div ref={root} className={panelOpen ? 'workspace-with-panel' : 'workspace-layout'}>
-    <div className="board-workspace" role="region" hidden={!!details && !panelOpen} inert={panelOpen && narrow} aria-label={t('boardRegion')}>
+    <section className="board-workspace" hidden={!!details && !panelOpen} inert={panelOpen && narrow} aria-label={t('boardRegion')}>
     {board ? <ProjectBoardView onRequestDestructiveAction={requestLeave} openCard={details ? { id: details.card.id, statusId: details.card.statusId } : null} key={board.id} board={board} focusCreation={createdProjectId === board.id} onCreationFocused={() => setCreatedProjectId(null)} saveError={saveError} placementPending={placementPending} busy={applyingStatusSet || agentPending || agentRefreshError || placementPending || !!placementRefreshError} refreshFailed={!!placementRefreshError} onRetryRefresh={() => store.getState().retryPlacementRefresh()}
     onReturn={navigateToCatalogue}
     onApplyStatusSet={async names => { const result = await store.getState().applyStatusSet(board.id, names); if (result === 'saved') onMutationSaved?.(); if (result === 'saved' || result === 'conflict') setCreatedProjectId(board.id); return result }}
@@ -126,7 +128,7 @@ export function ProjectBoardApp({ onPanelIsolationChange, cardPresentation = 'pa
     onDeleteStatus={async statusId => { const result = await deleteStatus(board.id, statusId); if (result === 'deleted') onMutationSaved?.(); return result }}
     onMoveCard={async (cardId, placement) => { const result = await moveCard(board.id, cardId, placement); if (result === 'saved') onMutationSaved?.(); return result }}
   /> : null}
-    </div>
+    </section>
     {detailView}
   </div>
 }

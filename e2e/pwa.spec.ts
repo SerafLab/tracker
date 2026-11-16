@@ -3,6 +3,8 @@ import { viewportFor } from './viewports'
 
 const app = '/tracker/'
 
+interface Manifest { id: string; lang: string; description: string; icons: { src: string }[] }
+
 async function openAndControl(page: import('@playwright/test').Page) {
   await page.goto(app)
   await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект' })).toBeVisible()
@@ -22,7 +24,7 @@ async function prepareUpdate(page: import('@playwright/test').Page) {
 test('delivers the manifest and keeps local projects usable offline', async ({ page, context }) => {
   await openAndControl(page)
   const metadata = await page.evaluate(async () => {
-    const manifest = await fetch(document.querySelector<HTMLLinkElement>('link[rel="manifest"]')!.href).then(response => response.json())
+    const manifest = await fetch(document.querySelector<HTMLLinkElement>('link[rel="manifest"]')!.href).then(response => response.json() as Promise<Manifest>)
     const iconStatuses = await Promise.all(manifest.icons.map((icon: { src: string }) => fetch(`/tracker/${icon.src}`).then(response => response.status)))
     return { manifest, iconStatuses, registration: Boolean(await navigator.serviceWorker.getRegistration('/tracker/')) }
   })
@@ -80,8 +82,8 @@ for (const locale of ['ru', 'en'] as const) {
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     const manifests = await page.evaluate(async () => {
       const links = [...document.querySelectorAll<HTMLLinkElement>('link[rel="manifest"]')]
-      const variants = await Promise.all(['ru', 'en'].map(async language => fetch(`/tracker/manifest.${language}.webmanifest`).then(response => response.json())))
-      return { count: links.length, active: await fetch(links[0].href).then(response => response.json()), variants }
+      const variants = await Promise.all(['ru', 'en'].map(async language => fetch(`/tracker/manifest.${language}.webmanifest`).then(response => response.json() as Promise<Manifest>)))
+      return { count: links.length, active: await fetch(links[0].href).then(response => response.json() as Promise<Manifest>), variants }
     })
     expect(manifests.count).toBe(1)
     expect(manifests.active.lang).toBe(locale)
@@ -100,7 +102,7 @@ for (const locale of ['ru', 'en'] as const) {
     await expect(page.getByRole('banner').getByRole('button', { name: locale === 'en' ? 'Back' : 'Назад' })).toBeVisible()
     expect(await page.evaluate(async () => {
       const active = document.querySelector<HTMLLinkElement>('link[rel="manifest"]')!
-      return (await fetch(active.href).then(response => response.json())).lang
+      return (await fetch(active.href).then(response => response.json() as Promise<Manifest>)).lang
     })).toBe(locale)
     await page.screenshot({ path: `test-results/locale-${locale}-mobile.png`, fullPage: true })
   })
@@ -172,7 +174,7 @@ test.describe('first-visit installation invitation', () => {
   test('does not open in the installed application', async ({ page }) => {
     await page.addInitScript(() => {
       const original = window.matchMedia.bind(window)
-      window.matchMedia = query => query === '(display-mode: standalone)' ? { ...original(query), matches: true, media: query } as MediaQueryList : original(query)
+      window.matchMedia = query => query === '(display-mode: standalone)' ? { matches: true, media: query } as MediaQueryList : original(query)
     })
     await page.goto(app)
     await expect(page.getByRole('banner').getByRole('button', { name: 'Создать проект' })).toBeVisible()

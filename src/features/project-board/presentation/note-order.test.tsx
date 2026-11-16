@@ -1,14 +1,12 @@
-import { act, cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { NoteOrderProvider, noteOrderStorageKey, orderNotes, useNoteOrder } from './note-order'
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.removeItem(noteOrderStorageKey) })
 
-let toggle: () => void
 function Probe() {
   const preference = useNoteOrder()
-  toggle = preference.toggle
-  return <output>{preference.order}</output>
+  return <><output>{preference.order}</output><button onClick={preference.toggle}>toggle</button></>
 }
 const mount = () => render(<NoteOrderProvider><Probe /></NoteOrderProvider>)
 
@@ -30,20 +28,20 @@ it('defaults to newest first, also for unknown stored values and without a provi
 
 it('toggles, stores the choice and restores it after remounting', () => {
   mount()
-  act(() => toggle())
+  fireEvent.click(screen.getByRole('button', { name: 'toggle' }))
   expect(screen.getByRole('status')).toHaveTextContent('oldest')
   expect(localStorage.getItem(noteOrderStorageKey)).toBe('oldest')
   cleanup()
   mount()
   expect(screen.getByRole('status')).toHaveTextContent('oldest')
-  act(() => toggle())
+  fireEvent.click(screen.getByRole('button', { name: 'toggle' }))
   expect(localStorage.getItem(noteOrderStorageKey)).toBe('newest')
 })
 
 it('keeps the choice until reload when the browser refuses to store it', () => {
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('blocked') })
   mount()
-  act(() => toggle())
+  fireEvent.click(screen.getByRole('button', { name: 'toggle' }))
   expect(screen.getByRole('status')).toHaveTextContent('oldest')
   cleanup()
   mount()

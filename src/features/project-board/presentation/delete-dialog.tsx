@@ -51,6 +51,7 @@ export function DeleteDialog({ kind, name, blocked, summary, onRetrySummary, ret
     <p>{t(text.question, { name })}</p>
     {kind === 'card' ? <p>{t('cardContentsLost')}</p> : null}
     {kind === 'project' ? <>
+      {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- <output> is inline; this status message is block content */}
       {summary?.kind === 'ready' ? <p>{t('projectDeletionSummary', { statuses: summary.statusCount, cards: summary.cardCount })}</p> : summary?.kind === 'failed' ? <><p role="alert" className="save-error">{t('projectSummaryError')}</p><button type="button" className="button button-secondary" onClick={onRetrySummary}>{t('retry')}</button></> : <p role="status">{t('projectSummaryLoading')}</p>}
       <p>{t('projectContentsLost')}</p>
     </> : null}

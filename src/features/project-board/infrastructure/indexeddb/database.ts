@@ -17,8 +17,8 @@ export class ProjectBoardDatabase extends Dexie {
       cards: 'id, statusId, [statusId+position]',
       workspace: 'id',
     })
-    this.version(2).stores({ projects: 'id, createdAt', statuses: 'id, projectId, [projectId+position]', cards: 'id, statusId, [statusId+position]', workspace: 'id' }).upgrade(transaction => transaction.table('cards').toCollection().modify(card => { card.important ??= false; card.urgent ??= false }))
-    this.version(3).stores({ projects: 'id, createdAt', statuses: 'id, projectId, [projectId+position]', cards: 'id, statusId, [statusId+position]', workspace: 'id', notes: 'id, cardId, [cardId+createdAt]' }).upgrade(transaction => transaction.table('cards').toCollection().modify(card => { card.description ??= '' }))
+    this.version(2).stores({ projects: 'id, createdAt', statuses: 'id, projectId, [projectId+position]', cards: 'id, statusId, [statusId+position]', workspace: 'id' }).upgrade(transaction => transaction.table('cards').toCollection().modify((card: { important?: boolean; urgent?: boolean }) => { card.important ??= false; card.urgent ??= false }))
+    this.version(3).stores({ projects: 'id, createdAt', statuses: 'id, projectId, [projectId+position]', cards: 'id, statusId, [statusId+position]', workspace: 'id', notes: 'id, cardId, [cardId+createdAt]' }).upgrade(transaction => transaction.table('cards').toCollection().modify((card: { description?: string }) => { card.description ??= '' }))
     this.on('versionchange', () => {
       this.close()
       onVersionChange?.()

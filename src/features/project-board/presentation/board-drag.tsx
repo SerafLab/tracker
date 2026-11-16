@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode, type RefObject } from 'react'
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode, type RefObject } from 'react'
 import { DragDropProvider, DragOverlay, useDraggable, useDroppable } from '@dnd-kit/react'
 import { Accessibility, AutoScroller, PointerActivationConstraints, PointerSensor, type DragDropManager } from '@dnd-kit/dom'
 import { pointerIntersection } from '@dnd-kit/collision'
@@ -24,7 +24,7 @@ const sensors = [PointerSensor.configure({
 })]
 const plugins: ComponentProps<typeof DragDropProvider>['plugins'] = defaults => [...defaults.filter(plugin => plugin !== Accessibility && plugin !== AutoScroller), AutoScroller.configure({ acceleration: 15, threshold: { x: .18, y: .18 } })]
 
-export function BoardDrag({ board, disabled, onPlace, children }: { board: ProjectBoard; disabled: boolean; onPlace(id: Id, placement: CardPlacement): Promise<MoveCardStateResult>; children: ReactNode }) {
+export function BoardDrag({ board, disabled, onPlace, children }: { board: ProjectBoard; disabled: boolean; onPlace: (id: Id, placement: CardPlacement) => Promise<MoveCardStateResult>; children: ReactNode }) {
   const { t } = useTranslation()
   const surface = useRef<HTMLDivElement>(null)
   const suppression = useRef<Id | null>(null)
@@ -34,7 +34,8 @@ export function BoardDrag({ board, disabled, onPlace, children }: { board: Proje
   const lastPoint = useRef<{ x: number; y: number } | null>(null)
   const [active, setActive] = useState<Card | null>(null)
   const [preview, setPreview] = useState<PlacementPreview | null>(null)
-  const boardRef = useRef(board); boardRef.current = board
+  const boardRef = useRef(board)
+  useLayoutEffect(() => { boardRef.current = board }, [board])
   const project = (point: { x: number; y: number }): PlacementPreview | null => {
     const card = source.current
     const scroller = boardScroller(surface.current)
@@ -55,7 +56,8 @@ export function BoardDrag({ board, disabled, onPlace, children }: { board: Proje
     })
     return { card, placement: { ...appendPlacement(card, status.id), beforeCardId: before?.id ?? null } }
   }
-  const projectRef = useRef(project); projectRef.current = project
+  const projectRef = useRef(project)
+  useLayoutEffect(() => { projectRef.current = project })
   const updatePreview = (point: { x: number; y: number }) => {
     lastPoint.current = point
     const next = projectRef.current(point)

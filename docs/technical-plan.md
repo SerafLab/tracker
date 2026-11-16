@@ -59,12 +59,12 @@ Runtime-кеширование внешних страниц, сторонних
 - `npm ci` — воспроизводимая установка по lockfile;
 - `npm run dev` — локальная разработка;
 - `npm run build` и `npm run preview` — production-сборка и её локальная проверка;
-- `npm run format:check`, `npm run lint`, `npm run typecheck` — форматирование, статический анализ и TypeScript;
+- `npm run lint` (`lint:js` и `lint:css`) и `npm run typecheck` — статический анализ и проверка типов TypeScript;
 - `npm test` — тесты Vitest и React Testing Library;
 - `npm run test:e2e` — критические браузерные сценарии Playwright;
-- `npm run check` — полный набор блокирующих проверок без ручной мобильной приёмки.
+- `npm run check` — полный набор блокирующих проверок без ручной мобильной приёмки: `lint` → `typecheck` → `check:architecture` → Vitest → проверки `node --test` → сборка и Playwright.
 
-ESLint использует flat config, type-aware правила `typescript-eslint`, правила React Hooks и `eslint-plugin-jsx-a11y`; форматирование выполняет Prettier. Vitest проверяет доменную логику, миграции и преобразования резервной копии, React Testing Library — наблюдаемое поведение компонентов. Общий процент покрытия не блокирует изменение: тестами обязательно покрывается критическое поведение и найденные регрессии.
+oxlint с `oxlint-tsgolint` проверяет TS/TSX/JS в `src/`, `e2e/`, `scripts/` и конфигах в корне: категория `correctness`, правила хуков и React Compiler, правила промисов с учётом типов и `no-unsafe-*` ([ADR-0006](adr/0006-oxlint-and-stylelint-instead-of-eslint.md)). stylelint с `stylelint-config-recommended` проверяет CSS. `tsc -b` проверяет проекты `tsconfig.app.json` (`src/`) и `tsconfig.node.json` (`e2e/`, `scripts/`, конфиги) в строгом режиме. Любая находка — ошибка; отключение правила в коде — только для одного правила, точечно и с причиной. Vitest проверяет доменную логику, миграции и преобразования резервной копии, React Testing Library — наблюдаемое поведение компонентов. Общий процент покрытия не блокирует изменение: тестами обязательно покрывается критическое поведение и найденные регрессии.
 
 Playwright запускает критические пользовательские сценарии против production-сборки в Chromium и WebKit, включая мобильные размеры экрана и настоящую IndexedDB. Автоматизированная проверка service worker, офлайн-переключения и обновления выполняется в Chromium, поскольку расширенная поддержка service worker в Playwright ограничена Chromium. WebKit даёт дополнительный сигнал совместимости, но не заменяет выпускную проверку на реальном iPhone.
 

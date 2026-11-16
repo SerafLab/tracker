@@ -6,7 +6,7 @@ import { viewportFor } from './viewports'
 
 async function setup(page: Page, en = false) {
   await page.addInitScript(() => {
-    const put = IDBObjectStore.prototype.put
+    const put = Reflect.get<IDBObjectStore, 'put'>(IDBObjectStore.prototype, 'put')
     ;(window as unknown as { cardWrites: number }).cardWrites = 0
     IDBObjectStore.prototype.put = function (...args) {
       if (this.name === 'cards') (window as unknown as { cardWrites: number }).cardWrites++
@@ -90,7 +90,7 @@ for (const en of [false, true]) test(`projects exact legal gaps, cancels safely,
   await expect(page.locator('.card-detail')).toBeVisible()
   const form = await enterEdit(page, en)
   await form.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true }).fill('Description survives drag')
-  await saveEdit(page, form, en)
+  await saveEdit(form, en)
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await page.getByLabel(en ? 'New note' : 'Новая заметка', { exact: true }).fill('Note survives drag')
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
@@ -194,12 +194,12 @@ test('keeps native touch swipes before hold, then drags without opening on relea
       expect(await page.evaluate(([px, py]) => document.elementFromPoint(px, py)?.closest('.work-card') !== null, [x, y]), 'touch starts on a card').toBe(true)
       // Awaiting this call confirms both listeners are installed before any touch event is sent.
       const room = await list.evaluate((node, [name, dir]) => {
-        const element = node as HTMLElement & Record<string, number>, offset = element[name as string]
+        const element = node as HTMLElement & Record<string, number>, offset = element[name]
         const range = name === 'scrollLeft' ? element.scrollWidth - element.clientWidth : element.scrollHeight - element.clientHeight
         const w = window as unknown as { swipe?: { peak: number, drags: number, ended: Promise<void>, done: AbortController } }
         w.swipe?.done.abort() // A previous swipe's listeners must not write into this swipe's peak.
         const done = new AbortController(), swipe = { peak: 0, drags: 0, done, ended: new Promise<void>(resolve => {
-          element.addEventListener('scroll', () => { swipe.peak = Math.max(swipe.peak, (element[name as string] - offset) * (dir as number)) }, { signal: done.signal })
+          element.addEventListener('scroll', () => { swipe.peak = Math.max(swipe.peak, (element[name] - offset) * dir) }, { signal: done.signal })
           // Scrollends of earlier programmatic scrolls arrive before any directional movement and are ignored.
           element.addEventListener('scrollend', () => { if (swipe.peak > 0) resolve() }, { signal: done.signal })
         }) }
@@ -208,7 +208,7 @@ test('keeps native touch swipes before hold, then drags without opening on relea
         drags.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['data-dragging'] })
         done.signal.addEventListener('abort', () => drags.disconnect())
         w.swipe = swipe
-        return (dir as number) > 0 ? range - offset : offset
+        return dir > 0 ? range - offset : offset
       }, [axis, sign] as const)
       const needed = Math.min(travel / 2, room)
       expect(needed, 'scroller has room to scroll in the swipe direction').toBeGreaterThan(0)
@@ -253,7 +253,7 @@ for (const en of [false, true]) test(`recovers a committed placement through rea
   await page.setViewportSize(viewportFor(1280)); await setup(page, en)
   const before = await writes(page)
   await page.evaluate(() => {
-    const get = IDBObjectStore.prototype.get
+    const get = Reflect.get<IDBObjectStore, 'get'>(IDBObjectStore.prototype, 'get')
     let fail = true
     IDBObjectStore.prototype.get = function (...args) {
       if (this.name === 'projects' && fail) { fail = false; throw new DOMException('Injected post-commit read failure', 'UnknownError') }

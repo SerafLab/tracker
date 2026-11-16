@@ -14,7 +14,9 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); localStorage.clear(); delete 
 
 describe('inline theme script in index.html', () => {
   const script = indexHtml.match(/<head>[\s\S]*?<script>([\s\S]*?)<\/script>[\s\S]*?<\/head>/)?.[1] ?? ''
-  const run = (storage: Pick<Storage, 'getItem'>) => { delete document.documentElement.dataset.theme; new Function('localStorage', script)(storage); return document.documentElement.dataset.theme }
+  // oxlint-disable-next-line typescript/no-implied-eval -- the test must execute the inline index.html script as the browser does
+  const evaluate = new Function('localStorage', script) as (storage: Pick<Storage, 'getItem'>) => void
+  const run = (storage: Pick<Storage, 'getItem'>) => { delete document.documentElement.dataset.theme; evaluate(storage); return document.documentElement.dataset.theme }
   it('runs before the stylesheet and reads the module storage key', () => {
     expect(script).toContain(`"${themeStorageKey}"`)
     expect(indexHtml.indexOf('<script>')).toBeLessThan(indexHtml.indexOf('<title>'))

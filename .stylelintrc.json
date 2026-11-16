@@ -1,0 +1,6 @@
+{
+  "extends": ["stylelint-config-recommended"],
+  "reportNeedlessDisables": true,
+  "reportInvalidScopeDisables": true,
+  "reportDescriptionlessDisables": true
+}

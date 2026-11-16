@@ -7,7 +7,7 @@ export type NotificationPlacement = 'bottom-center' | 'bottom-start' | 'bottom-e
 export const TOAST_DURATION_MS = 4000
 
 type Toast = { id: number; text: string }
-type ToastApi = { showToast(text: string): void }
+type ToastApi = { showToast: (text: string) => void }
 
 // Views rendered without the app shell (isolated component tests) have nowhere to show a toast, so it is dropped.
 const ToastContext = createContext<ToastApi>({ showToast() {} })
@@ -32,6 +32,7 @@ export function NotificationProvider({ placement = 'bottom-center', isolated = f
       {children}
       <div className="notification-area" data-placement={placement} style={{ '--toast-duration': `${TOAST_DURATION_MS}ms` } as CSSProperties}>
         {/* Always mounted and never inert, so results are announced even over a dialog. A new key re-announces identical text. */}
+        {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- <output> cannot contain the block-level toast */}
         <div className="notification-transient" role="status" aria-live="polite" aria-atomic="true">
           {toast ? <p key={toast.id} className="toast">{toast.text}</p> : null}
         </div>
@@ -48,6 +49,7 @@ export function PersistentNotice({ label, text, actions }: { label: string; text
   const slot = useContext(PersistentSlotContext)
   if (slot === undefined) throw new Error('PersistentNotice must be rendered inside NotificationProvider')
   if (!slot) return null
+  // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- <output> cannot contain the block-level notice content
   return createPortal(<aside className="persistent-notice" role="status" aria-label={label}>
     <p>{text}</p>
     <div className="form-actions">{actions}</div>

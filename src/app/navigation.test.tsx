@@ -4,6 +4,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { App } from './app'
 import type { ProjectBoardRepository } from '../features/project-board'
 
+const stateIndex = () => (history.state as { easyTrackIndex: number }).easyTrackIndex
+
 const project = { id: 'a', name: 'Project A', createdAt: 'now' }
 const board = { ...project, statuses: [], previewNotes: {} }
 function deferred<T>() {
@@ -163,7 +165,7 @@ it('replaces the direct settings entry with the catalogue on Back', async () => 
   await user.click(await screen.findByRole('button', { name: 'Назад' }))
   await screen.findByRole('button', { name: project.name })
   expect(location.hash).toBe('')
-  expect(history.state.easyTrackIndex).toBe(0)
+  expect(stateIndex()).toBe(0)
   await waitFor(() => expect(screen.getByRole('button', { name: 'Настройки' })).toHaveFocus())
 })
 
@@ -172,10 +174,10 @@ it('adds settings to history, supports browser Back and Forward, and opens the c
   render(<App repository={repository()} />)
   await user.click(await screen.findByRole('button', { name: project.name }))
   await screen.findByRole('heading', { name: project.name })
-  const index = history.state.easyTrackIndex
+  const index = stateIndex()
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
   await screen.findByRole('heading', { name: 'Настройки' })
-  expect(history.state.easyTrackIndex).toBe(index + 1)
+  expect(stateIndex()).toBe(index + 1)
   act(() => history.back())
   await screen.findByRole('heading', { name: project.name })
   await waitFor(() => expect(screen.getByRole('button', { name: 'Настройки' })).toHaveFocus())
@@ -203,7 +205,7 @@ it('adds a history entry when the catalogue gear opens settings', async () => {
   await user.click(screen.getByRole('button', { name: 'Настройки' }))
   await screen.findByRole('heading', { name: 'Настройки' })
   expect(location.hash).toBe('#settings')
-  expect(history.state.easyTrackIndex).toBe(1)
+  expect(stateIndex()).toBe(1)
 })
 
 it('keeps the gear focused when storage finishes opening after returning to the loading screen', async () => {

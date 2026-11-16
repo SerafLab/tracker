@@ -36,7 +36,7 @@ it('native-contract fixture applies actual checked board/catalogue navigation, k
   expect(location.hash).toBe('#project/p')
   expect(await call('show_workspace', { projectId: 'missing' })).toMatchObject({ error: { code: 'not_found' } })
   expect(location.hash).toBe('#project/p')
-  expect(await call('show_workspace')).toMatchObject({ ok: true, data: { route: '', url: expect.any(String) } })
+  expect(await call('show_workspace')).toMatchObject({ ok: true, data: { route: '', url: expect.any(String) as unknown } })
   expect(await screen.findByRole('heading', { name: 'Трекер личных проектов' })).toBeInTheDocument()
   expect(location.hash).toBe('')
   expect(await call('show_workspace', { projectId: 'p' })).toMatchObject({ ok: true, data: { route: '#project/p' } })

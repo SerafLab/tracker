@@ -48,7 +48,7 @@ for (const width of [320, 390, 1280]) for (const en of [false, true]) {
     const description = 'Line one\nhttps://example.com/' + 'long-path-'.repeat(22) + '\n<script>literal</script> [text](javascript:alert(1))'
     const form = await enterEdit(page, en)
     await form.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true }).fill(description)
-    await saveEdit(page, form, en)
+    await saveEdit(form, en)
     const saved = summary
     await expect(saved.getByRole('link')).toHaveAttribute('target', '_blank')
     await expect(saved.getByRole('link')).toHaveAttribute('rel', 'noopener noreferrer')
@@ -195,7 +195,7 @@ test('rapid Back with Discard drops the draft and Forward reopens the saved card
 
 test('rapid Back with a failed save stays on the card with the draft and saves after the error is gone', async ({ page }) => {
   await page.addInitScript(() => {
-    const put = IDBObjectStore.prototype.put
+    const put = Reflect.get<IDBObjectStore, 'put'>(IDBObjectStore.prototype, 'put')
     IDBObjectStore.prototype.put = function (...args) {
       if (this.name === 'cards' && (window as unknown as { failCardWrites?: boolean }).failCardWrites) throw new DOMException('Injected card write failure', 'UnknownError')
       return put.apply(this, args)
@@ -209,7 +209,7 @@ test('rapid Back with a failed save stays on the card with the draft and saves a
   await expect(summaryOf(page).getByRole('alert').filter({ hasText: 'Не удалось сохранить' })).toBeVisible()
   await expect(description).toHaveValue('Native draft')
   await page.evaluate(() => { (window as unknown as { failCardWrites: boolean }).failCardWrites = false })
-  await saveEdit(page, page.getByRole('form', { name: 'Редактировать основное', exact: true }))
+  await saveEdit(page.getByRole('form', { name: 'Редактировать основное', exact: true }))
   await page.reload(); await expect(summaryOf(page).locator('.detail-text')).toHaveText('Native draft')
 })
 

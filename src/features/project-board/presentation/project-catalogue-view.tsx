@@ -27,45 +27,44 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
   const [deleting, setDeleting] = useState<{ project: Project; returnFocus: ProjectTrigger } | null>(null)
   const [summary, setSummary] = useState<ProjectSummaryState>({ kind: 'loading' })
   const [summaryAttempt, setSummaryAttempt] = useState(0)
-  const [focusTarget, setFocusTarget] = useState<Id | 'create' | null>(null)
+  const [focusRequest, setFocusRequest] = useState<{ id: Id } | null>(null)
+  const handledFocusRequest = useRef<{ id: Id } | null>(null)
   const [quickSaving, setQuickSaving] = useState(false)
   const createTrigger = useRef<HTMLButtonElement>(null)
   const quickCreate = useRef<HTMLButtonElement>(null)
-  const quickPending = useRef(false)
+  const [wasEmpty, setWasEmpty] = useState(false)
   const headingId = useId()
   const root = useRef<HTMLElement>(null)
   const modalOpen = useModalOpen()
   const deletingId = deleting?.project.id
   const empty = projects.length === 0
   // The lock lives as long as the block: a created project hides it, and an emptied catalogue shows it unlocked.
-  useEffect(() => {
-    if (empty) return
-    quickPending.current = false
-    setQuickSaving(false)
-  }, [empty])
+  if (wasEmpty !== empty) {
+    setWasEmpty(empty)
+    if (!empty) setQuickSaving(false)
+  }
   useEffect(() => {
     if (!deletingId) return
     let active = true
-    setSummary({ kind: 'loading' })
     void onReadSummary(deletingId).then(value => { if (active) setSummary({ kind: 'ready', ...value }) }, () => { if (active) setSummary({ kind: 'failed' }) })
     return () => { active = false }
   }, [deletingId, summaryAttempt, onReadSummary])
   useEffect(() => {
-    if (modalOpen || (!focusCreation && !focusTarget)) return
-    const project = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-project-id]') ?? []).find(item => item.dataset.projectId === focusTarget)
+    const pendingRequest = focusRequest === handledFocusRequest.current ? null : focusRequest
+    if (modalOpen || (!focusCreation && !pendingRequest)) return
+    const project = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-project-id]') ?? []).find(item => item.dataset.projectId === pendingRequest?.id)
     const creationTarget = empty ? quickCreate.current : createTrigger.current
-    const target = focusCreation || focusTarget === 'create' ? creationTarget : project?.querySelector<HTMLButtonElement>('.project-open') ?? creationTarget
+    const target = focusCreation || pendingRequest?.id === 'create' ? creationTarget : project?.querySelector<HTMLButtonElement>('.project-open') ?? creationTarget
     target?.focus({ preventScroll: true })
-    setFocusTarget(null)
+    handledFocusRequest.current = focusRequest
     if (focusCreation) onCreationFocused?.()
-  }, [focusCreation, focusTarget, projects, empty, modalOpen, onCreationFocused])
+  }, [focusCreation, focusRequest, projects, empty, modalOpen, onCreationFocused])
   const createFirstProject = async () => {
-    if (quickPending.current) return
-    quickPending.current = true
+    if (quickSaving) return
     setQuickSaving(true)
     // A saved project hides the block, so only a failure unlocks the button here.
     const saved = await onCreate({ name: t('firstProjectName'), initialStatusNames: presetStatusNames('simple', t) }).catch(() => false)
-    if (!saved) { quickPending.current = false; setQuickSaving(false) }
+    if (!saved) setQuickSaving(false)
   }
   const requestDeletion = (project: Project, returnFocus: ProjectTrigger) => { setSummary({ kind: 'loading' }); setDeleting({ project, returnFocus }) }
   const confirmDeletion = async () => {
@@ -73,7 +72,7 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
     const index = projects.findIndex(project => project.id === deleting.project.id)
     const next = projects[index + 1]?.id ?? projects[index - 1]?.id ?? 'create'
     if (!await onDelete(deleting.project.id)) return 'failed' as const
-    setDeleting(null); setFocusTarget(next)
+    setDeleting(null); setFocusRequest({ id: next })
     return 'deleted' as const
   }
   return <><AppBar title={t('title')} creation={{ label: t('createProject'), triggerRef: createTrigger, onSelect: () => setCreating(true) }} /><main ref={root} className={empty ? 'app-shell catalogue-first-run' : 'app-shell'}>
@@ -89,7 +88,7 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
       </>}
     {creating ? <ProjectCreateDialog returnFocus={createTrigger} onSubmit={onCreate} onClose={() => setCreating(false)} /> : null}
     {renaming ? <NameDialog title={t('renameProject')} label={t('newName')} button={t('save')} initialName={renaming.name} onSubmit={name => onRename(renaming.id, name)} onClose={() => setRenaming(null)} /> : null}
-    {deleting ? <DeleteDialog kind="project" name={deleting.project.name} blocked={false} summary={summary} onRetrySummary={() => setSummaryAttempt(value => value + 1)} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}
+    {deleting ? <DeleteDialog kind="project" name={deleting.project.name} blocked={false} summary={summary} onRetrySummary={() => { setSummary({ kind: 'loading' }); setSummaryAttempt(value => value + 1) }} returnFocus={deleting.returnFocus} onDelete={confirmDeletion} onClose={() => setDeleting(null)} /> : null}
   </main></>
 }
 

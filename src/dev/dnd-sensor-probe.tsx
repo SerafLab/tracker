@@ -12,7 +12,7 @@ const columns = ['Найдено', 'В работе', 'Пустой статус
 const plugins: ComponentProps<typeof DragDropProvider>['plugins'] = defaults => [...defaults.filter(plugin => plugin !== Accessibility && plugin !== AutoScroller), AutoScroller.configure({ acceleration: 15, threshold: { x: .2, y: .2 } })]
 const seed: Card[] = Array.from({ length: 14 }, (_, index) => ({ id: `card-${index + 1}`, name: index ? `Тестовая карточка ${index + 1}` : 'Длинное название карточки: нажать, прокрутить или удержать', column: index < 9 ? columns[0] : columns[1] }))
 
-function CardItem({ card, open, mark, suppression, dragging }: { card: Card; open(card: Card): void; mark(message: string): void; suppression: RefObject<string | null>; dragging: boolean }) {
+function CardItem({ card, open, mark, suppression, dragging }: { card: Card; open: (card: Card) => void; mark: (message: string) => void; suppression: RefObject<string | null>; dragging: boolean }) {
   const { ref, isDragSource } = useDraggable({ id: card.id, data: { name: card.name } })
   const [menu, setMenu] = useState(false)
   return <li ref={ref} className="work-card surface-card probe-card" data-probe-card={card.id} data-dragging={isDragSource || undefined}
@@ -27,7 +27,7 @@ function CardItem({ card, open, mark, suppression, dragging }: { card: Card; ope
   </li>
 }
 
-function Column({ name, cards, active, preview, suppression, open, mark }: { name: string; cards: Card[]; active: string | null; preview: Projection | null; suppression: RefObject<string | null>; open(card: Card): void; mark(message: string): void }) {
+function Column({ name, cards, active, preview, suppression, open, mark }: { name: string; cards: Card[]; active: string | null; preview: Projection | null; suppression: RefObject<string | null>; open: (card: Card) => void; mark: (message: string) => void }) {
   const { ref, isDropTarget } = useDroppable({ id: name, collisionDetector: pointerIntersection })
   return <article ref={ref} className="probe-column" data-probe-column={name} data-over={isDropTarget || undefined}><h2>{name}</h2><ul className="card-list probe-list">
     {cards.map(card => <Fragment key={card.id}>
@@ -67,9 +67,10 @@ function Probe() {
   }
   const open = (card: Card) => { setOpened(card); setOpens(value => value + 1); mark(`Открытие ${card.id}`) }
   return <><header className="probe-header"><h1>Проверка удержания и прокрутки</h1><p>Только тестовые карточки в памяти. Данные EasyTrack не читаются и не изменяются.</p><p>Свайп — прокрутить. Удержание 250 мс — перенос. Короткое нажатие / Enter — открыть. Меню — отдельное действие.</p>
+    {/* oxlint-disable-next-line jsx-a11y/prefer-tag-over-role -- <output> is inline and would change the counters layout */}
     <div className="probe-counters" role="status" data-starts={starts} data-opens={opens}>Начатых переносов: {starts}. Открытий: {opens}. {active ? 'Перенос активен' : 'Ожидание'}</div>
     <details><summary>Диагностика и журнал</summary><p className="probe-agent">{navigator.userAgent}</p><ol>{log.map((line, index) => <li key={`${line}-${index}`}>{line}</li>)}</ol></details></header>
-    {opened ? <aside className="surface-card probe-detail" role="region" aria-label="Открытая карточка"><strong>{opened.name}</strong><p>Проверка открытия: карточка не должна появляться после drag/cancel/swipe.</p><button className="button button-primary" onClick={() => setOpened(null)}>Закрыть карточку</button></aside> : null}
+    {opened ? <section className="surface-card probe-detail" aria-label="Открытая карточка"><strong>{opened.name}</strong><p>Проверка открытия: карточка не должна появляться после drag/cancel/swipe.</p><button className="button button-primary" onClick={() => setOpened(null)}>Закрыть карточку</button></section> : null}
     <DragDropProvider sensors={sensors} plugins={plugins}
       onDragStart={event => { const id = String(event.operation.source?.id); activeRef.current = id; suppression.current = id; setActive(id); setStarts(value => value + 1); mark(`start ${id}; ${event.nativeEvent?.type}`) }}
       onDragMove={event => { if (activeRef.current) { const point = event.operation.position.current; setPreview(project(activeRef.current, point.x, point.y)) } }}

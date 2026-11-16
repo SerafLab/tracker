@@ -11,12 +11,12 @@ async function relay() { const value = await createProbeRelay(); resources.push(
 function connect(value, options = {}) { return new WebSocket(`ws://127.0.0.1:${value.port}/probe`, { origin: 'https://seraflab.github.io', ...options }) }
 const opened = socket => new Promise((resolve, reject) => { socket.once('open', resolve); socket.once('error', reject) })
 const message = socket => new Promise(resolve => socket.once('message', data => resolve(JSON.parse(data.toString()))))
-test('probe rejects unapproved origins', async () => {
+await test('probe rejects unapproved origins', async () => {
  const value = await relay(); const socket = connect(value, { origin: 'https://example.org' })
  await assert.rejects(opened(socket), /401/)
  assert.equal(value.marker('test'), false)
 })
-test('probe rejects invalid authentication and a second executor', async () => {
+await test('probe rejects invalid authentication and a second executor', async () => {
  const value = await relay(); const bad = connect(value); await opened(bad)
  const rejected = new Promise(resolve => bad.once('close', resolve)); bad.send(JSON.stringify({ type: 'hello', version: 1, token: 'wrong' }))
  assert.equal(await rejected, 1008)
@@ -29,7 +29,7 @@ test('probe rejects invalid authentication and a second executor', async () => {
  const result = await command; assert.equal(result.type, 'marker'); assert.equal(result.value, 'synthetic-marker')
 })
 
-test('probe metadata rejects existing files and symlinks, uses private permissions and removes its key on close', async () => {
+await test('probe metadata rejects existing files and symlinks, uses private permissions and removes its key on close', async () => {
  const dir = await mkdtemp(join(tmpdir(), 'probe-files-'))
  try {
   const existing = join(dir, 'existing'); await writeFile(existing, 'preserve', { mode: 0o644 })

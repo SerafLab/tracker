@@ -29,20 +29,19 @@ function hook(tool: string, toolInput: Record<string, unknown>): Promise<string>
 }
 
 const bash = (command: string) => hook('Bash', { command })
-const decision = (stdout: string) => stdout ? JSON.parse(stdout).hookSpecificOutput.permissionDecision : 'none'
+const decision = (stdout: string) => stdout ? (JSON.parse(stdout) as { hookSpecificOutput: { permissionDecision: string } }).hookSpecificOutput.permissionDecision : 'none'
 
-it('ignores unrelated commands', async () => {
-  for (const command of [
+it.each([
     'git status && grep -rn human-approved REVIEW.md',
     'gh label list --search human-approved',
     'gh pr create --label bug --body-file body.md',
     'gh pr edit 61 --remove-label human-approved',
     'git push -u origin claude/main-fix',
-  ]) expect(decision(await bash(command)), command).toBe('none')
+  ])('ignores unrelated commands: %s', async command => {
+  expect(decision(await bash(command))).toBe('none')
 })
 
-it('denies adding the approval label in any form', async () => {
-  for (const command of [
+it.each([
     'gh pr edit 61 --add-label human-approved',
     'gh pr edit 61 --add-label=bug,human-approved',
     "gh pr edit 61 --add-label 'bug, human-approved'",
@@ -50,11 +49,11 @@ it('denies adding the approval label in any form', async () => {
     'gh pr create --fill --label human-approved',
     'gh pr create --fill -l human-approved',
     'gh api repos/o/r/issues/61/labels -f "labels[]=human-approved"',
-  ]) expect(decision(await bash(command)), command).toBe('deny')
+  ])('denies adding the approval label in any form: %s', async command => {
+  expect(decision(await bash(command))).toBe('deny')
 })
 
-it('denies bypassing the PR merge', async () => {
-  for (const command of [
+it.each([
     'gh pr merge --squash',
     'for p in 61; do gh pr merge $p --squash; done',
     'GH_REPO=o/r gh pr merge $PR',
@@ -63,7 +62,8 @@ it('denies bypassing the PR merge', async () => {
     'git push origin main',
     'git push origin +HEAD:refs/heads/main',
     'git -C /x push origin HEAD:main',
-  ]) expect(decision(await bash(command)), command).toBe('deny')
+  ])('denies bypassing the PR merge: %s', async command => {
+  expect(decision(await bash(command))).toBe('deny')
 })
 
 it('allows a merge only when the latest approval check on the head passed', async () => {

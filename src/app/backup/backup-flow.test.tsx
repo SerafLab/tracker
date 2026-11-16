@@ -63,7 +63,7 @@ it('shows N → 0 for an empty copy and restores it', async () => {
 
 it('leaves device settings out of the copy and unchanged by a restore', async () => {
   localStorage.setItem('easytrack.locale', 'en'); localStorage.setItem('easytrack.theme', 'ink'); localStorage.setItem('easytrack.noteOrder', 'oldest')
-  const before = { ...localStorage }
+  const before = Object.fromEntries(Object.entries(localStorage))
   const { user } = await open()
   await user.click(await screen.findByRole('button', { name: 'Settings' }))
   await user.click(await screen.findByRole('button', { name: 'Export backup' }))
@@ -74,7 +74,7 @@ it('leaves device settings out of the copy and unchanged by a restore', async ()
   await restore(user, copy(restoredData), 'Restore from backup')
   await user.click(within(await screen.findByRole('dialog', { name: 'Replace data with the backup?' })).getByRole('button', { name: 'Replace' }))
   expect(await screen.findByText('Data restored from the backup')).toBeInTheDocument()
-  expect({ ...localStorage }).toEqual(before)
+  expect(Object.fromEntries(Object.entries(localStorage))).toEqual(before)
   expect(document.documentElement.lang).toBe('en')
 })
 

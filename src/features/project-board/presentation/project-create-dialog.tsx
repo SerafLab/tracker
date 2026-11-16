@@ -1,4 +1,4 @@
-import { useId, useRef, useState, type FormEvent, type RefObject } from 'react'
+import { useId, useRef, useState, type SyntheticEvent, type RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { CreateProjectInput } from '../domain/model'
 import { ActionDialog } from './controls'
@@ -20,7 +20,7 @@ export function ProjectCreateDialog({ onSubmit, onClose, returnFocus }: {
   const previewId = useId()
   const names = presetStatusNames(preset, t)
   const close = () => { if (!pending.current) onClose() }
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: SyntheticEvent) => {
     event.preventDefault()
     if (pending.current) return
     if (!name.trim()) { setInvalid(true); return }

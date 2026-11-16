@@ -13,7 +13,8 @@ export function BarMenu({ label, triggerRef, disabled, items }: {
   const panel = useRef<HTMLDivElement>(null)
   const menu = useRef<HTMLDivElement>(null)
   const id = useId()
-  useLayoutEffect(() => { if (modalOpen) setOpen(false) }, [modalOpen])
+  // A dialog opening closes the menu; adjusting state during render avoids a flash of the open menu.
+  if (modalOpen && open) setOpen(false)
   useLayoutEffect(() => {
     if (!open || modalOpen || !panel.current) return
     const element = panel.current

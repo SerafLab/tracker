@@ -5,8 +5,8 @@ import type { ConnectionState, StatusSetId, ToolName } from './schemas'
 
 type Dependencies = {
   store: ProjectBoardStore
-  state(): ConnectionState
-  route(): string
+  state: () => ConnectionState
+  route: () => string
   isDirty(): boolean
   showWorkspace(projectId?: string): Promise<{ route: string; url: string }>
   reads: { projects(): Promise<unknown>; board(projectId: string): Promise<unknown> }

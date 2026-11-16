@@ -45,7 +45,7 @@ for (const en of [false, true]) test(`panel history preserves board/editor, swit
   await expect(page).toHaveURL(cardUrl)
   expect(await page.evaluate(() => history.length)).toBe(initialLength + 1)
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await saveEdit(page, page.getByRole('form', { name: en ? 'Edit overview' : 'Редактировать основное' }), en)
+  await saveEdit(page.getByRole('form', { name: en ? 'Edit overview' : 'Редактировать основное' }), en)
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await expect(page.getByRole('textbox', { name: en ? 'New note' : 'Новая заметка', exact: true })).toHaveCount(0)
   await page.goBack()
@@ -227,7 +227,7 @@ test('narrow panel exposes read-only recovery after a committed field save canno
   await panel.getByRole('button', { name: 'Добавить заметку', exact: true }).click()
   await panel.getByRole('textbox', { name: 'Новая заметка', exact: true }).fill('Keep this independent draft')
   await page.evaluate(() => {
-    const original = IDBObjectStore.prototype.get
+    const original = Reflect.get<IDBObjectStore, 'get'>(IDBObjectStore.prototype, 'get')
     IDBObjectStore.prototype.get = function (key) {
       if (this.name === 'projects' && this.transaction.mode === 'readonly') { IDBObjectStore.prototype.get = original; throw Error('injected board read failure') }
       return original.call(this, key)
@@ -238,16 +238,17 @@ test('narrow panel exposes read-only recovery after a committed field save canno
   const retry = panel.getByRole('button', { name: 'Обновить доску', exact: true })
   await expect(retry).toBeEnabled()
   await page.evaluate(() => {
-    const dbWrite = IDBObjectStore.prototype.put
-    ;(window as Window & { recoveryWrites?: number }).recoveryWrites = 0
-    IDBObjectStore.prototype.put = function (...args) { (window as Window & { recoveryWrites: number }).recoveryWrites++; return dbWrite.apply(this, args) }
+    const dbWrite = Reflect.get<IDBObjectStore, 'put'>(IDBObjectStore.prototype, 'put')
+    const probe = window as Window & { recoveryWrites?: number }
+    probe.recoveryWrites = 0
+    IDBObjectStore.prototype.put = function (...args) { probe.recoveryWrites = (probe.recoveryWrites ?? 0) + 1; return dbWrite.apply(this, args) }
   })
   await retry.click()
   await expect(panel.getByRole('alert')).toHaveCount(0)
   await expect(panel.getByRole('button', { name: 'Редактировать основное', exact: true })).toBeEnabled()
   await expect(panel.locator('.card-summary .detail-text')).toHaveText('Committed despite failed read')
   await expect(panel.getByRole('textbox', { name: 'Новая заметка', exact: true })).toHaveValue('Keep this independent draft')
-  expect(await page.evaluate(() => (window as Window & { recoveryWrites: number }).recoveryWrites)).toBe(0)
+  expect(await page.evaluate(() => (window as Window & { recoveryWrites?: number }).recoveryWrites)).toBe(0)
 })
 
 
@@ -363,8 +364,8 @@ test('Back after a panel card is deleted returns to the board entry instead of r
   await page.getByRole('dialog').getByRole('button', { name: 'Удалить', exact: true }).click()
   await expect(page.locator('.card-panel')).toHaveCount(0)
   await expect(page).toHaveURL(/#project\/panel-project$/)
-  const index = await page.evaluate(() => history.state.easyTrackIndex)
+  const index = await page.evaluate(() => (history.state as { easyTrackIndex?: number } | null)?.easyTrackIndex)
   await page.goBack()
   await expect(page).toHaveURL(/tracker\/$|#$|tracker\/#?$/)
-  expect(index).toBeGreaterThan(await page.evaluate(() => history.state?.easyTrackIndex ?? -1))
+  expect(index).toBeGreaterThan(await page.evaluate(() => (history.state as { easyTrackIndex?: number } | null)?.easyTrackIndex ?? -1))
 })

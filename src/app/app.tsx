@@ -4,7 +4,7 @@ import { useWebMcp } from './webmcp/use-webmcp'
 import { ToolError } from './webmcp/error'
 import { LocaleProvider } from '../i18n/provider'
 import { ThemeProvider } from '../ui/theme-provider'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, NoteOrderProvider, ProjectBoardApp, ProjectBoardDatabase, type Backup, type DraftGuard, type EditRequest, type Id, type ProjectBoardRepository } from '../features/project-board'
 import { BackupProvider } from './backup/backup-provider'
@@ -28,19 +28,23 @@ type PendingTransition = { action: () => void | Promise<void> }
 type CardPresentation = 'panel' | 'page'
 type NavigationOptions = { presentation?: CardPresentation; replace?: boolean }
 type HistoryPosition = { index: number; hash: string }
-const indexFromState = (): number | undefined => typeof history.state?.easyTrackIndex === 'number' ? history.state.easyTrackIndex : undefined
+const historyState = () => history.state as { easyTrackIndex?: unknown; easyTrackPresentation?: unknown } | null
+const indexFromState = (): number | undefined => {
+  const index = historyState()?.easyTrackIndex
+  return typeof index === 'number' ? index : undefined
+}
 
 function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp = () => location.reload() }: { repository?: ProjectBoardRepository; databaseName?: string; reloadApp?: () => void }) {
   const { t } = useTranslation()
   const translate = useRef(t)
-  translate.current = t
+  useLayoutEffect(() => { translate.current = t })
   const requestPersistentStorage = usePersistentStorage()
   const [screen, setScreen] = useState(() => location.hash === '#settings' ? 'settings' : 'workspace')
   const settingsOpen = useRef(location.hash === '#settings')
   const focusSettingsGear = useRef(false)
   const returningDuringStorageOpen = useRef(false)
   const historyBackFromSettings = useRef<(() => void) | null>(null)
-  const staleConnection = useRef(false)
+  const [connection] = useState(() => ({ stale: false }))
   const [restartRequired, setRestartRequired] = useState(false)
   const draftGuard = useRef<DraftGuard | null>(null)
   const pendingRef = useRef<PendingTransition | null>(null)
@@ -55,10 +59,10 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const [editRequest, setEditRequest] = useState<EditRequest | null>(null)
   const editSeq = useRef(0)
   const [runtime] = useState(() => {
-    const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { staleConnection.current = true; setRestartRequired(true) })
+    const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { connection.stale = true; setRestartRequired(true) })
     const repository = suppliedRepository ?? new DexieProjectBoardRepository(database!)
     const useCases = createProjectBoardUseCases({ repository, createId: () => crypto.randomUUID(), now: () => new Date().toISOString(), build })
-    return { useCases, store: createProjectBoardStore(useCases, () => !staleConnection.current) }
+    return { useCases, store: createProjectBoardStore(useCases, () => !connection.stale) }
   })
   const registerDraftGuard = useCallback((guard: DraftGuard | null) => { draftGuard.current = guard }, [])
   const requestLeave = useCallback((action: () => void | Promise<void>) => {
@@ -87,7 +91,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     let request = 0
     let position: HistoryPosition = { index: indexFromState() ?? 0, hash: location.hash }
     // A reloaded/copied card address always starts as a full page.
-    history.replaceState({ ...history.state, easyTrackIndex: position.index, easyTrackPresentation: position.hash === '#settings' ? history.state?.easyTrackPresentation : 'page' }, '')
+    history.replaceState({ ...historyState(), easyTrackIndex: position.index, easyTrackPresentation: position.hash === '#settings' ? historyState()?.easyTrackPresentation : 'page' }, '')
     let observed = `${position.index}:${position.hash}`
     let restoring = false
     let bypass = false
@@ -116,9 +120,9 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
         returningDuringStorageOpen.current = true
         showWorkspace()
       }
-      if (staleConnection.current || !await storageReady) { showWorkspace(); return }
+      if (connection.stale || !await storageReady) { showWorkspace(); return }
       if (!isCurrent()) return
-      presentation.current = history.state?.easyTrackPresentation === 'panel' ? 'panel' : 'page'
+      presentation.current = historyState()?.easyTrackPresentation === 'panel' ? 'panel' : 'page'
       // Only a card route needs its presentation before it renders; leaving a card keeps the panel until the destination is shown.
       const applyPresentation = () => { if (isCurrent()) setCardPresentation(presentation.current) }
       if (!route && restoreLastProject) {
@@ -205,7 +209,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     addEventListener('popstate', onHistory)
     addEventListener('hashchange', onHistory)
     return () => { active = false; ++request; removeEventListener('popstate', onHistory); removeEventListener('hashchange', onHistory) }
-  }, [runtime, requestLeave])
+  }, [runtime, requestLeave, connection])
 
   const [settingsNavigation] = useState(() => ({
     openSettings: () => requestLeave(() => navigate.current('#settings')),
@@ -226,9 +230,9 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const workspaceReady = useStore(runtime.store, state => !['loading', 'unavailable'].includes(state.workspace.kind))
   const agentPending = useStore(runtime.store, state => state.agentPending)
   const agentRefreshError = useStore(runtime.store, state => state.agentRefreshError)
-  useWebMcp(createBrowserAdapter({
+  useWebMcp(() => createBrowserAdapter({
     store: runtime.store,
-    state: () => staleConnection.current ? 'restart_required' : runtime.store.getState().storageState,
+    state: () => connection.stale ? 'restart_required' : runtime.store.getState().storageState,
     route: () => location.hash,
     isDirty: () => !!draftGuard.current?.isDirty() || !!pendingRef.current || pendingSave.current,
     reads: runtime.useCases,
@@ -236,7 +240,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     statusNames: id => presetStatusNames(id === 'none' ? 'empty' : id, translate.current),
     async showWorkspace(projectId) {
       const assertClean = () => {
-        if (staleConnection.current) throw new ToolError('restart_required')
+        if (connection.stale) throw new ToolError('restart_required')
         if (draftGuard.current?.isDirty() || pendingRef.current || pendingSave.current) throw new ToolError('conflict', 'Unsaved drafts block showing another workspace')
       }
       assertClean()
@@ -272,7 +276,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   }, [])
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
   const onProjectDeleted = async (id: Id) => { const route = routeFromHash(); if (route?.kind === 'project' && route.projectId === id) await navigate.current('', false) }
-  const content = screen === 'settings' ? <SettingsPage onBack={() => historyBackFromSettings.current?.()} onReturn={navigateToCatalogue} /> : restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} editRequest={editRequest} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} />
+  const content = screen === 'settings' ? <SettingsPage onBack={() => historyBackFromSettings.current?.()} onReturn={() => void navigateToCatalogue()} /> : restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} editRequest={editRequest} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} />
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
   const actions = { exportBackup: runtime.useCases.exportBackup, summary: runtime.useCases.summary, parseBackup: runtime.useCases.parseBackup, restore: (backup: Backup) => runtime.store.getState().restoreBackup(backup) }

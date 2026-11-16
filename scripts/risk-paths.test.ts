@@ -11,6 +11,11 @@ it('keeps exact high-risk files and files under high-risk directories', () => {
   ])).toHaveLength(5)
 })
 
+it('treats linter and TypeScript configuration as high risk', () => {
+  const configs = ['.oxlintrc.json', '.stylelintrc.json', 'tsconfig.json', 'tsconfig.app.json', 'tsconfig.node.json']
+  expect(highRiskFiles(configs)).toEqual(configs)
+})
+
 it('ignores ordinary product, test and doc files', () => {
   expect(highRiskFiles([
     'src/features/project-board/infrastructure/indexeddb/database.test.ts',

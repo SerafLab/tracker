@@ -33,6 +33,12 @@ export const HIGH_RISK_PATHS = [
   'scripts/theme-contrast.check.mjs',
   'vitest.config.ts',
   'playwright.config.ts',
+  // Static checks: linter rules and TypeScript projects.
+  '.oxlintrc.json',
+  '.stylelintrc.json',
+  'tsconfig.json',
+  'tsconfig.app.json',
+  'tsconfig.node.json',
   // Agent process rules.
   'AGENTS.md',
   'CLAUDE.md',

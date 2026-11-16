@@ -87,7 +87,7 @@ test.describe('backup', () => {
     expect(download.suggestedFilename()).toMatch(/^easytrack-backup-\d{4}-\d{2}-\d{2}-\d{4}\.json$/)
     const path = info.outputPath('backup.json')
     await download.saveAs(path)
-    const file = JSON.parse(await readFile(path, 'utf8'))
+    const file: unknown = JSON.parse(await readFile(path, 'utf8'))
     expect(file).toMatchObject({ format: 'easytrack-backup', formatVersion: 1, app: { version: expect.any(String), commit: expect.any(String) } })
     await expect(page.getByRole('button', { name: 'Выгрузить резервную копию' })).toBeFocused()
     const before = await readData(page)

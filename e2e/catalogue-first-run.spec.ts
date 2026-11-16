@@ -62,8 +62,8 @@ async function stored(page: Page) {
     request.onsuccess = () => {
       const db = request.result
       const transaction = db.transaction(['projects', 'statuses'])
-      const projects = transaction.objectStore('projects').getAll()
-      const statuses = transaction.objectStore('statuses').getAll()
+      const projects = transaction.objectStore('projects').getAll() as IDBRequest<{ name: string }[]>
+      const statuses = transaction.objectStore('statuses').getAll() as IDBRequest<{ name: string; position: number }[]>
       transaction.oncomplete = () => {
         db.close()
         resolve({ projects: projects.result.map(item => item.name), statuses: statuses.result.sort((a, b) => a.position - b.position).map(item => item.name) })
@@ -87,7 +87,7 @@ for (const language of ['ru', 'en'] as const) {
 
   test(`a failed quick creation keeps the block in place, shows the error and allows a retry (${language})`, async ({ page }) => {
     await page.addInitScript(() => {
-      const add = IDBObjectStore.prototype.add
+      const add = Reflect.get<IDBObjectStore, 'add'>(IDBObjectStore.prototype, 'add')
       ;(window as unknown as { failCreate: boolean }).failCreate = true
       IDBObjectStore.prototype.add = function (...args) {
         if (this.name === 'statuses' && (window as unknown as { failCreate: boolean }).failCreate) throw Error('Test write unavailable')

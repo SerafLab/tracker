@@ -7,7 +7,7 @@ for (const language of ['ru', 'en'] as const) for (const width of [320, 390, 128
     await page.setViewportSize(viewportFor(width))
     await page.addInitScript(locale => {
       localStorage.setItem('easytrack.locale', locale)
-      const add = IDBObjectStore.prototype.add
+      const add = Reflect.get<IDBObjectStore, 'add'>(IDBObjectStore.prototype, 'add')
       ;(window as unknown as { failStatusSet: boolean }).failStatusSet = true
       IDBObjectStore.prototype.add = function (...args) {
         if (this.name === 'statuses' && (window as unknown as { failStatusSet: boolean }).failStatusSet) throw Error('Test unavailable write')

@@ -195,7 +195,7 @@ test('rapid Back with Discard drops the draft and Forward reopens the saved card
 
 test('rapid Back with a failed save stays on the card with the draft and saves after the error is gone', async ({ page }) => {
   await page.addInitScript(() => {
-    const put = IDBObjectStore.prototype.put
+    const put = Reflect.get<IDBObjectStore, 'put'>(IDBObjectStore.prototype, 'put')
     IDBObjectStore.prototype.put = function (...args) {
       if (this.name === 'cards' && (window as unknown as { failCardWrites?: boolean }).failCardWrites) throw new DOMException('Injected card write failure', 'UnknownError')
       return put.apply(this, args)

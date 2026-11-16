@@ -11,7 +11,7 @@ const send = (response, status, body, type = 'text/plain') => {
   response.end(body)
 }
 
-createServer(async (request, response) => {
+async function handle(request, response) {
   const url = new URL(request.url, 'http://127.0.0.1')
   const releaseMatch = url.pathname.match(/^\/__release\/(1|2)$/)
   if (releaseMatch) { release = Number(releaseMatch[1]); return send(response, 204, '') }
@@ -27,4 +27,8 @@ createServer(async (request, response) => {
     if (extname(path)) return send(response, 404, 'Not found')
     send(response, 200, await readFile(new URL('index.html', dist)), 'text/html')
   }
+}
+
+createServer((request, response) => {
+  handle(request, response).catch(error => send(response, 500, String(error)))
 }).listen(Number(process.env.E2E_PORT ?? 4173), '127.0.0.1')

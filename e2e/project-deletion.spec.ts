@@ -37,7 +37,7 @@ async function counts(page: Page) {
         const count = transaction.objectStore(name).count()
         count.onsuccess = () => { result[name] = count.result }
       }
-      const preference = transaction.objectStore('workspace').get('workspace')
+      const preference = transaction.objectStore('workspace').get('workspace') as IDBRequest<{ lastProjectId?: string } | undefined>
       preference.onsuccess = () => { result.lastProjectId = preference.result?.lastProjectId }
       transaction.oncomplete = () => { db.close(); resolve(result) }
       transaction.onerror = () => { db.close(); reject(transaction.error) }
@@ -118,7 +118,7 @@ for (const en of [false, true]) {
     await page.setViewportSize(viewportFor(320))
     await page.addInitScript(en => {
       localStorage.setItem('easytrack.locale', en ? 'en' : 'ru')
-      const remove = IDBObjectStore.prototype.delete
+      const remove = Reflect.get<IDBObjectStore, 'delete'>(IDBObjectStore.prototype, 'delete')
       ;(window as unknown as { failProjectDeletion: boolean }).failProjectDeletion = false
       IDBObjectStore.prototype.delete = function (...args) {
         if (this.name === 'projects' && (window as unknown as { failProjectDeletion: boolean }).failProjectDeletion) throw Error('Injected intermediate deletion failure')

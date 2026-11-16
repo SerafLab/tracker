@@ -367,7 +367,7 @@ test('a card can be dropped into a scrolled board, the workspace autoscrolls and
   // Drag the first Todo card that is fully visible below its stuck header.
   const sourceName = await page.evaluate(() => {
     const header = document.querySelector('.column-header')!.getBoundingClientRect()
-    return Array.from(document.querySelector('.status-column')!.querySelectorAll('.work-card')).find(card => card.getBoundingClientRect().top >= header.bottom)!.querySelector('.card-detail-link')!.textContent!.trim()
+    return Array.from(document.querySelector('.status-column')!.querySelectorAll('.work-card')).find(card => card.getBoundingClientRect().top >= header.bottom)!.querySelector('.card-detail-link')!.textContent.trim()
   })
   const source = page.locator('.work-card').filter({ has: page.getByRole('link', { name: sourceName, exact: true }) })
   await expect(source).toBeInViewport()
@@ -573,7 +573,7 @@ test('a narrow board keeps both scroll offsets around an opened, expanded and cl
   await expect.poll(async () => (await scrollState(page)).left).toBeGreaterThan(100)
   const name = await page.evaluate(() => {
     const column = document.querySelectorAll('.status-column')[1], header = column.querySelector('.column-header')!.getBoundingClientRect()
-    return Array.from(column.querySelectorAll('.card-detail-link')).find(link => link.getBoundingClientRect().top >= header.bottom)!.textContent!.trim()
+    return Array.from(column.querySelectorAll('.card-detail-link')).find(link => link.getBoundingClientRect().top >= header.bottom)!.textContent.trim()
   })
   const before = await scrollState(page)
   const expectSame = async () => { const now = await scrollState(page); expect(Math.abs(now.top - before.top)).toBeLessThan(1); expect(Math.abs(now.left - before.left)).toBeLessThan(1) }

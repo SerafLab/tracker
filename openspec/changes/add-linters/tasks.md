@@ -23,7 +23,7 @@
 ## 3. stylelint
 
 - [x] 3.1 Добавить точные версии `stylelint` и `stylelint-config-recommended`, создать `.stylelintrc.json` с `reportNeedlessDisables`, `reportInvalidScopeDisables` и `reportDescriptionlessDisables`, добавить скрипт `lint:css` (`stylelint "src/**/*.css"`). Проверить: `npm run lint:css` выводит текущие 23 нарушения.
-- [ ] 3.2 Исправить нарушения в `src/styles.css` и `src/dev/dnd-sensor-probe.css` по решению 6 design: перестановки селекторов и объединение повтора `.work-card`. Проверить:
+- [x] 3.2 Исправить нарушения в `src/styles.css` и `src/dev/dnd-sensor-probe.css` по решению 6 design: перестановки селекторов и объединение повтора `.work-card`. Проверить:
   - `npm run lint:css` завершается с кодом 0;
   - затронутые экраны доски и карточки проверены визуально по `docs/agents/rules/visual-review.md`, в отчёте указано, что именно просмотрено;
   - отключение правила без причины (`/* stylelint-disable-next-line no-duplicate-selectors */`) роняет `lint:css`.

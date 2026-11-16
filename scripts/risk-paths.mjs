@@ -55,15 +55,17 @@ export const SECURITY_PATHS = [
   'vite.config.ts',
   'package.json',
   'package-lock.json',
-  '.github/workflows/',
+  '.github/',
   '.githooks/',
   '.claude/settings.json',
   'scripts/guard-human-approval.mjs',
+  'scripts/limit-runner-launches.mjs',
   'scripts/cross-review.sh',
 ]
 
-// Added source lines that open a new channel for outside input or code: network, messaging, raw HTML, eval.
-export const SECURITY_PATTERN = /\bfetch\(|XMLHttpRequest|WebSocket|EventSource|postMessage|addEventListener\(\s*['"]message|innerHTML|dangerouslySetInnerHTML|\beval\(|new Function\(|window\.open\(|navigator\.modelContext|localStorage|sessionStorage|document\.cookie/
+// Added source lines that open a new channel for outside input or code: network, messaging, raw HTML,
+// URLs in markup (a user value may be a `javascript:` URL), eval.
+export const SECURITY_PATTERN = /\bfetch\(|XMLHttpRequest|WebSocket|EventSource|sendBeacon|postMessage|BroadcastChannel|\bonmessage\b|['"]message['"]\s*[,)]|innerHTML|outerHTML|insertAdjacentHTML|document\.write|dangerouslySetInnerHTML|\b(?:href|src|srcDoc)=\{|srcdoc|target=["']_blank|linkify|location\.(?:hash|search)|\beval\(|new Function\(|window\.open\(|modelContext|document\.cookie/i
 
 const matches = (paths, file) => paths.some(path => (path.endsWith('/') ? file.startsWith(path) : file === path))
 
@@ -77,21 +79,31 @@ export function securityFiles(files, added = {}) {
     || (/^src\/.*\.tsx?$/.test(file) && (added[file] ?? []).some(line => SECURITY_PATTERN.test(line)))))
 }
 
-function addedLines(range) {
+// Added lines per file from `git diff -U0` output; `+++` counts as a header only before the first hunk.
+export function parseAddedLines(diff) {
   const added = {}
   let file
-  for (const line of execFileSync('git', ['diff', '-U0', '--no-renames', range], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }).split('\n')) {
-    if (line.startsWith('+++ ')) file = line.slice(6)
-    else if (line.startsWith('+') && file) (added[file] ??= []).push(line.slice(1))
+  let header = false
+  for (const line of diff.split('\n')) {
+    if (line.startsWith('diff --git ')) header = true
+    else if (line.startsWith('@@')) header = false
+    else if (header && line.startsWith('+++ ')) file = line.startsWith('+++ b/') ? line.slice(6).replace(/\t$/, '') : undefined
+    else if (!header && file && line.startsWith('+')) (added[file] ??= []).push(line.slice(1))
   }
   return added
 }
 
+// Plain output regardless of user config: no colour, external diff tool or custom prefixes.
+const git = (...args) => execFileSync('git', ['-c', 'core.quotePath=false', ...args], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = process.argv.slice(2)
+  const unknown = args.find(arg => arg.startsWith('-') && arg !== '--security')
+  if (unknown) throw new Error(`Unknown option ${unknown}. Usage: node scripts/risk-paths.mjs [--security] [base] [head]`)
   const security = args.includes('--security')
   const [base = 'origin/main', head = 'HEAD'] = args.filter(arg => arg !== '--security')
   const range = `${base}...${head}`
-  const changed = execFileSync('git', ['diff', '--name-only', '--no-renames', range], { encoding: 'utf8' }).split('\n').filter(Boolean)
-  for (const file of security ? securityFiles(changed, addedLines(range)) : highRiskFiles(changed)) console.log(file)
+  const changed = git('diff', '--name-only', '--no-renames', '--no-color', range).split('\n').filter(Boolean)
+  const files = security ? securityFiles(changed, parseAddedLines(git('diff', '-U0', '--no-renames', '--no-color', '--no-ext-diff', '--src-prefix=a/', '--dst-prefix=b/', range))) : highRiskFiles(changed)
+  for (const file of files) console.log(file)
 }

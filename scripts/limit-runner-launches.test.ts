@@ -20,7 +20,7 @@ function hook(toolInput: Record<string, unknown>, session = 's1'): Promise<strin
 }
 
 function decision(stdout: string) {
-  return stdout ? JSON.parse(stdout).hookSpecificOutput.permissionDecision : 'none'
+  return stdout ? (JSON.parse(stdout) as { hookSpecificOutput: { permissionDecision: string } }).hookSpecificOutput.permissionDecision : 'none'
 }
 
 const runner = (description: string, model?: string) => ({ subagent_type: 'runner', description, prompt: 'p', model })

@@ -5,7 +5,7 @@ import test from 'node:test'
 const styles = readFileSync(new URL('../src/styles.css', import.meta.url), 'utf8')
 const block = selector => Object.fromEntries([...styles.slice(styles.indexOf(`${selector} {`)).match(/\{([^}]*)\}/)[1].matchAll(/--([\w-]+): (#[0-9a-f]{3,6});/g)].map(match => [match[1], match[2]]))
 const luminance = short => {
-  const hex = short.length === 4 ? `#${[...short.slice(1)].map(c => c + c).join('')}` : short
+  const hex = short.length === 4 ? `#${short.slice(1).split('').map(c => c + c).join('')}` : short
   const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255).map(c => c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4)
   return .2126 * r + .7152 * g + .0722 * b
 }
@@ -13,8 +13,8 @@ const contrast = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort(
 const ink = block(':root')
 const greenOverrides = block(':root[data-theme="green"]')
 
-for (const [name, tokens] of [['ink', ink], ['green', { ...ink, ...greenOverrides }]]) {
-  test(`${name} theme meets the legibility thresholds`, () => {
+for (const { name, tokens } of [{ name: 'ink', tokens: ink }, { name: 'green', tokens: { ...ink, ...greenOverrides } }]) {
+  await test(`${name} theme meets the legibility thresholds`, () => {
     for (const background of [tokens.canvas, tokens.surface, tokens.field]) {
       for (const text of ['text', 'text-secondary', 'text-muted']) assert.ok(contrast(tokens[text], background) >= 4.5, `${text} on ${background}`)
       assert.ok(contrast(tokens.focus, background) >= 3, `focus on ${background}`)
@@ -24,7 +24,7 @@ for (const [name, tokens] of [['ink', ink], ['green', { ...ink, ...greenOverride
   })
 }
 
-test('green overrides only theme tokens and leaves shared semantic colours alone', () => {
+await test('green overrides only theme tokens and leaves shared semantic colours alone', () => {
   for (const shared of ['canvas', 'surface', 'field', 'danger', 'danger-bg']) assert.ok(!(shared in greenOverrides), shared)
   assert.ok(Object.keys(greenOverrides).every(name => name in ink))
 })
@@ -56,7 +56,7 @@ function literals(css) {
 }
 const isGreen = rgb => { const { chroma, hue } = oklch(rgb); return chroma > .01 && hue >= 100 && hue <= 200 }
 
-test('no green literal colours remain outside the theme token blocks', () => {
+await test('no green literal colours remain outside the theme token blocks', () => {
   const dir = new URL('../src/dev/', import.meta.url)
   const files = [['src/styles.css', styles], ...readdirSync(dir).filter(name => name.endsWith('.css')).map(name => [`src/dev/${name}`, readFileSync(new URL(name, dir), 'utf8')])]
   for (const [name, css] of files) {
@@ -66,7 +66,7 @@ test('no green literal colours remain outside the theme token blocks', () => {
   }
 })
 
-test('the green detector flags theme greens but not shared neutral or warm colours', () => {
+await test('the green detector flags theme greens but not shared neutral or warm colours', () => {
   for (const token of Object.values(greenOverrides)) if (token.startsWith('#') && token.length > 4) assert.ok(literals(token).every(([, rgb]) => rgb.every(Number.isFinite)))
   for (const hex of ['#a5b3a7', '#cbe2d1', '#315f48', '#e3ece4']) assert.ok(isGreen(literals(hex)[0][1]), hex)
   for (const hex of ['#fff', '#f1ebd8', '#f9e8e0', '#ad3026', '#7a271a', '#e7b8aa', '#f5f4f0']) assert.ok(!isGreen(literals(hex)[0][1]), hex)

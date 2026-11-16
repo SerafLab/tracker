@@ -26,7 +26,11 @@ describe('native contract schemas', () => {
   it.each(['opening', 'ready', 'storage_unavailable', 'restart_required'] as ConnectionState[])('reports %s without accessing task storage', async state => {
     const { runtime, dependencies } = setup({ state: () => state })
     expect(await runtime.call('get_connection', {})).toEqual({ ok: true, sessionId, data: { contractVersion: 2, state, route: '', lastMutationSequence: 0 } })
-    if (state !== 'ready') expect(await runtime.call('list_projects', { sessionId })).toMatchObject({ ok: false, error: { code: state === 'opening' ? 'disconnected' : state } })
+    expect(dependencies.execute).not.toHaveBeenCalled()
+  })
+  it.each(['opening', 'storage_unavailable', 'restart_required'] as ConnectionState[])('rejects task calls while %s without accessing task storage', async state => {
+    const { runtime, dependencies } = setup({ state: () => state })
+    expect(await runtime.call('list_projects', { sessionId })).toMatchObject({ ok: false, error: { code: state === 'opening' ? 'disconnected' : state } })
     expect(dependencies.execute).not.toHaveBeenCalled()
   })
 })

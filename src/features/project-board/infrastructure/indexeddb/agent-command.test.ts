@@ -40,7 +40,7 @@ it.each(['description-first', 'attributes-first'] as const)('preserves concurren
   await Promise.all(operations)
   expect((await db.cards.get(card.id))?.description).toBe('Latest description')
   expect(await db.notes.where('cardId').equals(card.id).count()).toBe(1)
-  if (order === 'description-first') expect(await db.cards.get(card.id)).toMatchObject({ name: 'Agent', important: true, urgent: true })
+  expect(await db.cards.get(card.id)).toMatchObject(order === 'description-first' ? { name: 'Agent', important: true, urgent: true } : {})
 })
 it('appends at own group tail with exact expected fields, preserves details and rejects foreign/stale moves', async () => {
   const { api, statuses, db } = await setup()
@@ -76,11 +76,10 @@ it('distinguishes missing targets and nonempty deletion and rolls back failed co
   const before = await api.projects()
   await expect(api.executeAgentCommand({ kind: 'create_project', name: 'Fail', statusNames: [] })).rejects.toThrow('quota')
   expect(await api.projects()).toEqual(before)
-  if ('card' in result.data) {
-    await api.createNote(result.data.card.id, 'Cascade')
-    expect((await api.executeAgentCommand({ kind: 'delete_card', cardId: result.data.card.id })).data).toEqual({ saved: true, deletedId: result.data.card.id })
-    expect(await db.notes.count()).toBe(0)
-  }
+  if (!('card' in result.data)) throw new Error('create_card returned no card')
+  await api.createNote(result.data.card.id, 'Cascade')
+  expect((await api.executeAgentCommand({ kind: 'delete_card', cardId: result.data.card.id })).data).toEqual({ saved: true, deletedId: result.data.card.id })
+  expect(await db.notes.count()).toBe(0)
   expect((await api.executeAgentCommand({ kind: 'delete_status', statusId: statuses[0].id })).data).toEqual({ saved: true, deletedId: statuses[0].id })
 })
 it('creates a project with its ordered independent statuses atomically, without changing the preference', async () => {
@@ -91,7 +90,7 @@ it('creates a project with its ordered independent statuses atomically, without 
   expect(new Set(await db.statuses.toCollection().primaryKeys()).size).toBe(await db.statuses.count())
   expect((await api.preference())?.lastProjectId).toBe(project.id)
   const before = await db.projects.count()
-  expect(() => api.executeAgentCommand({ kind: 'create_project', name: 'Bad', statusNames: ['A', '  '] })).toThrow()
+  expect(() => api.executeAgentCommand({ kind: 'create_project', name: 'Bad', statusNames: ['A', '  '] })).toThrow('Название обязательно')
   expect(await db.projects.count()).toBe(before)
 })
 it('applies a set only to an existing empty project, atomically, returning the board', async () => {

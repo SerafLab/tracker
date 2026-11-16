@@ -61,7 +61,7 @@ it('creates and edits at group tails with dense positions while unchanged flags 
   await repo.updateCard('both', { name: 'Back', description: '', important: true, urgent: true })
   expect((await cards()).map(card => card.id)).toEqual(['peer', 'both', 'important', 'urgent', 'none'])
   expect((await cards()).map(card => card.position)).toEqual([0, 1, 2, 3, 4])
-  await expect(repo.updateCard('missing', { name: 'X', description: '', important: true, urgent: false })).rejects.toThrow()
+  await expect(repo.updateCard('missing', { name: 'X', description: '', important: true, urgent: false })).rejects.toThrow('Карточка не найдена')
 })
 it('moves into group tails, compacts sources, preserves peers, and rejects cross-project moves', async () => {
   const { repository: repo, add } = await populated()
@@ -187,7 +187,7 @@ it.each(['statuses', 'workspace'] as const)('rolls back the project, statuses an
     // A duplicate in the batch makes IndexedDB reject after its first valid insert.
     statuses[1].id = statuses[0].id
   } else vi.spyOn(db.workspace, 'put').mockRejectedValueOnce(Error('quota'))
-  await expect(repo.createProject({ id: 'new', name: 'New', createdAt: '2' }, statuses, true)).rejects.toThrow()
+  await expect(repo.createProject({ id: 'new', name: 'New', createdAt: '2' }, statuses, true)).rejects.toThrow(/bulkAdd|quota/)
   expect(await repo.projects()).toEqual([{ id: 'old', name: 'Old', createdAt: '1' }])
   expect(await db.statuses.toArray()).toEqual([])
   expect(await repo.preference()).toEqual({ id: 'workspace', lastProjectId: 'old' })
@@ -205,11 +205,11 @@ it('reads only details belonging to the requested project and orders notes stabl
   expect(await repo.updateNote('a', 'z', 'z', 'later')).toEqual(before!.notes[1])
   expect(await repo.updateNote('a', 'z', 'changed', 'later')).toEqual({ ...before!.notes[1], text: 'changed', updatedAt: 'later' })
   expect((await repo.cardDetails('p', 'a'))!.notes.map(note => note.id)).toEqual(['a', 'z', 'b'])
-  await expect(repo.updateNote('other', 'z', 'stolen', 'later')).rejects.toThrow()
-  await expect(repo.deleteNote('other', 'z')).rejects.toThrow()
-  await expect(repo.createNote({ id: 'blank', cardId: 'a', text: ' ', createdAt: 'now' })).rejects.toThrow()
-  await expect(repo.createNote({ id: 'orphan', cardId: 'missing', text: 'text', createdAt: 'now' })).rejects.toThrow()
-  await expect(repo.updateNote('a', 'z', ' ', 'later')).rejects.toThrow()
+  await expect(repo.updateNote('other', 'z', 'stolen', 'later')).rejects.toThrow('Заметка не найдена')
+  await expect(repo.deleteNote('other', 'z')).rejects.toThrow('Заметка не найдена')
+  await expect(repo.createNote({ id: 'blank', cardId: 'a', text: ' ', createdAt: 'now' })).rejects.toThrow('Текст заметки обязателен')
+  await expect(repo.createNote({ id: 'orphan', cardId: 'missing', text: 'text', createdAt: 'now' })).rejects.toThrow('Карточка не найдена')
+  await expect(repo.updateNote('a', 'z', ' ', 'later')).rejects.toThrow('Текст заметки обязателен')
 })
 
 it('preserves a detailed card and its notes on move and removes notes only with the committed card cascade', async () => {
@@ -325,8 +325,8 @@ it.each(['creation', 'deletion'] as const)('serializes concurrent status creatio
   else { deletion = repo.deleteProject('p'); creation = create() }
   const [created, deleted] = await Promise.allSettled([creation, deletion])
   expect(deleted.status).toBe('fulfilled')
-  expect(created.status).toBe(first === 'creation' ? 'fulfilled' : 'rejected')
-  if (created.status === 'rejected') expect(created.reason).toHaveProperty('message', 'Проект не найден')
+  const outcome = { creation: { status: 'fulfilled' }, deletion: { status: 'rejected', reason: expect.objectContaining({ message: 'Проект не найден' }) } }
+  expect(created).toMatchObject(outcome[first])
   expect(await repo.board('p')).toBeUndefined()
   expect(await db.statuses.where('projectId').equals('p').count()).toBe(0)
   db.close(); await db.open()
@@ -367,7 +367,7 @@ it('persists exact positions, retains notes and rejects invalid or stale placeme
     { ...appendPlacement(a, 's'), beforeCardId: 'missing' }, { ...appendPlacement(a, 't'), beforeCardId: 'b' },
     { ...appendPlacement(a, 'missing') }, { ...appendPlacement(a, 't'), expected: { ...a, urgent: true } },
     { ...appendPlacement(a, 't'), expected: { ...a, statusId: 't' } },
-  ]) await expect(repo.moveCard('a', placement)).rejects.toThrow()
+  ]) await expect(repo.moveCard('a', placement)).rejects.toThrow(/^(invalid_anchor|status_not_found|stale_placement)$/)
   await expect(repo.moveCard('missing', appendPlacement(a, 't'))).rejects.toThrow('source_not_found')
   expect(put).not.toHaveBeenCalled(); expect(await repo.board('p')).toEqual(before)
   expect(await repo.moveCard('a', { ...appendPlacement(a, 's'), beforeCardId: 'b' })).toBe('unchanged')
@@ -417,7 +417,7 @@ it('rolls back a partially written set and permits a complete retry', async () =
   const { database, repository: repo } = repository()
   await repo.createProject({ id: 'p', name: 'P', createdAt: '1' }, [], true)
   const duplicateIds = setRecords().map(status => ({ ...status, id: 'duplicate' }))
-  await expect(repo.applyStatusSet('p', duplicateIds)).rejects.toThrow()
+  await expect(repo.applyStatusSet('p', duplicateIds)).rejects.toThrow(/bulkAdd/)
   expect(await database.statuses.count()).toBe(0)
   expect((await repo.preference())?.lastProjectId).toBe('p')
   await repo.applyStatusSet('p', setRecords())

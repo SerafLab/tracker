@@ -78,10 +78,11 @@ it.each(['card', 'status'] as const)('keeps the %s and dialog after a storage fa
   expect(within(dialog).getByRole('button', { name: 'Отмена' })).toHaveFocus()
   await user.click(within(dialog).getByRole('button', { name: 'Удалить' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  if (kind === 'status') {
+  const expectEmptyBoardFocus = async () => {
     expect(screen.getByRole('heading', { name: 'Добавьте первый статус' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'Добавить статус' })[0]).toHaveFocus())
   }
+  if (kind === 'status') await expectEmptyBoardFocus()
 })
 
 it('translates deletion menus and dialogs while offering project deletion through board project actions', async () => {

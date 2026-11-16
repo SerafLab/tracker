@@ -396,7 +396,7 @@ it('returns creation focus to the header plus after save, cancel and Escape in e
   const column = screen.getByRole('heading', { name: 'Todo' }).closest('article')!
   const trigger = column.querySelector<HTMLButtonElement>('.add-card-header')!
   expect(within(column).getAllByRole('button', { name: 'Добавить карточку' })).toHaveLength(1)
-  for (const populated of [false, true]) {
+  const dismissals = async (populated: boolean) => {
     for (const dismissal of ['cancel', 'escape']) {
       await user.click(trigger)
       expect(screen.getAllByRole('dialog')).toHaveLength(1)
@@ -406,13 +406,13 @@ it('returns creation focus to the header plus after save, cancel and Escape in e
       await waitFor(() => expect(trigger).toHaveFocus())
       expect(column.querySelectorAll('.work-card')).toHaveLength(populated ? 1 : 0)
     }
-    if (!populated) {
-      await user.click(trigger)
-      await fill(user, 'Название карточки', 'Saved from selected entry', 'Создать карточку')
-      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-      await waitFor(() => expect(trigger).toHaveFocus())
-    }
   }
+  await dismissals(false)
+  await user.click(trigger)
+  await fill(user, 'Название карточки', 'Saved from selected entry', 'Создать карточку')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  await waitFor(() => expect(trigger).toHaveFocus())
+  await dismissals(true)
 })
 
 it('closes a failed header creation without losing the opener focus', async () => {

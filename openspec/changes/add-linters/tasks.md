@@ -31,15 +31,15 @@
 ## 4. Включение в обязательную проверку и защита конфигурации
 
 - [ ] 4.1 Добавить скрипт `lint` (`npm run lint:js && npm run lint:css`) и задать порядок `check`: `lint` → `typecheck` → `check:architecture` → `test:run` → `node --test …` → `test:e2e`. Проверить: намеренное нарушение линтера роняет `npm run check` до запуска vitest.
-- [ ] 4.2 Добавить `.oxlintrc.json`, `.stylelintrc.json`, `tsconfig.json`, `tsconfig.app.json` и `tsconfig.node.json` в `HIGH_RISK_PATHS` (`scripts/risk-paths.mjs`) и тест в `scripts/risk-paths.test.ts`. Проверить: тест проходит; `node scripts/risk-paths.mjs` на ветке перечисляет эти файлы.
-- [ ] 4.3 Обновить документацию:
+- [x] 4.2 Добавить `.oxlintrc.json`, `.stylelintrc.json`, `tsconfig.json`, `tsconfig.app.json` и `tsconfig.node.json` в `HIGH_RISK_PATHS` (`scripts/risk-paths.mjs`) и тест в `scripts/risk-paths.test.ts`. Проверить: тест проходит; `node scripts/risk-paths.mjs` на ветке перечисляет эти файлы.
+- [x] 4.3 Обновить документацию:
   - `README.md` — состав `npm run check` и команды `lint` и `typecheck`;
   - `docs/technical-plan.md` — список проверок;
   - `docs/agents/rules/testing.md` — быстрый цикл `npm run lint` и `npm run typecheck` до полного `check`;
   - `REVIEW.md` — отключение правила без названия правила и причины считается поломкой.
   
   Проверить: в документах указаны новые команды, а формат отключения совпадает с решением 5 design.
-- [ ] 4.4 Написать ADR о выборе oxlint и stylelint вместо ESLint из-за TypeScript 7, со следующим свободным номером в `docs/adr/` на момент слияния. Проверить: ADR лежит в `docs/adr/`, номер не занят в `origin/main`, в тексте указаны отвергнутые варианты (ESLint с `typescript@6`, Biome).
+- [x] 4.4 Написать ADR о выборе oxlint и stylelint вместо ESLint из-за TypeScript 7, со следующим свободным номером в `docs/adr/` на момент слияния. Проверить: ADR лежит в `docs/adr/`, номер не занят в `origin/main`, в тексте указаны отвергнутые варианты (ESLint с `typescript@6`, Biome).
 
 ## 5. Итоговая проверка
 

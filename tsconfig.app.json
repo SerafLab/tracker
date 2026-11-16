@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "incremental": true,
     "noEmit": true,
     "target": "ES2024",
     "lib": ["ES2024", "DOM", "DOM.Iterable"],

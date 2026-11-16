@@ -439,13 +439,15 @@ it.each(['commit', 'refresh', 'refresh-failed'] as const)('clears catalogue pref
   await store.getState().showBoard(board.id)
   vi.mocked(api.boardView).mockImplementationOnce(() => read.promise)
   const moving = store.getState().moveCard(board.id, 'c', { statusId: 's', beforeCardId: null, expected: { statusId: 's', important: false, urgent: false } })
-  const reachRefresh = async () => {
+  if (stage !== 'commit') {
     commit.resolve('saved')
-    await vi.waitFor(() => expect(api.boardView).toHaveBeenCalledTimes(2))
+    await vi.waitFor(() => { if (vi.mocked(api.boardView).mock.calls.length !== 2) throw new Error('placement refresh has not started') })
   }
-  const failRefresh = async () => { read.reject(Error('read failed')); expect(await moving).toBe('refresh-failed') }
-  if (stage !== 'commit') await reachRefresh()
-  if (stage === 'refresh-failed') await failRefresh()
+  if (stage === 'refresh-failed') {
+    read.reject(Error('read failed'))
+    // oxlint-disable-next-line vitest/no-conditional-expect -- only this stage settles the placement before the preference is cleared
+    expect(await moving).toBe('refresh-failed')
+  }
   expect(await store.getState().clearLastProject()).toBe(true)
   await store.getState().showCatalogue()
   commit.resolve('saved'); read.resolve(board)

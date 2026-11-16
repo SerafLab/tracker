@@ -76,12 +76,11 @@ for (const [ids, deletedId, nextId, mode] of [
     await vi.runAllTimersAsync()
   })
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  const expectBusy = () => {
-    expect(screen.getByRole('button', { name: 'Добавить заметку' })).toBeDisabled()
-    expect(document.body).toHaveFocus()
-  }
   if (delayed) {
-    expectBusy()
+    // oxlint-disable-next-line vitest/no-conditional-expect -- only busy saves keep the control disabled until the save settles
+    expect(screen.getByRole('button', { name: 'Добавить заметку' })).toBeDisabled()
+    // oxlint-disable-next-line vitest/no-conditional-expect -- only busy saves park focus on the body until the save settles
+    expect(document.body).toHaveFocus()
     if (mode === 'new-focus') screen.getByRole('button', { name: 'Назад к доске' }).focus()
     rerender(<LocaleProvider><NoteOrderProvider><CardDetailView {...props} details={savedDetails} /></NoteOrderProvider></LocaleProvider>)
   }
@@ -91,8 +90,8 @@ for (const [ids, deletedId, nextId, mode] of [
   else if (nextId) target = within(container.querySelector(`[data-note-id="${nextId}"]`) as HTMLElement).getByRole('button', { name: 'Редактировать заметку' })
   else target = screen.getByRole('button', { name: 'Добавить заметку' })
   expect(target).toHaveFocus()
-  const expectDraft = () => expect(target).toHaveValue('Retained draft')
-  if (mode === 'draft') expectDraft()
+  // oxlint-disable-next-line vitest/no-conditional-expect -- only the draft mode has a retained draft to check
+  if (mode === 'draft') expect(target).toHaveValue('Retained draft')
 })
 
 it('opens a direct detail address, hides project actions, returns to its board and rejects foreign cards', async () => {

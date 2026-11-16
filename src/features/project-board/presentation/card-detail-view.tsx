@@ -26,14 +26,14 @@ type Props = {
   onExpand?: () => Promise<void>
   details: CardDetails
   busy: boolean
-  onReturn(): Promise<void>
-  onCatalogue(): Promise<void>
-  onSave(input: CardInput): Promise<boolean>
-  onCreateNote(text: string): Promise<Note | undefined>
-  onUpdateNote(id: Id, text: string): Promise<Note | undefined>
-  onDeleteNote(id: Id): Promise<boolean>
+  onReturn: () => Promise<void>
+  onCatalogue: () => Promise<void>
+  onSave: (input: CardInput) => Promise<boolean>
+  onCreateNote: (text: string) => Promise<Note | undefined>
+  onUpdateNote: (id: Id, text: string) => Promise<Note | undefined>
+  onDeleteNote: (id: Id) => Promise<boolean>
   registerDraftGuard: RegisterDraftGuard
-  requestLeave(action: () => void | Promise<void>): void
+  requestLeave: (action: () => void | Promise<void>) => void
 }
 
 export function CardDetailView({ refreshFailed = false, retrying = false, onRetryRefresh, narrow = false, presentation = 'page', editRequest = null, onExpand, details, busy, onReturn, onCatalogue, onSave, onCreateNote, onUpdateNote, onDeleteNote, registerDraftGuard, requestLeave }: Props) {
@@ -128,6 +128,7 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   }, [registerDraftGuard])
   useEffect(() => {
     if (!fieldsDirty && !noteDirty) return
+    // oxlint-disable-next-line typescript/no-deprecated -- returnValue is still required by some browsers to show the prompt
     const beforeUnload = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
     addEventListener('beforeunload', beforeUnload)
     return () => removeEventListener('beforeunload', beforeUnload)

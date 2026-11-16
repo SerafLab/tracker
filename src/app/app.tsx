@@ -28,7 +28,11 @@ type PendingTransition = { action: () => void | Promise<void> }
 type CardPresentation = 'panel' | 'page'
 type NavigationOptions = { presentation?: CardPresentation; replace?: boolean }
 type HistoryPosition = { index: number; hash: string }
-const indexFromState = (): number | undefined => typeof history.state?.easyTrackIndex === 'number' ? history.state.easyTrackIndex : undefined
+const historyState = () => history.state as { easyTrackIndex?: unknown; easyTrackPresentation?: unknown } | null
+const indexFromState = (): number | undefined => {
+  const index = historyState()?.easyTrackIndex
+  return typeof index === 'number' ? index : undefined
+}
 
 function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp = () => location.reload() }: { repository?: ProjectBoardRepository; databaseName?: string; reloadApp?: () => void }) {
   const { t } = useTranslation()
@@ -87,7 +91,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     let request = 0
     let position: HistoryPosition = { index: indexFromState() ?? 0, hash: location.hash }
     // A reloaded/copied card address always starts as a full page.
-    history.replaceState({ ...history.state, easyTrackIndex: position.index, easyTrackPresentation: position.hash === '#settings' ? history.state?.easyTrackPresentation : 'page' }, '')
+    history.replaceState({ ...historyState(), easyTrackIndex: position.index, easyTrackPresentation: position.hash === '#settings' ? historyState()?.easyTrackPresentation : 'page' }, '')
     let observed = `${position.index}:${position.hash}`
     let restoring = false
     let bypass = false
@@ -118,7 +122,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
       }
       if (staleConnection.current || !await storageReady) { showWorkspace(); return }
       if (!isCurrent()) return
-      presentation.current = history.state?.easyTrackPresentation === 'panel' ? 'panel' : 'page'
+      presentation.current = historyState()?.easyTrackPresentation === 'panel' ? 'panel' : 'page'
       // Only a card route needs its presentation before it renders; leaving a card keeps the panel until the destination is shown.
       const applyPresentation = () => { if (isCurrent()) setCardPresentation(presentation.current) }
       if (!route && restoreLastProject) {
@@ -272,7 +276,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   }, [])
   const navigateToCatalogue = async () => { requestLeave(() => navigate.current('')) }
   const onProjectDeleted = async (id: Id) => { const route = routeFromHash(); if (route?.kind === 'project' && route.projectId === id) await navigate.current('', false) }
-  const content = screen === 'settings' ? <SettingsPage onBack={() => historyBackFromSettings.current?.()} onReturn={navigateToCatalogue} /> : restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} editRequest={editRequest} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} />
+  const content = screen === 'settings' ? <SettingsPage onBack={() => historyBackFromSettings.current?.()} onReturn={() => void navigateToCatalogue()} /> : restartRequired ? <RestartRequired onRestart={reloadApp} /> : <><div inert={panelIsolated} hidden={!agentRefreshError || cardOpen}>{agentRefreshError ? <div className="save-error" role="alert"><p>{t('agentRefreshFailed')}</p><button className="button button-secondary" disabled={agentPending} onClick={() => void runtime.store.getState().retryAgentRefresh()}>{t('retryBoardRead')}</button></div> : null}</div><ProjectBoardApp onPanelIsolationChange={setPanelIsolated} cardPresentation={cardPresentation} editRequest={editRequest} onExpandCard={expandCard} onCloseCard={closeCard} onPanelCardMissing={closeMissingCard} store={runtime.store} navigateToProject={navigateToProject} navigateToCard={navigateToCard} navigateToCatalogue={navigateToCatalogue} onProjectDeleted={onProjectDeleted} registerDraftGuard={registerDraftGuard} requestLeave={requestLeave} onMutationSaved={requestPersistentStorage} />
     {pending ? <ActionDialog title={t('unsavedTitle')} onClose={cancelLeave}><p>{t('unsavedHelp')}</p><div className="form-actions"><button ref={stayTrigger} className="button button-secondary" disabled={savingDrafts} onClick={cancelLeave}>{t('stay')}</button><button className="button button-secondary" disabled={savingDrafts} onClick={() => void finishLeave(false)}>{t('discardAndLeave')}</button><button className="button button-primary" disabled={savingDrafts} onClick={() => void finishLeave(true)}>{t('saveAndLeave')}</button></div></ActionDialog> : null}
   </>
   const actions = { exportBackup: runtime.useCases.exportBackup, summary: runtime.useCases.summary, parseBackup: runtime.useCases.parseBackup, restore: (backup: Backup) => runtime.store.getState().restoreBackup(backup) }

@@ -24,7 +24,7 @@ const sensors = [PointerSensor.configure({
 })]
 const plugins: ComponentProps<typeof DragDropProvider>['plugins'] = defaults => [...defaults.filter(plugin => plugin !== Accessibility && plugin !== AutoScroller), AutoScroller.configure({ acceleration: 15, threshold: { x: .18, y: .18 } })]
 
-export function BoardDrag({ board, disabled, onPlace, children }: { board: ProjectBoard; disabled: boolean; onPlace(id: Id, placement: CardPlacement): Promise<MoveCardStateResult>; children: ReactNode }) {
+export function BoardDrag({ board, disabled, onPlace, children }: { board: ProjectBoard; disabled: boolean; onPlace: (id: Id, placement: CardPlacement) => Promise<MoveCardStateResult>; children: ReactNode }) {
   const { t } = useTranslation()
   const surface = useRef<HTMLDivElement>(null)
   const suppression = useRef<Id | null>(null)

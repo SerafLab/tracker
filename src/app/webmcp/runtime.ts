@@ -36,15 +36,16 @@ export function createToolRuntime(dependencies: RuntimeDependencies, options: { 
   }
   const bounded = (promise: Promise<ToolResult>, signal?: AbortSignal, mutation = true): Promise<ToolResult> => new Promise(resolve => {
     let settled = false
-    const done = (result: ToolResult) => {
+    const settle = (result: ToolResult) => {
       if (settled) return
       settled = true; clearTimeout(timer); signal?.removeEventListener('abort', abort); resolve(result)
     }
-    const abort = () => done(mutation ? failure('outcome_unknown', 'Response interrupted after dispatch; do not replay the mutation') : failure('disconnected', 'Read response interrupted; retry reading when available'))
+    const abort = () => settle(mutation ? failure('outcome_unknown', 'Response interrupted after dispatch; do not replay the mutation') : failure('disconnected', 'Read response interrupted; retry reading when available'))
     const timer = setTimeout(abort, options.responseTimeout ?? 15_000)
     signal?.addEventListener('abort', abort, { once: true })
     if (signal?.aborted) abort()
-    promise.then(done)
+    // `execute` converts every failure into a ToolResult, so this promise never rejects.
+    void promise.then(settle)
   })
   return {
     sessionId,

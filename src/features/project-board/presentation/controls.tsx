@@ -1,7 +1,7 @@
 import { registerModal } from '../../../ui/modal-state'
 import { focusFirstMenuItem, moveMenuFocus } from '../../../ui/menu-focus'
 import { useTranslation } from 'react-i18next'
-import { useEffect, useLayoutEffect, useEffectEvent, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useEffectEvent, useId, useRef, useState, type SyntheticEvent, type ReactNode } from 'react'
 
 import type { CardInput } from '../domain/model'
 import { BoardIcon } from './board-icon'
@@ -109,7 +109,7 @@ export function NameForm({ label, button, initialName = '', onSubmit, onCancel }
   const [name, setName] = useState(initialName)
   const [invalid, setInvalid] = useState(false)
   const errorId = useId()
-  const submit = async (event: FormEvent) => { event.preventDefault(); if (!name.trim()) { setInvalid(true); return }; setInvalid(false); await onSubmit(name); setName('') }
+  const submit = async (event: SyntheticEvent) => { event.preventDefault(); if (!name.trim()) { setInvalid(true); return }; setInvalid(false); await onSubmit(name); setName('') }
   return <form onSubmit={event => void submit(event)}><label className="field"><span className="field-label">{label}</span><input className="text-input" autoFocus value={name} aria-describedby={invalid ? errorId : undefined} onChange={event => setName(event.target.value)} /></label>{invalid ? <p id={errorId} className="field-error" role="alert">{t('nameRequired')}</p> : null}<div className="form-actions">{onCancel ? <button type="button" className="button button-secondary" onClick={onCancel}>{t('cancel')}</button> : null}<button className="button button-primary">{button}</button></div></form>
 }
 
@@ -128,7 +128,7 @@ export function CardDialog({ title, button, onSubmit, onClose, returnFocus }: {
   const [saving, setSaving] = useState(false)
   const pending = useRef(false)
   const errorId = useId()
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: SyntheticEvent) => {
     event.preventDefault()
     if (pending.current) return
     if (!input.name.trim()) { setInvalid(true); return }

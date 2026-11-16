@@ -1,9 +1,9 @@
-import { useId, useRef, useState, type FormEvent } from 'react'
+import { useId, useRef, useState, type SyntheticEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ApplyStatusSetResult } from '../state/project-board-store'
 import { presetStatusNames, statusPresets, type StatusPresetId } from './status-presets'
 
-export function ApplyStatusSetForm({ busy, onApply }: { busy: boolean; onApply(names: string[]): Promise<ApplyStatusSetResult> }) {
+export function ApplyStatusSetForm({ busy, onApply }: { busy: boolean; onApply: (names: string[]) => Promise<ApplyStatusSetResult> }) {
   const { t } = useTranslation()
   const [preset, setPreset] = useState<Exclude<StatusPresetId, 'empty'>>('simple')
   const [saving, setSaving] = useState(false)
@@ -11,7 +11,7 @@ export function ApplyStatusSetForm({ busy, onApply }: { busy: boolean; onApply(n
   const pending = useRef(false)
   const previewId = useId()
   const names = presetStatusNames(preset, t)
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: SyntheticEvent) => {
     event.preventDefault()
     if (pending.current || busy) return
     pending.current = true; setSaving(true); setError(null)

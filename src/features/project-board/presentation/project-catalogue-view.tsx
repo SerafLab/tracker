@@ -27,7 +27,7 @@ export function ProjectCatalogueView({ projects, saveError, onCreate, onOpen, on
   const [deleting, setDeleting] = useState<{ project: Project; returnFocus: ProjectTrigger } | null>(null)
   const [summary, setSummary] = useState<ProjectSummaryState>({ kind: 'loading' })
   const [summaryAttempt, setSummaryAttempt] = useState(0)
-  const [focusTarget, setFocusTarget] = useState<Id | 'create' | null>(null)
+  const [focusTarget, setFocusTarget] = useState<Id | null>(null)
   const [quickSaving, setQuickSaving] = useState(false)
   const createTrigger = useRef<HTMLButtonElement>(null)
   const quickCreate = useRef<HTMLButtonElement>(null)

@@ -36,7 +36,9 @@ export function createProjectBoardUseCases(dependencies: {
           break
         case 'create_status': prepared = { kind: command.kind, status: { id: createId(), projectId: command.projectId, name: name(command.name) } }; break
         case 'create_card': prepared = { kind: command.kind, card: { id: createId(), statusId: command.statusId, name: name(command.name), description: '', important: command.important, urgent: command.urgent } }; break
-        default: prepared = 'name' in command ? { ...command, name: name(command.name) } : command
+        case 'rename_project': case 'rename_status': case 'move_status': case 'delete_status':
+        case 'update_card': case 'move_card': case 'delete_card':
+          prepared = 'name' in command ? { ...command, name: name(command.name) } : command
       }
       return repository.executeAgentCommand(prepared)
     },

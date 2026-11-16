@@ -12,7 +12,7 @@ const columns = ['Найдено', 'В работе', 'Пустой статус
 const plugins: ComponentProps<typeof DragDropProvider>['plugins'] = defaults => [...defaults.filter(plugin => plugin !== Accessibility && plugin !== AutoScroller), AutoScroller.configure({ acceleration: 15, threshold: { x: .2, y: .2 } })]
 const seed: Card[] = Array.from({ length: 14 }, (_, index) => ({ id: `card-${index + 1}`, name: index ? `Тестовая карточка ${index + 1}` : 'Длинное название карточки: нажать, прокрутить или удержать', column: index < 9 ? columns[0] : columns[1] }))
 
-function CardItem({ card, open, mark, suppression, dragging }: { card: Card; open(card: Card): void; mark(message: string): void; suppression: RefObject<string | null>; dragging: boolean }) {
+function CardItem({ card, open, mark, suppression, dragging }: { card: Card; open: (card: Card) => void; mark: (message: string) => void; suppression: RefObject<string | null>; dragging: boolean }) {
   const { ref, isDragSource } = useDraggable({ id: card.id, data: { name: card.name } })
   const [menu, setMenu] = useState(false)
   return <li ref={ref} className="work-card surface-card probe-card" data-probe-card={card.id} data-dragging={isDragSource || undefined}
@@ -27,7 +27,7 @@ function CardItem({ card, open, mark, suppression, dragging }: { card: Card; ope
   </li>
 }
 
-function Column({ name, cards, active, preview, suppression, open, mark }: { name: string; cards: Card[]; active: string | null; preview: Projection | null; suppression: RefObject<string | null>; open(card: Card): void; mark(message: string): void }) {
+function Column({ name, cards, active, preview, suppression, open, mark }: { name: string; cards: Card[]; active: string | null; preview: Projection | null; suppression: RefObject<string | null>; open: (card: Card) => void; mark: (message: string) => void }) {
   const { ref, isDropTarget } = useDroppable({ id: name, collisionDetector: pointerIntersection })
   return <article ref={ref} className="probe-column" data-probe-column={name} data-over={isDropTarget || undefined}><h2>{name}</h2><ul className="card-list probe-list">
     {cards.map(card => <Fragment key={card.id}>

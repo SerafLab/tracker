@@ -7,7 +7,7 @@ export type NotificationPlacement = 'bottom-center' | 'bottom-start' | 'bottom-e
 export const TOAST_DURATION_MS = 4000
 
 type Toast = { id: number; text: string }
-type ToastApi = { showToast(text: string): void }
+type ToastApi = { showToast: (text: string) => void }
 
 // Views rendered without the app shell (isolated component tests) have nowhere to show a toast, so it is dropped.
 const ToastContext = createContext<ToastApi>({ showToast() {} })

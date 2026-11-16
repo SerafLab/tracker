@@ -25,38 +25,38 @@ export type ProjectBoardState = {
   storageState: 'opening' | 'ready' | 'storage_unavailable'
   agentPending: boolean
   agentRefreshError: boolean
-  assertAgentReady(): void
-  beginAgentOperation(): () => void
-  executeAgentCommand(command: AgentCommand): Promise<AgentSavedData & { warning?: { code: 'view_refresh_failed'; message: string } }>
-  retryAgentRefresh(): Promise<boolean>
+  assertAgentReady: () => void
+  beginAgentOperation: () => () => void
+  executeAgentCommand: (command: AgentCommand) => Promise<AgentSavedData & { warning?: { code: 'view_refresh_failed'; message: string } }>
+  retryAgentRefresh: () => Promise<boolean>
   applyingStatusSet: boolean
-  applyStatusSet(projectId: Id, statusNames: string[]): Promise<ApplyStatusSetResult>
+  applyStatusSet: (projectId: Id, statusNames: string[]) => Promise<ApplyStatusSetResult>
   saveError: boolean
   placementPending: boolean
   placementRefreshError: Id | null
-  retryPlacementRefresh(): Promise<boolean>
-  openStorage(): Promise<boolean>
-  clearLastProject(): Promise<boolean>
-  showCatalogue(): Promise<void>
-  showBoard(id: Id, remember?: boolean): Promise<boolean>
-  showCard(projectId: Id, cardId: Id, remember?: boolean): Promise<ShowCardResult>
-  createNote(projectId: Id, cardId: Id, text: string): Promise<Note | undefined>
-  updateNote(projectId: Id, cardId: Id, noteId: Id, text: string): Promise<Note | undefined>
-  deleteNote(projectId: Id, cardId: Id, noteId: Id): Promise<boolean>
-  createProject(input: CreateProjectInput): Promise<Id | undefined>
-  projectDeletionSummary(id: Id): Promise<ProjectDeletionSummary>
-  deleteProject(id: Id): Promise<boolean>
-  renameProject(id: Id, name: string): Promise<boolean>
-  createStatus(projectId: Id, name: string): Promise<boolean>
-  renameStatus(projectId: Id, statusId: Id, name: string): Promise<boolean>
-  deleteStatus(projectId: Id, statusId: Id): Promise<DeleteStatusStateResult>
-  moveStatus(projectId: Id, statusId: Id, direction: -1 | 1): Promise<boolean>
-  createCard(projectId: Id, statusId: Id, input: CardInput): Promise<boolean>
-  updateCard(projectId: Id, cardId: Id, input: CardInput): Promise<boolean>
-  deleteCard(projectId: Id, cardId: Id): Promise<boolean>
-  moveCard(projectId: Id, cardId: Id, placement: CardPlacement): Promise<MoveCardStateResult>
+  retryPlacementRefresh: () => Promise<boolean>
+  openStorage: () => Promise<boolean>
+  clearLastProject: () => Promise<boolean>
+  showCatalogue: () => Promise<void>
+  showBoard: (id: Id, remember?: boolean) => Promise<boolean>
+  showCard: (projectId: Id, cardId: Id, remember?: boolean) => Promise<ShowCardResult>
+  createNote: (projectId: Id, cardId: Id, text: string) => Promise<Note | undefined>
+  updateNote: (projectId: Id, cardId: Id, noteId: Id, text: string) => Promise<Note | undefined>
+  deleteNote: (projectId: Id, cardId: Id, noteId: Id) => Promise<boolean>
+  createProject: (input: CreateProjectInput) => Promise<Id | undefined>
+  projectDeletionSummary: (id: Id) => Promise<ProjectDeletionSummary>
+  deleteProject: (id: Id) => Promise<boolean>
+  renameProject: (id: Id, name: string) => Promise<boolean>
+  createStatus: (projectId: Id, name: string) => Promise<boolean>
+  renameStatus: (projectId: Id, statusId: Id, name: string) => Promise<boolean>
+  deleteStatus: (projectId: Id, statusId: Id) => Promise<DeleteStatusStateResult>
+  moveStatus: (projectId: Id, statusId: Id, direction: -1 | 1) => Promise<boolean>
+  createCard: (projectId: Id, statusId: Id, input: CardInput) => Promise<boolean>
+  updateCard: (projectId: Id, cardId: Id, input: CardInput) => Promise<boolean>
+  deleteCard: (projectId: Id, cardId: Id) => Promise<boolean>
+  moveCard: (projectId: Id, cardId: Id, placement: CardPlacement) => Promise<MoveCardStateResult>
   /** False when rejected because another write is pending; rejects when the replacement fails. */
-  restoreBackup(backup: Backup): Promise<boolean>
+  restoreBackup: (backup: Backup) => Promise<boolean>
 }
 
 

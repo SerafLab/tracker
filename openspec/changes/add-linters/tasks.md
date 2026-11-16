@@ -9,11 +9,11 @@
 ## 2. oxlint
 
 - [x] 2.1 Добавить точные версии `oxlint` и `oxlint-tsgolint`, создать `.oxlintrc.json` по решению 1 design (плагины, `correctness`, перечисленные правила с учётом типов, `typeAware`, `overrides` для `*.test.*`) и скрипт `lint:js` (`oxlint --type-aware --deny-warnings --report-unused-disable-directives-severity=error src e2e scripts *.ts`). Проверить: `npm run lint:js` запускается без ошибок конфигурации и выводит нарушения по правилам с учётом типов (например, `typescript/no-floating-promises`).
-- [ ] 2.2 Исправить нарушения правил `vitest/*`, `eslint/*`, `unicorn/*`, `promise/*` и `import/*`. Проверить: в выводе `npm run lint:js` нет нарушений этих групп; `npm run test:run` проходит.
-- [ ] 2.3 Исправить нарушения правил React (`react/refs`, `react/set-state-in-effect`, `react-hooks/exhaustive-deps` и другие) по политике решения 6 design. Если затронутое поведение не покрыто тестами, добавить тест. Проверить: в выводе `npm run lint:js` нет нарушений `react*`; `npm run test:run` и e2e-тесты затронутых сценариев проходят.
-- [ ] 2.4 Исправить нарушения `no-floating-promises`, `no-misused-promises`, `await-thenable`, `return-await` и `only-throw-error` по решению 6 design. Проверить: в выводе `npm run lint:js` нет этих нарушений; тесты затронутых модулей проходят.
-- [ ] 2.5 Исправить нарушения `no-unsafe-*`, `no-deprecated`, `no-unnecessary-type-assertion` и `switch-exhaustiveness-check`, сужая `unknown` проверками или схемами zod. Проверить: `npm run lint:js` завершается с кодом 0; `npm run test:run` проходит.
-- [ ] 2.6 Проверить поведение по спецификации `static-checks`:
+- [x] 2.2 Исправить нарушения правил `vitest/*`, `eslint/*`, `unicorn/*`, `promise/*` и `import/*`. Проверить: в выводе `npm run lint:js` нет нарушений этих групп; `npm run test:run` проходит.
+- [x] 2.3 Исправить нарушения правил React (`react/refs`, `react/set-state-in-effect`, `react-hooks/exhaustive-deps` и другие) по политике решения 6 design. Если затронутое поведение не покрыто тестами, добавить тест. Проверить: в выводе `npm run lint:js` нет нарушений `react*`; `npm run test:run` и e2e-тесты затронутых сценариев проходят.
+- [x] 2.4 Исправить нарушения `no-floating-promises`, `no-misused-promises`, `await-thenable`, `return-await` и `only-throw-error` по решению 6 design. Проверить: в выводе `npm run lint:js` нет этих нарушений; тесты затронутых модулей проходят.
+- [x] 2.5 Исправить нарушения `no-unsafe-*`, `no-deprecated`, `no-unnecessary-type-assertion` и `switch-exhaustiveness-check`, сужая `unknown` проверками или схемами zod. Проверить: `npm run lint:js` завершается с кодом 0; `npm run test:run` проходит.
+- [x] 2.6 Проверить поведение по спецификации `static-checks`:
   - намеренный незавершённый промис в `e2e/card-helpers.ts` роняет `lint:js`;
   - неиспользуемая переменная в `scripts/backup-fixtures.mjs` роняет `lint:js`;
   - лишний `// oxlint-disable-next-line` роняет `lint:js`;
@@ -30,7 +30,7 @@
 
 ## 4. Включение в обязательную проверку и защита конфигурации
 
-- [ ] 4.1 Добавить скрипт `lint` (`npm run lint:js && npm run lint:css`) и задать порядок `check`: `lint` → `typecheck` → `check:architecture` → `test:run` → `node --test …` → `test:e2e`. Проверить: намеренное нарушение линтера роняет `npm run check` до запуска vitest.
+- [x] 4.1 Добавить скрипт `lint` (`npm run lint:js && npm run lint:css`) и задать порядок `check`: `lint` → `typecheck` → `check:architecture` → `test:run` → `node --test …` → `test:e2e`. Проверить: намеренное нарушение линтера роняет `npm run check` до запуска vitest.
 - [x] 4.2 Добавить `.oxlintrc.json`, `.stylelintrc.json`, `tsconfig.json`, `tsconfig.app.json` и `tsconfig.node.json` в `HIGH_RISK_PATHS` (`scripts/risk-paths.mjs`) и тест в `scripts/risk-paths.test.ts`. Проверить: тест проходит; `node scripts/risk-paths.mjs` на ветке перечисляет эти файлы.
 - [x] 4.3 Обновить документацию:
   - `README.md` — состав `npm run check` и команды `lint` и `typecheck`;

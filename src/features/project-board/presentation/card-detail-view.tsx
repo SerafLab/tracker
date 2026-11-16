@@ -67,11 +67,15 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   const shownNotes = orderNotes(details.notes, order)
   const savedFields = fieldsOf(details)
   // Only synchronize a newly confirmed external snapshot when there are no local edits.
-  useEffect(() => {
-    if (sameFields(savedFields, confirmed)) return
-    if (!fieldsDirty) setFields(savedFields)
-    confirmedRef.current = savedFields; setConfirmed(savedFields)
-  }, [details.card])
+  const [seenCard, setSeenCard] = useState(details.card)
+  if (seenCard !== details.card) {
+    setSeenCard(details.card)
+    if (!sameFields(savedFields, confirmed)) {
+      if (!fieldsDirty) setFields(savedFields)
+      setConfirmed(savedFields)
+    }
+  }
+  useLayoutEffect(() => { confirmedRef.current = confirmed }, [confirmed])
   useLayoutEffect(() => { main.current?.focus({ preventScroll: true }) }, [details.card.id])
   useLayoutEffect(() => {
     if (!editRequest || editRequest.cardId !== details.card.id || handledRequest.current === editRequest.seq) return
@@ -121,7 +125,7 @@ export function CardDetailView({ refreshFailed = false, retrying = false, onRetr
   const submitFields = () => run(async () => { if (await saveFields()) setEditing(false) })
   const discard = () => { setFields(confirmed); setEditor(null); setFieldError(null); setNoteError(null) }
   const current = useRef({ fieldsDirty, noteDirty, saveAll, discard })
-  current.current = { fieldsDirty, noteDirty, saveAll, discard }
+  useLayoutEffect(() => { current.current = { fieldsDirty, noteDirty, saveAll, discard } })
   useLayoutEffect(() => {
     registerDraftGuard({ isDirty: () => current.current.fieldsDirty || current.current.noteDirty, save: () => current.current.saveAll(), discard: () => current.current.discard() })
     return () => registerDraftGuard(null)

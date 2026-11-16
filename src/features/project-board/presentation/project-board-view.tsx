@@ -81,19 +81,20 @@ export function ProjectBoardView({ onRequestDestructiveAction = runImmediately, 
     setDeleteFocus(focus)
     return 'deleted' as const
   }
-  const [moveFocus, setMoveFocus] = useState<Id | null>(null)
+  const [moveFocus, setMoveFocus] = useState<{ id: Id } | null>(null)
+  const handledMoveFocus = useRef<{ id: Id } | null>(null)
   const { showToast } = useToast()
   useEffect(() => {
-    if (!moveFocus || busy) return
-    const card = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find(item => item.dataset.cardId === moveFocus)
+    if (!moveFocus || moveFocus === handledMoveFocus.current || busy) return
+    const card = Array.from(root.current?.querySelectorAll<HTMLElement>('[data-card-id]') ?? []).find(item => item.dataset.cardId === moveFocus.id)
     card?.querySelector<HTMLButtonElement>('button[aria-haspopup="menu"]')?.focus({ preventScroll: true })
-    setMoveFocus(null)
+    handledMoveFocus.current = moveFocus
   }, [moveFocus, busy])
   const moveCard = useCallback(async (cardId: Id, placement: CardPlacement, focus = false) => {
     const result = await onMoveCard(cardId, placement)
     // Failures stay on the board as the save-error and refresh-failed alerts.
     if (result === 'saved' || result === 'unchanged') showToast(t(result === 'saved' ? 'placementSaved' : 'placementUnchanged'))
-    if (focus) setMoveFocus(cardId)
+    if (focus) setMoveFocus({ id: cardId })
     return result
   }, [onMoveCard, showToast, t])
   const requestStatusDeletion = useCallback((status: ProjectBoard['statuses'][number], returnFocus: React.RefObject<HTMLButtonElement | null>) => {

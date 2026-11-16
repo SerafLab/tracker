@@ -4,7 +4,7 @@ import { useWebMcp } from './webmcp/use-webmcp'
 import { ToolError } from './webmcp/error'
 import { LocaleProvider } from '../i18n/provider'
 import { ThemeProvider } from '../ui/theme-provider'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ActionDialog, presetStatusNames, createProjectBoardStore, createProjectBoardUseCases, DexieProjectBoardRepository, NoteOrderProvider, ProjectBoardApp, ProjectBoardDatabase, type Backup, type DraftGuard, type EditRequest, type Id, type ProjectBoardRepository } from '../features/project-board'
 import { BackupProvider } from './backup/backup-provider'
@@ -37,14 +37,14 @@ const indexFromState = (): number | undefined => {
 function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp = () => location.reload() }: { repository?: ProjectBoardRepository; databaseName?: string; reloadApp?: () => void }) {
   const { t } = useTranslation()
   const translate = useRef(t)
-  translate.current = t
+  useLayoutEffect(() => { translate.current = t })
   const requestPersistentStorage = usePersistentStorage()
   const [screen, setScreen] = useState(() => location.hash === '#settings' ? 'settings' : 'workspace')
   const settingsOpen = useRef(location.hash === '#settings')
   const focusSettingsGear = useRef(false)
   const returningDuringStorageOpen = useRef(false)
   const historyBackFromSettings = useRef<(() => void) | null>(null)
-  const staleConnection = useRef(false)
+  const [connection] = useState(() => ({ stale: false }))
   const [restartRequired, setRestartRequired] = useState(false)
   const draftGuard = useRef<DraftGuard | null>(null)
   const pendingRef = useRef<PendingTransition | null>(null)
@@ -59,10 +59,10 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const [editRequest, setEditRequest] = useState<EditRequest | null>(null)
   const editSeq = useRef(0)
   const [runtime] = useState(() => {
-    const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { staleConnection.current = true; setRestartRequired(true) })
+    const database = suppliedRepository ? undefined : new ProjectBoardDatabase(databaseName, () => { connection.stale = true; setRestartRequired(true) })
     const repository = suppliedRepository ?? new DexieProjectBoardRepository(database!)
     const useCases = createProjectBoardUseCases({ repository, createId: () => crypto.randomUUID(), now: () => new Date().toISOString(), build })
-    return { useCases, store: createProjectBoardStore(useCases, () => !staleConnection.current) }
+    return { useCases, store: createProjectBoardStore(useCases, () => !connection.stale) }
   })
   const registerDraftGuard = useCallback((guard: DraftGuard | null) => { draftGuard.current = guard }, [])
   const requestLeave = useCallback((action: () => void | Promise<void>) => {
@@ -120,7 +120,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
         returningDuringStorageOpen.current = true
         showWorkspace()
       }
-      if (staleConnection.current || !await storageReady) { showWorkspace(); return }
+      if (connection.stale || !await storageReady) { showWorkspace(); return }
       if (!isCurrent()) return
       presentation.current = historyState()?.easyTrackPresentation === 'panel' ? 'panel' : 'page'
       // Only a card route needs its presentation before it renders; leaving a card keeps the panel until the destination is shown.
@@ -209,7 +209,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     addEventListener('popstate', onHistory)
     addEventListener('hashchange', onHistory)
     return () => { active = false; ++request; removeEventListener('popstate', onHistory); removeEventListener('hashchange', onHistory) }
-  }, [runtime, requestLeave])
+  }, [runtime, requestLeave, connection])
 
   const [settingsNavigation] = useState(() => ({
     openSettings: () => requestLeave(() => navigate.current('#settings')),
@@ -230,9 +230,9 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
   const workspaceReady = useStore(runtime.store, state => !['loading', 'unavailable'].includes(state.workspace.kind))
   const agentPending = useStore(runtime.store, state => state.agentPending)
   const agentRefreshError = useStore(runtime.store, state => state.agentRefreshError)
-  useWebMcp(createBrowserAdapter({
+  useWebMcp(() => createBrowserAdapter({
     store: runtime.store,
-    state: () => staleConnection.current ? 'restart_required' : runtime.store.getState().storageState,
+    state: () => connection.stale ? 'restart_required' : runtime.store.getState().storageState,
     route: () => location.hash,
     isDirty: () => !!draftGuard.current?.isDirty() || !!pendingRef.current || pendingSave.current,
     reads: runtime.useCases,
@@ -240,7 +240,7 @@ function WorkspaceApp({ repository: suppliedRepository, databaseName, reloadApp 
     statusNames: id => presetStatusNames(id === 'none' ? 'empty' : id, translate.current),
     async showWorkspace(projectId) {
       const assertClean = () => {
-        if (staleConnection.current) throw new ToolError('restart_required')
+        if (connection.stale) throw new ToolError('restart_required')
         if (draftGuard.current?.isDirty() || pendingRef.current || pendingSave.current) throw new ToolError('conflict', 'Unsaved drafts block showing another workspace')
       }
       assertClean()

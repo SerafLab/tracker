@@ -14,6 +14,7 @@ export function AppBar({ title, context, onReturn, creation, onBack, projectActi
   const modalOpen = useModalOpen()
   const navigation = useContext(SettingsNavigationContext)
   const gear = useRef<HTMLButtonElement>(null)
+  const creationTrigger = creation?.triggerRef
   useLayoutEffect(() => {
     const button = gear.current
     return () => { if (button) navigation?.preserveFocus(button) }
@@ -27,7 +28,7 @@ export function AppBar({ title, context, onReturn, creation, onBack, projectActi
         ? <div className="app-bar-context"><TruncatedText text={context.project} className="app-bar-context-text" wrapClassName="app-bar-context-project" /><span className="app-bar-context-separator" aria-hidden="true">›</span><TruncatedText text={context.status} className="app-bar-context-text" wrapClassName="app-bar-context-status" /></div>
         : <TruncatedText as="h1" text={title ?? ''} className="page-title" focusOnMount={!!onBack && !modalOpen} />}
       <div className="app-bar-controls">
-        {creation && !onBack ? <button disabled={creation.disabled} ref={creation.triggerRef} className="button button-primary button-icon bar-hint" data-hint={creation.label} aria-label={creation.label} onClick={creation.onSelect}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></button> : null}
+        {creation && !onBack ? <button disabled={creation.disabled} className="button button-primary button-icon bar-hint" data-hint={creation.label} aria-label={creation.label} onClick={creation.onSelect} ref={creationTrigger}><svg className="ui-icon" aria-hidden="true" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" /></svg></button> : null}
         {projectActions && !onBack ? <BarMenu label={t('boardProjectActions')} triggerRef={projectActions.triggerRef} disabled={projectActions.disabled} items={[
           { label: t('renameProject'), select: projectActions.onRename },
           { label: t('deleteProject'), select: projectActions.onDelete },

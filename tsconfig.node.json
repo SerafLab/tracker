@@ -1,11 +1,33 @@
 {
   "compilerOptions": {
-    "composite": true,
-    "allowImportingTsExtensions": true,
-    "emitDeclarationOnly": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
+    "noEmit": true,
+    "target": "ES2024",
+    "lib": ["ES2024", "DOM"],
     "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "allowSyntheticDefaultImports": true
+    "moduleResolution": "bundler",
+    "moduleDetection": "force",
+    "jsx": "react-jsx",
+    "allowJs": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
+    "skipLibCheck": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["vite.config.ts", "build-define.ts"]
+  "include": [
+    "e2e/**/*.ts",
+    "e2e/**/*.js",
+    "e2e/**/*.mjs",
+    "scripts/**/*.ts",
+    "scripts/**/*.mjs",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "build-define.ts"
+  ]
 }

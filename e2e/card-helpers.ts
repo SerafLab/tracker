@@ -14,7 +14,7 @@ export async function enterEdit(page: Page, en = false): Promise<Locator> {
 }
 
 /** Saves the edit form and waits until the summary is read-only again. */
-export async function saveEdit(page: Page, form: Locator, en = false) {
+export async function saveEdit(form: Locator, en = false) {
   await form.getByRole('button', { name: en ? 'Save' : 'Сохранить', exact: true }).click()
   await expect(form).toBeHidden()
 }

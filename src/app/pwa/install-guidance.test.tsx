@@ -100,7 +100,6 @@ describe('settings installation entry', () => {
   it('saves the dismissal when the app is installed', async () => {
     render(<Harness />)
     act(() => { dispatchEvent(nativePrompt()) })
-    const user = userEvent.setup()
     expect(await entryLabel()).toBe('Установить EasyTrack')
     act(() => { dispatchEvent(new Event('appinstalled')) })
     expect(await entryLabel()).toBe('Как установить EasyTrack')
@@ -165,7 +164,6 @@ describe('installation invitation', () => {
 
   it('stresses that Safari projects are not transferred on iOS', async () => {
     setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)')
-    const user = userEvent.setup()
     render(<Harness ready />)
     expect(screen.getByRole('dialog')).toHaveTextContent('не переносятся в установленное приложение')
     expect(screen.getByRole('dialog')).toHaveTextContent('«Поделиться»')

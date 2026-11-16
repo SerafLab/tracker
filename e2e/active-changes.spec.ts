@@ -25,7 +25,7 @@ for (const language of ['ru', 'en'] as const) for (const width of [390, 1280]) {
     const description = form.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true })
     await expect(description).toHaveValue('')
     await description.fill('Saved context\nhttps://example.org/context')
-    await saveEdit(page, form, en)
+    await saveEdit(form, en)
     await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
     await page.getByLabel(en ? 'New note' : 'Новая заметка', { exact: true }).fill('Saved agreement')
     await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()

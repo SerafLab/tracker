@@ -63,7 +63,7 @@ for (const locale of ['ru', 'en']) test(`native-contract fixture covers every ta
   await page.getByRole('link', { name: 'Source', exact: true }).click()
   const form = await enterEdit(page, locale === 'en')
   await form.getByLabel(locale === 'en' ? 'Card description' : 'Описание карточки').fill('Saved detailed text')
-  await saveEdit(page, form, locale === 'en')
+  await saveEdit(form, locale === 'en')
   await page.getByRole('button', { name: locale === 'en' ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await page.getByLabel(locale === 'en' ? 'New note' : 'Новая заметка').fill('Personal note')
   await page.getByRole('button', { name: locale === 'en' ? 'Add note' : 'Добавить заметку', exact: true }).click()

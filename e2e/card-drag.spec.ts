@@ -90,7 +90,7 @@ for (const en of [false, true]) test(`projects exact legal gaps, cancels safely,
   await expect(page.locator('.card-detail')).toBeVisible()
   const form = await enterEdit(page, en)
   await form.getByLabel(en ? 'Card description' : 'Описание карточки', { exact: true }).fill('Description survives drag')
-  await saveEdit(page, form, en)
+  await saveEdit(form, en)
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await page.getByLabel(en ? 'New note' : 'Новая заметка', { exact: true }).fill('Note survives drag')
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()

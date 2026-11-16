@@ -45,7 +45,7 @@ for (const en of [false, true]) test(`panel history preserves board/editor, swit
   await expect(page).toHaveURL(cardUrl)
   expect(await page.evaluate(() => history.length)).toBe(initialLength + 1)
   await expect(page.getByRole('dialog')).toHaveCount(0)
-  await saveEdit(page, page.getByRole('form', { name: en ? 'Edit overview' : 'Редактировать основное' }), en)
+  await saveEdit(page.getByRole('form', { name: en ? 'Edit overview' : 'Редактировать основное' }), en)
   await page.getByRole('button', { name: en ? 'Add note' : 'Добавить заметку', exact: true }).click()
   await expect(page.getByRole('textbox', { name: en ? 'New note' : 'Новая заметка', exact: true })).toHaveCount(0)
   await page.goBack()
@@ -239,15 +239,16 @@ test('narrow panel exposes read-only recovery after a committed field save canno
   await expect(retry).toBeEnabled()
   await page.evaluate(() => {
     const dbWrite = IDBObjectStore.prototype.put
-    ;(window as Window & { recoveryWrites?: number }).recoveryWrites = 0
-    IDBObjectStore.prototype.put = function (...args) { (window as Window & { recoveryWrites: number }).recoveryWrites++; return dbWrite.apply(this, args) }
+    const probe = window as Window & { recoveryWrites?: number }
+    probe.recoveryWrites = 0
+    IDBObjectStore.prototype.put = function (...args) { probe.recoveryWrites = (probe.recoveryWrites ?? 0) + 1; return dbWrite.apply(this, args) }
   })
   await retry.click()
   await expect(panel.getByRole('alert')).toHaveCount(0)
   await expect(panel.getByRole('button', { name: 'Редактировать основное', exact: true })).toBeEnabled()
   await expect(panel.locator('.card-summary .detail-text')).toHaveText('Committed despite failed read')
   await expect(panel.getByRole('textbox', { name: 'Новая заметка', exact: true })).toHaveValue('Keep this independent draft')
-  expect(await page.evaluate(() => (window as Window & { recoveryWrites: number }).recoveryWrites)).toBe(0)
+  expect(await page.evaluate(() => (window as Window & { recoveryWrites?: number }).recoveryWrites)).toBe(0)
 })
 
 
